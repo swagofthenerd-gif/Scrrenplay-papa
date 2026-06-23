@@ -1,0 +1,24 @@
+name: Build ScrivenLight
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install --upgrade pip wheel
+          pip install PyQt6 reportlab pyinstaller
+      - run: pyinstaller scrivenlight.spec --noconfirm
+      - run: powershell -Command "Compress-Archive -Path 'dist/ScrivenLight/*' -DestinationPath 'dist/ScrivenLight-win-portable.zip' -Force"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScrivenLight-Windows
+          path: dist/ScrivenLight-win-portable.zip
