@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=ScrivenLight
+GenericName=Screenwriting
+Comment=Minimal screenwriting app with industry-standard formatting
+Exec=scrivenlight %f
+Icon=scrivenlight
+Terminal=false
+Categories=Office;WordProcessor;AudioVideo;
+MimeType=text/x-fountain;application/x-scrivenlight;
+Keywords=screenplay;script;screenwriting;film;fountain;
+StartupNotify=true
+StartupWMClass=ScrivenLight
