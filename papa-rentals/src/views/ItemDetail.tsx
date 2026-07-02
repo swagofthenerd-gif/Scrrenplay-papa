@@ -123,6 +123,27 @@ export default function ItemDetail({ id }: { id: string }) {
             </ul>
           </div>
 
+          {item.space && (
+            <div className="panel">
+              <h3 style={{ fontSize: 16 }}>🏢 About this space</h3>
+              <div className="stat-row" style={{ marginTop: 10 }}>
+                <div className="stat-tile"><div className="stat-num">{item.space.sqft.toLocaleString()}</div><div className="muted small">sqft</div></div>
+                <div className="stat-tile"><div className="stat-num">👥 {item.space.capacity}</div><div className="muted small">max crew</div></div>
+                <div className="stat-tile"><div className="stat-num">{item.space.minHours ? `${item.space.minHours}h` : '1d'}</div><div className="muted small">minimum</div></div>
+              </div>
+              <div className="field" style={{ marginTop: 12 }}>
+                Amenities
+                <div className="slot-row">
+                  {item.space.amenities.map((a) => <span key={a} className="slot-chip" style={{ cursor: 'default' }}>{a}</span>)}
+                </div>
+              </div>
+              <h4 style={{ fontSize: 13, marginTop: 14, color: 'var(--muted)' }}>House rules</h4>
+              <ul className="spec-list">
+                {item.space.rules.map((r) => <li key={r}>{r}</li>)}
+              </ul>
+            </div>
+          )}
+
           <div className="panel">
             <div className="owner-row">
               <div className="owner-avatar">{owner.avatar}</div>
@@ -136,12 +157,14 @@ export default function ItemDetail({ id }: { id: string }) {
                 </div>
               </div>
             </div>
+            {!item.mine && (
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button className="btn btn-outline btn-sm" style={{ position: 'relative' }} onClick={() => setChatOpen(true)}>
                 💬 Chat with owner{chatUnread > 0 && <span className="dot" style={{ position: 'absolute', top: -5, right: -5, background: 'var(--accent)', color: '#fff', borderRadius: 999, minWidth: 17, height: 17, lineHeight: '17px', fontSize: 10, fontWeight: 700 }}>{chatUnread}</span>}
               </button>
               <button className="btn btn-ghost btn-sm" onClick={() => setReportOpen(true)}>🚩 Report</button>
             </div>
+            )}
           </div>
 
           <div className="panel">
@@ -183,8 +206,11 @@ export default function ItemDetail({ id }: { id: string }) {
           </div>
         </div>
 
-        {/* ---------------- Booking panel ---------------- */}
+        {/* ---------------- Booking panel (or manage panel for your own listing) ---------------- */}
         <div>
+          {item.mine ? (
+            <ManagePanel itemId={item.id} />
+          ) : (
           <div className="panel">
             <h3 style={{ fontSize: 16 }}>📅 Book your dates</h3>
 
@@ -331,6 +357,7 @@ export default function ItemDetail({ id }: { id: string }) {
               {conflict ? '⛔ Unavailable for these dates' : item.instantBook ? '⚡ Add to cart — instant book' : 'Add to cart — request booking'}
             </button>
           </div>
+          )}
         </div>
       </div>
 
@@ -354,6 +381,64 @@ export default function ItemDetail({ id }: { id: string }) {
       {offerOpen && <OfferModal itemId={id} unit={unit} recommended={recRate} onClose={() => setOfferOpen(false)} />}
       {chatOpen && <ChatModal ownerId={owner.id} ownerName={owner.name} itemName={item.name} onClose={() => setChatOpen(false)} />}
       {reportOpen && <ReportModal targetName={owner.name} ownerId={owner.id} onClose={() => setReportOpen(false)} />}
+    </div>
+  )
+}
+
+/* ---------------- owner view of their own listing ---------------- */
+function ManagePanel({ itemId }: { itemId: string }) {
+  const { state, dispatch } = useStore()
+  const { go, toast } = useNav()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const listing = state.myListings.find((l) => l.id === itemId)
+  if (!listing) return null
+  const pending = Boolean(listing.pendingVerifyAt)
+
+  return (
+    <div className="panel">
+      <h3 style={{ fontSize: 16 }}>🎛️ Your listing</h3>
+      <div className="status-banner" style={{ marginTop: 10 }}>
+        {pending ? (
+          <span className="status-banner waiting" style={{ display: 'block', margin: 0 }}>⏳ Pending verification — our team is checking the details. You'll get a notification when it goes live.</span>
+        ) : listing.paused ? (
+          <span className="status-banner cancelled" style={{ display: 'block', margin: 0 }}>⏸️ Paused — hidden from renters until you resume.</span>
+        ) : (
+          <span className="status-banner" style={{ display: 'block', margin: 0, background: 'var(--green-soft)', color: 'var(--green)' }}>🟢 Live & verified — visible to every filmmaker on Papa Rentals.</span>
+        )}
+      </div>
+      <div className="price-summary" style={{ borderTop: 'none' }}>
+        <div className="price-line"><span>Daily rate</span><b>{money(listing.pricePerDay)}</b></div>
+        {listing.hourly && <div className="price-line"><span>Hourly rate</span><b>{money(Math.round(listing.pricePerDay / 6))}/hr</b></div>}
+        <div className="price-line"><span>You earn per day (after 10% fee)</span><b style={{ color: 'var(--green)' }}>{money(Math.round(listing.pricePerDay * 0.9))}</b></div>
+        <div className="price-line"><span>Bookings so far</span><b>{listing.timesRented}</b></div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+        {!pending && (
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={() => { dispatch({ type: 'TOGGLE_LISTING_PAUSE', itemId }); toast(listing.paused ? 'Listing resumed 🟢' : 'Listing paused ⏸️') }}
+          >
+            {listing.paused ? '▶️ Resume listing' : '⏸️ Pause listing'}
+          </button>
+        )}
+        {!confirmDelete ? (
+          <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(true)}>🗑️ Delete</button>
+        ) : (
+          <button
+            className="btn btn-sm" style={{ background: 'var(--red)', color: '#fff' }}
+            onClick={() => {
+              dispatch({ type: 'DELETE_LISTING', itemId })
+              toast('Listing deleted')
+              go({ name: 'profile' })
+            }}
+          >
+            Tap again to confirm delete
+          </button>
+        )}
+      </div>
+      <p className="muted small" style={{ marginBottom: 0 }}>
+        Renters see your space exactly like the preview on the left. Inquiries and booking requests arrive as notifications.
+      </p>
     </div>
   )
 }

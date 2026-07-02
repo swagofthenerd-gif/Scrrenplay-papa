@@ -8,7 +8,9 @@ export default function Home() {
   const { go, toast } = useNav()
   const { state, dispatch } = useStore()
 
-  const visible = ITEMS.filter((i) => !state.blockedOwners.includes(i.ownerId))
+  const live = state.myListings.filter((l) => !l.paused)
+  const visible = [...ITEMS, ...live].filter((i) => !state.blockedOwners.includes(i.ownerId))
+  const spaces = visible.filter((i) => i.space).sort((a, b) => b.timesRented - a.timesRented)
   const deals = visible.filter((i) => dealActive(i.id))
   const trending = [...visible].sort((a, b) => b.timesRented - a.timesRented).slice(0, 8)
   const recentlyViewed = state.recentlyViewed.map(getItem).filter((i) => !state.blockedOwners.includes(i.ownerId))
@@ -42,6 +44,32 @@ export default function Home() {
               {c.name}
             </button>
           ))}
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="section-head">
+          <h2>📍 Spaces to shoot at</h2>
+          <button className="link-btn" onClick={() => go({ name: 'browse', category: 'studios' })}>All spaces →</button>
+        </div>
+        <div className="h-scroll">
+          {spaces.map((item) => (
+            <ItemCard
+              key={item.id}
+              item={item}
+              onOpen={() => go({ name: 'item', id: item.id })}
+              wishlisted={state.wishlist.includes(item.id)}
+              onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
+            />
+          ))}
+        </div>
+        <div className="kit-card" style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <span style={{ fontSize: 34 }}>🏡</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <b style={{ fontSize: 14 }}>Own a studio, rooftop or haveli?</b>
+            <div className="muted small">List it in 2 minutes — you keep 90% of every booking.</div>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={() => go({ name: 'post' })}>List your space</button>
         </div>
       </div>
 

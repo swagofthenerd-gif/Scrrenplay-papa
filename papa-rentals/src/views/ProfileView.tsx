@@ -2,7 +2,7 @@ import { getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import { GOLD_POINTS, SILVER_POINTS, buzz, money } from '../utils'
-import { Badge, Stars } from '../components/ui'
+import { Badge, ItemArt, Stars } from '../components/ui'
 
 export default function ProfileView() {
   const { go, toast } = useNav()
@@ -89,6 +89,33 @@ export default function ProfileView() {
         <span className="muted">
           {chatThreads.length === 0 ? 'None yet' : `${chatThreads.length} thread${chatThreads.length > 1 ? 's' : ''}${unreadTotal > 0 ? ` · ${unreadTotal} unread` : ''}`}
         </span>
+      </div>
+
+      <div className="panel" style={{ marginTop: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: 15 }}>🏡 Your listings</h3>
+          <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'post' })}>+ List a space</button>
+        </div>
+        {state.myListings.length === 0 ? (
+          <p className="muted small" style={{ marginBottom: 0 }}>
+            Studios, rooftops, havelis, warehouses — post any space crews would shoot at and keep 90% of every booking.
+          </p>
+        ) : (
+          state.myListings.map((l) => (
+            <div
+              key={l.id}
+              style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--line)', cursor: 'pointer' }}
+              onClick={() => go({ name: 'item', id: l.id })}
+            >
+              <ItemArt item={l} size="thumb" />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ fontSize: 14 }}>{l.name}</b>
+                <div className="muted small">{money(l.pricePerDay)}/day · {l.space?.type}</div>
+              </div>
+              {l.pendingVerifyAt ? <Badge tone="orange">⏳ Verifying</Badge> : l.paused ? <Badge tone="red">⏸️ Paused</Badge> : <Badge tone="green">🟢 Live</Badge>}
+            </div>
+          ))
+        )}
       </div>
 
       {state.reports.length > 0 && (

@@ -4,6 +4,7 @@ import { StoreProvider, useStore } from './store'
 import { CATEGORIES, ITEMS, getCategory } from './data/catalog'
 import { buzz, fmtTimeAgo, fuzzyMatch, money } from './utils'
 import { Modal } from './components/ui'
+import ListSpace from './views/ListSpace'
 import Home from './views/Home'
 import Browse from './views/Browse'
 import ItemDetail from './views/ItemDetail'
@@ -29,10 +30,11 @@ function SearchBox() {
 
   const suggestions = useMemo(() => {
     if (!q.trim()) return []
-    const matches = ITEMS.filter((i) => fuzzyMatch(`${i.name} ${i.tags.join(' ')} ${i.category}`, q)).slice(0, 5)
+    const pool = [...ITEMS, ...state.myListings.filter((l) => !l.paused)]
+    const matches = pool.filter((i) => fuzzyMatch(`${i.name} ${i.tags.join(' ')} ${i.category}`, q)).slice(0, 5)
     const cats = CATEGORIES.filter((c) => fuzzyMatch(c.name, q)).slice(0, 2)
     return [...cats.map((c) => ({ kind: 'cat' as const, c })), ...matches.map((i) => ({ kind: 'item' as const, i }))]
-  }, [q])
+  }, [q, state.myListings])
 
   function submit(text = q) {
     const t = text.trim()
@@ -218,6 +220,7 @@ function Shell() {
           {view.name === 'cart' && <CartView />}
           {view.name === 'orders' && <OrdersView />}
           {view.name === 'profile' && <ProfileView />}
+          {view.name === 'post' && <ListSpace />}
         </main>
       </div>
 
@@ -236,7 +239,7 @@ function Shell() {
           <span className="nav-ico">📦</span>Orders
           {activeOrders > 0 && <span className="dot">{activeOrders}</span>}
         </button>
-        <button className={view.name === 'profile' ? 'active' : ''} onClick={() => go({ name: 'profile' })}>
+        <button className={view.name === 'profile' || view.name === 'post' ? 'active' : ''} onClick={() => go({ name: 'profile' })}>
           <span className="nav-ico">👤</span>Profile
         </button>
       </nav>

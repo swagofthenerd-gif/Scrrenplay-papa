@@ -21,7 +21,7 @@ export const CATEGORIES: Category[] = [
   { id: 'grip', name: 'Grip & Rigs', emoji: '🎬', gradient: 'linear-gradient(135deg,#606c88,#3f4c6b)' },
   { id: 'drones', name: 'Drones', emoji: '🚁', gradient: 'linear-gradient(135deg,#36d1dc,#5b86e5)' },
   { id: 'transport', name: 'Transport', emoji: '🚐', gradient: 'linear-gradient(135deg,#f857a6,#ff5858)' },
-  { id: 'studios', name: 'Studios', emoji: '🏢', gradient: 'linear-gradient(135deg,#c471f5,#fa71cd)' },
+  { id: 'studios', name: 'Studios & Spaces', emoji: '🏢', gradient: 'linear-gradient(135deg,#c471f5,#fa71cd)' },
   { id: 'props', name: 'Props & Sets', emoji: '🪑', gradient: 'linear-gradient(135deg,#b79891,#94716b)' },
   { id: 'crew', name: 'Crew Gear', emoji: '🧰', gradient: 'linear-gradient(135deg,#11998e,#38ef7d)' },
 ]
@@ -32,6 +32,8 @@ export const OWNERS: Owner[] = [
   { id: 'o3', name: 'Frame & Fable Co.', avatar: '🦊', rating: 4.8, ratingCount: 187, verified: true, superOwner: true, responseMins: 5, area: 'Clifton Block 4', distanceKm: 3.8, memberSince: '2020' },
   { id: 'o4', name: 'Sara Productions', avatar: '🌟', rating: 4.5, ratingCount: 96, verified: false, superOwner: false, responseMins: 32, area: 'Johar Town', distanceKm: 9.6, memberSince: '2023' },
   { id: 'o5', name: 'GripMasters PK', avatar: '💪', rating: 4.6, ratingCount: 154, verified: true, superOwner: false, responseMins: 21, area: 'Model Town', distanceKm: 7.2, memberSince: '2022' },
+  { id: 'o6', name: 'Noor Haveli Estates', avatar: '🏛️', rating: 4.9, ratingCount: 68, verified: true, superOwner: true, responseMins: 12, area: 'Walled City', distanceKm: 11.3, memberSince: '2023' },
+  { id: 'me', name: 'You', avatar: '🎬', rating: 5, ratingCount: 0, verified: true, superOwner: false, responseMins: 1, area: 'Your location', distanceKm: 0, memberSince: '2026' },
 ]
 
 const r = (author: string, rating: number, text: string, date: string): import('../types').Review => ({
@@ -187,6 +189,7 @@ export const ITEMS: Item[] = [
     description: 'Sunlit studio with a white cyc. Includes basic furniture, apple boxes and cleaning.',
     tags: ['studio', 'cyc', 'daylight'], timesRented: 264, instantBook: true, offersAccepted: true,
     hourly: true, bookedRanges: [rel(6, 6)],
+    space: { type: 'Daylight studio', sqft: 2000, capacity: 25, amenities: ['White cyc wall', 'Blackout option', 'Makeup room', 'Kitchen', 'Parking ×6', '3-phase power', 'Wifi'], rules: ['No smoke machines without notice', 'Load-in via service lift only', 'Overtime billed per hour'], minHours: 4 },
     flashDeal: { percentOff: 10, endsInHours: 22 },
     reviews: [r('Mehak Z.', 5, 'Light in there is unreal from 10am–2pm. Host was lovely.', '2026-06-17')],
   },
@@ -197,6 +200,7 @@ export const ITEMS: Item[] = [
     description: 'Pre-lit greenscreen stage. Walk in, white balance, shoot.',
     tags: ['studio', 'chroma', 'VFX'], timesRented: 143, instantBook: true, offersAccepted: true,
     hourly: true,
+    space: { type: 'Greenscreen stage', sqft: 1400, capacity: 18, amenities: ['3-wall chroma cove', 'Lighting grid', '12 fresnels', 'Sound treatment', 'Client lounge', 'Wifi'], rules: ['No paint touching the cove', 'Grid rigging by house tech only'], minHours: 3 },
     reviews: [r('Wali R.', 4, 'Great keying results. AC struggled a bit at noon.', '2026-06-06')],
   },
   {
@@ -214,6 +218,52 @@ export const ITEMS: Item[] = [
     description: 'A proper video village: wireless monitors, shade, chairs and comteks for the client row.',
     tags: ['monitor', 'wireless video', 'village'], timesRented: 195, instantBook: true, offersAccepted: true,
     reviews: [r('Jibran S.', 5, 'Zero dropouts on the Teradek all day.', '2026-06-11')],
+  },
+  {
+    id: 'i21', name: 'Skyline Rooftop Terrace', category: 'studios', emoji: '🌇',
+    pricePerDay: 55000, deposit: 40000, rating: 4.8, ratingCount: 93, ownerId: 'o3',
+    specs: ['City skyline backdrop', 'Golden-hour west view', 'Freight access to roof', 'Power drops ×4', 'Standing sets allowed'],
+    description: 'The rooftop every music video wants. Unobstructed skyline, sunset gold, and a building manager who loves film crews.',
+    tags: ['rooftop', 'exterior', 'skyline', 'sunset'], timesRented: 121, instantBook: true, offersAccepted: true,
+    hourly: true, bookedRanges: [rel(8, 9)],
+    space: { type: 'Rooftop', sqft: 3200, capacity: 40, amenities: ['Skyline view', 'Freight lift', 'Power drops', 'Washrooms', 'Security', 'Parking ×10'], rules: ['No drones without NOC', 'Wrap by 2am', 'No open flames'], minHours: 4 },
+    reviews: [
+      r('Moiz T.', 5, 'Sunset slot is unreal. Manager helped us rig safely on the parapet.', '2026-06-16'),
+      r('Zoya L.', 5, 'Skyline reads beautifully even at night. Power was solid.', '2026-05-27'),
+    ],
+  },
+  {
+    id: 'i22', name: 'Noor Haveli (Heritage Home)', category: 'studios', emoji: '🏛️',
+    pricePerDay: 90000, deposit: 100000, rating: 4.9, ratingCount: 47, ownerId: 'o6',
+    specs: ['300-year-old walled-city haveli', 'Carved jharoka balconies', 'Central courtyard + fountain', 'Period furniture included', 'Caretaker on site'],
+    description: 'A living period set. Frescoed walls, carved wood, courtyard light that DPs dream about. Dramas and films shoot here year-round.',
+    tags: ['heritage', 'period', 'haveli', 'courtyard'], timesRented: 64, instantBook: false, offersAccepted: true,
+    hourly: false, bookedRanges: [rel(10, 13)],
+    space: { type: 'Heritage home', sqft: 8000, capacity: 60, amenities: ['Courtyard', 'Period furniture', 'Green rooms ×3', 'Caretaker', 'Genny hookup', 'Crew catering space'], rules: ['No nails or tape on frescoes', 'Heritage officer present for art dept changes', 'No shoots during Muharram'] },
+    reviews: [
+      r('Fatima D.', 5, 'Our period drama looked like a million dollars. The light in that courtyard!', '2026-06-09'),
+      { ...r('Haris B.', 5, 'Owner family was gracious, caretaker knew every camera-friendly corner.', '2026-05-18'), ownerReply: 'You are welcome back any time — the haveli loved being on screen. 🙏' },
+    ],
+  },
+  {
+    id: 'i23', name: 'Raw Warehouse Shell (12k sqft)', category: 'studios', emoji: '🏭',
+    pricePerDay: 35000, deposit: 30000, rating: 4.6, ratingCount: 58, ownerId: 'o5',
+    specs: ['12,000 sqft clear span', '28ft ceiling, steel trusses', 'Drive-in roller door', 'Rig anything, paint anything', '100A 3-phase'],
+    description: 'A blank canvas for set builds, car rigs and big lighting setups. Drive the grip truck straight in.',
+    tags: ['warehouse', 'set build', 'industrial'], timesRented: 88, instantBook: true, offersAccepted: true,
+    hourly: true,
+    space: { type: 'Warehouse', sqft: 12000, capacity: 100, amenities: ['Drive-in access', '28ft ceiling', '100A power', 'Truss rigging OK', 'Washrooms', 'Chowkidar'], rules: ['Restore floor paint on wrap', 'Hot works need permit', 'No overnight storage without booking'], minHours: 6 },
+    reviews: [r('Salman R.', 5, 'Built a two-room set and still had space for video village and catering.', '2026-06-04')],
+  },
+  {
+    id: 'i24', name: 'Designer Penthouse Apartment', category: 'studios', emoji: '🛋️',
+    pricePerDay: 48000, deposit: 60000, rating: 4.7, ratingCount: 71, ownerId: 'o4',
+    specs: ['Magazine-grade interiors', 'Floor-to-ceiling windows', 'Italian kitchen (practical)', 'Elevator access', 'Neighbour-approved for shoots'],
+    description: 'The "rich family apartment" every commercial needs. Shoots straight out of the box — no art department required.',
+    tags: ['apartment', 'interior', 'luxury', 'commercial'], timesRented: 102, instantBook: true, offersAccepted: true,
+    hourly: true, flashDeal: { percentOff: 10, endsInHours: 14 },
+    space: { type: 'Apartment', sqft: 3400, capacity: 20, amenities: ['Practical kitchen', 'Natural light', 'Elevator', 'AC throughout', 'Parking ×4', 'Wifi'], rules: ['Shoe covers for crew', 'Max 20 crew', 'Furniture moves logged by owner'], minHours: 4 },
+    reviews: [r('Mahira W.', 5, 'Client walked in and approved the location on the spot.', '2026-06-13')],
   },
 ]
 
@@ -280,12 +330,42 @@ export const ALSO_RENTED: Record<string, string[]> = {
   crew: ['cameras', 'audio'],
 }
 
+export const SPACE_TYPES = [
+  { type: 'Studio', emoji: '🏢' },
+  { type: 'Greenscreen stage', emoji: '🟩' },
+  { type: 'Rooftop', emoji: '🌇' },
+  { type: 'Heritage home', emoji: '🏛️' },
+  { type: 'Warehouse', emoji: '🏭' },
+  { type: 'Apartment', emoji: '🛋️' },
+  { type: 'Café / restaurant', emoji: '☕' },
+  { type: 'Farmhouse / outdoor', emoji: '🌳' },
+]
+
+export const AMENITY_OPTIONS = [
+  'AC', 'Wifi', 'Parking', 'Power backup', 'Genny hookup', 'Makeup room', 'Green room',
+  'Kitchen', 'Washrooms', 'Cyc wall', 'Lighting grid', 'Blackout', 'Freight lift', 'Security',
+]
+
+export const RULE_OPTIONS = [
+  'No smoking', 'Shoe covers required', 'No overnight shoots', 'Permits required',
+  'Max crew size applies', 'Restore on wrap', 'House tech must rig',
+]
+
+/* user-posted listings: registry so pure helpers (getItem etc.) can resolve them */
+let USER_ITEMS: Item[] = []
+export function syncUserListings(items: Item[]) {
+  USER_ITEMS = items
+}
+export function userListings(): Item[] {
+  return USER_ITEMS
+}
+
 export function getOwner(id: string): Owner {
   return OWNERS.find((o) => o.id === id) ?? OWNERS[0]
 }
 
 export function getItem(id: string): Item {
-  return ITEMS.find((i) => i.id === id) ?? ITEMS[0]
+  return ITEMS.find((i) => i.id === id) ?? USER_ITEMS.find((i) => i.id === id) ?? ITEMS[0]
 }
 
 export function getCategory(id: string): Category {

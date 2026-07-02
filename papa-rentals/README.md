@@ -38,6 +38,14 @@ Every gap from the competitive audit, closed:
 - **Trust**: owner-approval flow for non-instant listings, courier card with call button + handover PIN, blind two-way ratings published together, per-item ratings with half-stars + histograms, owner replies to reviews, report case numbers with status tracking, block owners
 - **Discovery**: typo-tolerant search with suggestions + recent searches, recently-viewed row, "people also rented" cross-sell, wishlist price-drop alerts, Bayesian-weighted "top rated" sort, book-again, hourly studio rentals, mid-shoot rental extension, address book, delivery time slots, 10-second onboarding
 
+## v3 — Studios & Spaces + user listings
+
+- **Shoot locations marketplace** (Peerspace/Giggster-style): rooftop terraces, heritage havelis, raw warehouses, designer apartments, daylight studios and greenscreen stages — each with sqft, max crew, amenities, house rules and minimum-hours data, bookable by day or hour
+- **"List your space"**: anyone can post a space in 2 minutes — type, area, size, pricing (with auto hourly rate), deposit, amenities, house rules, instant-book and accept-offers toggles, and a live earnings preview (you keep 90%)
+- **Owner-side lifecycle**: new listings go through ⏳ pending verification → 🟢 live (with notification), receive simulated renter inquiries, and show a manage panel (pause/resume, two-tap delete, earnings per day) instead of a booking panel on your own listings
+- User listings are first-class citizens: they appear in browse, home, and typo-tolerant search, persist across reloads, and are excluded correctly when paused
+- Space-specific browse filters: hourly-availability chip and minimum crew-size selector
+
 ## Run it
 
 ```bash

@@ -46,6 +46,15 @@ export interface DateRange {
   end: string
 }
 
+export interface SpaceInfo {
+  type: string
+  sqft: number
+  capacity: number
+  amenities: string[]
+  rules: string[]
+  minHours?: number
+}
+
 export interface Item {
   id: string
   name: string
@@ -64,9 +73,16 @@ export interface Item {
   offersAccepted: boolean
   insuranceRequired?: boolean
   hourly?: boolean // studios etc. can also be booked by the hour
+  space?: SpaceInfo // present on studios & shoot locations
   flashDeal?: { percentOff: number; endsInHours: number }
   bookedRanges?: DateRange[] // dates already rented out by others
   reviews: Review[]
+  // user-posted listing lifecycle
+  mine?: boolean
+  paused?: boolean
+  pendingVerifyAt?: number
+  inquiryAt?: number
+  listingVerified?: boolean
 }
 
 export interface Kit {
@@ -237,5 +253,6 @@ export interface AppState {
   recentlyViewed: string[]
   blockedOwners: string[]
   promoCodesUsed: string[]
+  myListings: Item[]
   freeVanPerkMonth?: string // YYYY-MM when the Silver free-delivery perk was last used
 }

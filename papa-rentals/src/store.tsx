@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react'
 import type { ReactNode } from 'react'
-import { DRIVER_POOL, PROMO_CODES, getItem, getOwner } from './data/catalog'
+import { DRIVER_POOL, PROMO_CODES, getItem, getOwner, syncUserListings } from './data/catalog'
 import type {
   Address, AppNotification, AppState, Booking, ChatMessage, ChatThread,
-  Offer, Order, OrderStatus, Review, UserReport,
+  Item, Offer, Order, OrderStatus, Review, UserReport,
 } from './types'
 import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, todayISO, uid } from './utils'
 import type { TotalsInput } from './utils'
@@ -31,6 +31,7 @@ const initialState: AppState = {
   recentlyViewed: [],
   blockedOwners: [],
   promoCodesUsed: [],
+  myListings: [],
 }
 
 export interface PlaceOrderOpts extends TotalsInput {
@@ -60,6 +61,9 @@ type Action =
   | { type: 'ADD_RECENT_SEARCH'; q: string }
   | { type: 'VIEW_ITEM'; itemId: string }
   | { type: 'READ_NOTIFICATIONS' }
+  | { type: 'ADD_LISTING'; item: Item }
+  | { type: 'TOGGLE_LISTING_PAUSE'; itemId: string }
+  | { type: 'DELETE_LISTING'; itemId: string }
   | { type: 'TICK'; now: number }
 
 const STATUS_FLOW: OrderStatus[] = ['confirmed', 'preparing', 'in_transit', 'in_use', 'returned', 'completed']
@@ -327,6 +331,30 @@ function reducer(state: AppState, action: Action): AppState {
       if (!state.notifications.some((n) => !n.read)) return state
       return { ...state, notifications: state.notifications.map((n) => (n.read ? n : { ...n, read: true })) }
 
+    case 'ADD_LISTING': {
+      const myListings = [action.item, ...state.myListings]
+      syncUserListings(myListings)
+      return {
+        ...state,
+        myListings,
+        notifications: notify(state, {
+          emoji: '📤', title: `${action.item.name} submitted`,
+          body: 'Our team verifies new spaces — usually live within minutes.',
+          link: `#/item/${action.item.id}`,
+        }),
+      }
+    }
+    case 'TOGGLE_LISTING_PAUSE': {
+      const myListings = state.myListings.map((l) => (l.id === action.itemId ? { ...l, paused: !l.paused } : l))
+      syncUserListings(myListings)
+      return { ...state, myListings }
+    }
+    case 'DELETE_LISTING': {
+      const myListings = state.myListings.filter((l) => l.id !== action.itemId)
+      syncUserListings(myListings)
+      return { ...state, myListings }
+    }
+
     case 'TICK': {
       const now = action.now
       let changed = false
@@ -391,6 +419,37 @@ function reducer(state: AppState, action: Action): AppState {
         next = { ...next, orders, notifications }
       }
 
+      // 4. user listing lifecycle: verification, then a first renter inquiry
+      const dueListings = next.myListings.filter(
+        (l) => (l.pendingVerifyAt && l.pendingVerifyAt <= now) || (l.inquiryAt && l.inquiryAt <= now)
+      )
+      if (dueListings.length) {
+        changed = true
+        let notifications = next.notifications
+        const myListings = next.myListings.map((l) => {
+          if (!dueListings.includes(l)) return l
+          let out = l
+          if (l.pendingVerifyAt && l.pendingVerifyAt <= now) {
+            out = { ...out, pendingVerifyAt: undefined, listingVerified: true }
+            notifications = notify({ ...next, notifications }, {
+              emoji: '✅', title: `${l.name} is live!`,
+              body: 'Verified and visible to every filmmaker on Papa Rentals.',
+              link: `#/item/${l.id}`,
+            })
+          }
+          if (l.inquiryAt && l.inquiryAt <= now) {
+            out = { ...out, inquiryAt: undefined }
+            notifications = notify({ ...next, notifications }, {
+              emoji: '👀', title: `First inquiry on ${l.name}`,
+              body: '“Salaam! Is it available this Friday for a 6h commercial shoot?” — Rabia N.',
+              link: `#/item/${l.id}`,
+            })
+          }
+          return out
+        })
+        next = { ...next, myListings, notifications }
+      }
+
       return changed ? next : state
     }
 
@@ -404,7 +463,9 @@ function loadState(): AppState {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const saved = JSON.parse(raw)
-      return { ...initialState, ...saved, profile: { ...initialState.profile, ...saved.profile } }
+      const merged = { ...initialState, ...saved, profile: { ...initialState.profile, ...saved.profile } }
+      syncUserListings(merged.myListings)
+      return merged
     }
   } catch { /* corrupted state — start fresh */ }
   return initialState
@@ -421,6 +482,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)) } catch { /* storage unavailable */ }
   }, [state])
+
+  useEffect(() => {
+    syncUserListings(state.myListings)
+  }, [state.myListings])
 
   // the heartbeat: resolves offers, chat replies and approvals on time, even across reloads
   useEffect(() => {
