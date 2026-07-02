@@ -51,17 +51,19 @@ export default function OrdersView() {
 }
 
 function OrderCard({ order }: { order: Order }) {
-  const { dispatch } = useStore()
+  const { state, dispatch } = useStore()
   const { toast, go } = useNav()
   const [rateOpen, setRateOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [extendOpen, setExtendOpen] = useState(false)
+  const [claimOpen, setClaimOpen] = useState(false)
 
   const stepIdx = STEPS.findIndex((s) => s.id === order.status)
   const firstItem = getItem(order.lines[0].itemId)
   const owner = getOwner(firstItem.ownerId)
   const done = order.status === 'completed'
+  const hasClaim = state.claims.some((c) => c.orderId === order.id)
   const cancelled = order.status === 'cancelled'
   const cancellable = ['requested', 'confirmed', 'preparing'].includes(order.status)
 
@@ -115,7 +117,10 @@ function OrderCard({ order }: { order: Order }) {
               </div>
             ))}
           </div>
-          <p className="muted small" style={{ margin: '4px 0 10px' }}>{STATUS_HINT[order.status]}</p>
+          <p className="muted small" style={{ margin: '4px 0 10px' }}>
+            {STATUS_HINT[order.status]}
+            {!done && !cancelled && order.autoAdvanceAt && ' · updates automatically 🔄'}
+          </p>
         </>
       )}
 
@@ -162,8 +167,8 @@ function OrderCard({ order }: { order: Order }) {
 
       <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
         {!done && !cancelled && (
-          <button className="btn btn-primary btn-sm" onClick={() => { buzz(); dispatch({ type: 'ADVANCE_ORDER', orderId: order.id }) }}>
-            ▶ Simulate next update
+          <button className="btn btn-outline btn-sm" onClick={() => { buzz(); dispatch({ type: 'ADVANCE_ORDER', orderId: order.id }) }}>
+            ⏩ Skip ahead
           </button>
         )}
         {order.status === 'in_use' && (
@@ -183,6 +188,10 @@ function OrderCard({ order }: { order: Order }) {
         {(done || cancelled) && (
           <button className="btn btn-ghost btn-sm" onClick={bookAgain}>🔁 Book again</button>
         )}
+        {(done || order.status === 'returned' || order.status === 'in_use') && order.lines.some((l) => l.insurance) && !hasClaim && (
+          <button className="btn btn-ghost btn-sm" onClick={() => setClaimOpen(true)}>🛡️ File claim</button>
+        )}
+        <button className="btn btn-ghost btn-sm" onClick={() => go({ name: 'support' })}>🎧 Get help</button>
         <button className="btn btn-ghost btn-sm" onClick={() => downloadReceipt(order)}>🧾 Receipt</button>
         {!order.reported && !cancelled && (
           <button className="btn btn-ghost btn-sm" onClick={() => setReportOpen(true)}>🚩 Report</button>
@@ -206,6 +215,7 @@ function OrderCard({ order }: { order: Order }) {
       {reportOpen && <ReportModal targetName={owner.name} ownerId={owner.id} orderId={order.id} onClose={() => setReportOpen(false)} />}
       {cancelOpen && <CancelModal order={order} onClose={() => setCancelOpen(false)} />}
       {extendOpen && <ExtendModal order={order} onClose={() => setExtendOpen(false)} />}
+      {claimOpen && <ClaimModal order={order} onClose={() => setClaimOpen(false)} />}
     </div>
   )
 }
@@ -288,6 +298,60 @@ function ExtendModal({ order, onClose }: { order: Order; onClose: () => void }) 
         }}
       >
         Extend {days} day{days > 1 ? 's' : ''} · {money(cost)}
+      </button>
+    </Modal>
+  )
+}
+
+/* ---------------- damage claim ---------------- */
+const CLAIM_REASONS = ['Arrived damaged', 'Failed during shoot', 'Missing accessory', 'Damaged in transit back']
+
+function ClaimModal({ order, onClose }: { order: Order; onClose: () => void }) {
+  const { dispatch } = useStore()
+  const { toast } = useNav()
+  const insuredLines = order.lines.filter((l) => l.insurance)
+  const [lineIdx, setLineIdx] = useState(0)
+  const [reason, setReason] = useState(CLAIM_REASONS[0])
+  const line = insuredLines[lineIdx]
+  const item = getItem(line.itemId)
+  const maxAmount = item.deposit * line.qty
+  const [amount, setAmount] = useState(Math.min(10000, maxAmount))
+
+  return (
+    <Modal title="🛡️ File a damage claim" onClose={onClose}>
+      <p className="muted" style={{ fontSize: 14, marginTop: 0 }}>
+        Papa Protection covers accidental damage up to full value. Approved claims are credited to your wallet — most resolve within a day.
+      </p>
+      <label className="field">
+        Item
+        <select value={lineIdx} onChange={(e) => setLineIdx(Number(e.target.value))}>
+          {insuredLines.map((l, i) => <option key={i} value={i}>{getItem(l.itemId).name}</option>)}
+        </select>
+      </label>
+      <label className="field" style={{ marginTop: 10 }}>
+        What happened?
+        <select value={reason} onChange={(e) => setReason(e.target.value)}>
+          {CLAIM_REASONS.map((r) => <option key={r}>{r}</option>)}
+        </select>
+      </label>
+      <label className="field" style={{ marginTop: 10 }}>
+        Claim amount (up to {money(maxAmount)})
+        <input
+          type="number" inputMode="numeric" value={amount} min={500} max={maxAmount}
+          onChange={(e) => setAmount(Math.min(maxAmount, Math.max(0, Number(e.target.value) || 0)))}
+        />
+      </label>
+      <button
+        className="btn btn-primary btn-block" style={{ marginTop: 14 }}
+        disabled={amount < 500}
+        onClick={() => {
+          buzz()
+          dispatch({ type: 'FILE_CLAIM', orderId: order.id, itemName: item.name, reason, amount })
+          toast('Claim filed — track it in Help Center 🛡️')
+          onClose()
+        }}
+      >
+        Submit claim · {money(amount)}
       </button>
     </Modal>
   )

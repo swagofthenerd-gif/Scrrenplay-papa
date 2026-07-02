@@ -46,6 +46,14 @@ Every gap from the competitive audit, closed:
 - User listings are first-class citizens: they appear in browse, home, and typo-tolerant search, persist across reloads, and are excluded correctly when paused
 - Space-specific browse filters: hourly-availability chip and minimum crew-size selector
 
+## v4 — the two-sided marketplace release
+
+- **Host dashboard**: simulated renters send booking requests on your live listings (some with inDrive-style below-rate offers); accept or decline, watch bookings complete, and receive automatic 90% payouts to your wallet — with earnings, pending-payout and history views
+- **Self-driving orders**: the tracking timeline advances automatically (confirmed → preparing → on the way → on set → returned → done) with notifications at each milestone; "Skip ahead" retained for demos
+- **Papa Support**: Help Center with FAQ accordion, a keyword-aware support chat agent (refunds, deposits, late couriers, claims, payouts), quick-reply chips, and an emergency line
+- **Damage claims**: file against insured orders; claims move filed → reviewing → approved and pay out to the wallet
+- **Smoothness pack**: side-by-side compare tray (up to 3 items), native share sheet on listings, "notify me when available" alerts on booked dates, shoot-day reminders, "complete your setup" cross-sell in cart, pull-to-refresh on home, referral-code redemption (+Rs 500)
+
 ## Run it
 
 ```bash

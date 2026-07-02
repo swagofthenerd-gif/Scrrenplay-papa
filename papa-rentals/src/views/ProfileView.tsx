@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { useStore } from '../store'
@@ -16,6 +17,8 @@ export default function ProfileView() {
     ? { name: '🥇 Gold', at: GOLD_POINTS }
     : { name: '🥈 Silver', at: SILVER_POINTS }
   const acceptedOffers = state.offers.filter((o) => o.status === 'accepted').length
+  const [refCode, setRefCode] = useState('')
+  const pendingRequests = state.ownerBookings.filter((b) => b.status === 'pending').length
   const chatThreads = Object.entries(state.chats).filter(([, t]) => t.messages.length > 0)
   const unreadTotal = chatThreads.reduce((s, [, t]) => s + t.unread, 0)
 
@@ -68,16 +71,45 @@ export default function ProfileView() {
         </div>
       )}
 
+      <div className="list-row" style={{ cursor: 'pointer' }} onClick={() => go({ name: 'dashboard' })}>
+        <span>📊 Host dashboard</span>
+        <span className="muted">{pendingRequests > 0 ? `${pendingRequests} request${pendingRequests > 1 ? 's' : ''} waiting →` : 'Earnings & requests →'}</span>
+      </div>
+      <div className="list-row" style={{ cursor: 'pointer' }} onClick={() => go({ name: 'support' })}>
+        <span>🎧 Help Center</span><span className="muted">24/7 support →</span>
+      </div>
+
       <div className="list-row" style={{ cursor: 'pointer' }} onClick={() => go({ name: 'browse', wishlistOnly: true })}>
         <span>♥ Your wishlist</span><span className="muted">{state.wishlist.length} items →</span>
       </div>
       <div
         className="list-row"
         style={{ cursor: 'pointer' }}
-        onClick={() => { navigator.clipboard?.writeText('PAPA-FRIEND-500').catch(() => {}); toast('Referral code copied: PAPA-FRIEND-500 🎁') }}
+        onClick={() => { navigator.clipboard?.writeText('PAPA-FRIEND-500').catch(() => {}); toast('Your code copied: PAPA-FRIEND-500 🎁') }}
       >
         <span>🎁 Refer a filmmaker</span><span className="muted">You both get Rs 500 →</span>
       </div>
+      {!state.referralRedeemed && (
+        <div className="panel" style={{ marginTop: 10 }}>
+          <b style={{ fontSize: 14 }}>Got a referral code?</b>
+          <div className="promo-row" style={{ marginTop: 8 }}>
+            <input placeholder="PAPA-XXXX" value={refCode} onChange={(e) => setRefCode(e.target.value)} aria-label="Referral code" />
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                if (/^PAPA-/i.test(refCode.trim())) {
+                  dispatch({ type: 'REDEEM_REFERRAL', code: refCode.trim() })
+                  toast('Rs 500 added to your wallet 🎁')
+                } else {
+                  toast('Codes look like PAPA-XXXX')
+                }
+              }}
+            >
+              Redeem
+            </button>
+          </div>
+        </div>
+      )}
       <div className="list-row">
         <span>🤝 Offers you've made</span>
         <span className="muted">
@@ -153,9 +185,6 @@ export default function ProfileView() {
         </p>
       </div>
 
-      <div className="list-row">
-        <span>🛡️ Trust & Safety</span><span className="muted">24/7 on-set support</span>
-      </div>
     </div>
   )
 }

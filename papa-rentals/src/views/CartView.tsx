@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { PAYMENT_METHODS, PROMO_CODES, TRANSPORT_OPTIONS, getItem } from '../data/catalog'
+import { ALSO_RENTED, ITEMS, PAYMENT_METHODS, PROMO_CODES, TRANSPORT_OPTIONS, getItem } from '../data/catalog'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import { buzz, cartTotals, fmtDate, lineDuration, lineSubtotal, money, uid } from '../utils'
-import { Badge, ItemArt, Modal } from '../components/ui'
+import { Badge, ItemArt, ItemCard, Modal } from '../components/ui'
 
 export default function CartView() {
   const { go, toast } = useNav()
@@ -28,6 +28,11 @@ export default function CartView() {
   const address = state.addresses.find((a) => a.id === state.selectedAddressId) ?? state.addresses[0]
   const needsDelivery = state.cart.some((b) => b.transport !== 'pickup')
   const needsApproval = state.cart.some((b) => !getItem(b.itemId).instantBook)
+  const inCart = new Set(state.cart.map((b) => b.itemId))
+  const crossSell = ITEMS.filter(
+    (i) => !inCart.has(i.id) && !state.blockedOwners.includes(i.ownerId) &&
+      state.cart.some((b) => (ALSO_RENTED[getItem(b.itemId).category] ?? []).includes(i.category))
+  ).sort((a, b) => b.timesRented - a.timesRented).slice(0, 6)
 
   function applyPromo() {
     const code = promoInput.trim().toUpperCase()
@@ -189,6 +194,23 @@ export default function CartView() {
           </div>
         </div>
       </div>
+
+      {crossSell.length > 0 && (
+        <div className="section">
+          <div className="section-head"><h2>🧩 Complete your setup</h2></div>
+          <div className="h-scroll">
+            {crossSell.map((i) => (
+              <ItemCard
+                key={i.id}
+                item={i}
+                onOpen={() => go({ name: 'item', id: i.id })}
+                wishlisted={state.wishlist.includes(i.id)}
+                onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: i.id })}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {addrOpen && <AddAddressModal onClose={() => setAddrOpen(false)} />}
     </div>

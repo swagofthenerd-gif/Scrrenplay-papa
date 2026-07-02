@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react'
+import { getItem } from '../data/catalog'
 import { CATEGORIES, ITEMS, getOwner } from '../data/catalog'
+import { Modal } from '../components/ui'
+import { money } from '../utils'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import { dealActive, fuzzyMatch, weightedRating } from '../utils'
@@ -27,6 +30,8 @@ export default function Browse({
   const [maxPrice, setMaxPrice] = useState<number | null>(null)
   const [minCapacity, setMinCapacity] = useState<number | null>(null)
   const [hourlyOnly, setHourlyOnly] = useState(false)
+  const [compare, setCompare] = useState<string[]>([])
+  const [compareOpen, setCompareOpen] = useState(false)
 
   const items = useMemo(() => {
     let list = [...ITEMS, ...state.myListings.filter((l) => !l.paused)].filter((i) => !state.blockedOwners.includes(i.ownerId))
@@ -160,17 +165,64 @@ export default function Browse({
         ) : (
           <div className="grid">
             {items.map((item) => (
-              <ItemCard
-                key={item.id}
-                item={item}
-                onOpen={() => go({ name: 'item', id: item.id })}
-                wishlisted={state.wishlist.includes(item.id)}
-                onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
-              />
+              <div key={item.id} style={{ position: 'relative' }}>
+                <ItemCard
+                  item={item}
+                  onOpen={() => go({ name: 'item', id: item.id })}
+                  wishlisted={state.wishlist.includes(item.id)}
+                  onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
+                />
+                <button
+                  className={`cmp-btn ${compare.includes(item.id) ? 'on' : ''}`}
+                  aria-label="Compare"
+                  onClick={() =>
+                    setCompare(
+                      compare.includes(item.id)
+                        ? compare.filter((x) => x !== item.id)
+                        : compare.length >= 3 ? compare : [...compare, item.id]
+                    )
+                  }
+                >
+                  ⚖
+                </button>
+              </div>
             ))}
           </div>
         )}
       </div>
+      {compare.length >= 1 && (
+        <div className="compare-tray">
+          <b style={{ fontSize: 13 }}>⚖ {compare.length}/3 selected</b>
+          <span style={{ flex: 1 }} />
+          <button className="btn btn-ghost btn-sm" style={{ color: 'var(--bg)', borderColor: 'var(--muted)' }} onClick={() => setCompare([])}>Clear</button>
+          <button className="btn btn-primary btn-sm" disabled={compare.length < 2} onClick={() => setCompareOpen(true)}>Compare</button>
+        </div>
+      )}
+
+      {compareOpen && (
+        <Modal title="⚖ Side by side" onClose={() => setCompareOpen(false)}>
+          <table className="cmp-table">
+            <tbody>
+              <tr><th></th>{compare.map((id) => <td key={id}><b>{getItem(id).emoji} {getItem(id).name}</b></td>)}</tr>
+              <tr><th>Price/day</th>{compare.map((id) => <td key={id}><b>{money(getItem(id).pricePerDay)}</b></td>)}</tr>
+              <tr><th>Rating</th>{compare.map((id) => <td key={id}>★ {getItem(id).rating} ({getItem(id).ratingCount})</td>)}</tr>
+              <tr><th>Rented</th>{compare.map((id) => <td key={id}>{getItem(id).timesRented}×</td>)}</tr>
+              <tr><th>Deposit</th>{compare.map((id) => <td key={id}>{money(getItem(id).deposit)}</td>)}</tr>
+              <tr><th>Instant</th>{compare.map((id) => <td key={id}>{getItem(id).instantBook ? '⚡ Yes' : 'Approval'}</td>)}</tr>
+              <tr><th>Offers</th>{compare.map((id) => <td key={id}>{getItem(id).offersAccepted ? '🤝 Yes' : 'Fixed'}</td>)}</tr>
+              <tr><th>Distance</th>{compare.map((id) => <td key={id}>{getOwner(getItem(id).ownerId).distanceKm} km</td>)}</tr>
+              <tr><th>Top spec</th>{compare.map((id) => <td key={id} className="muted">{getItem(id).specs[0]}</td>)}</tr>
+            </tbody>
+          </table>
+          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+            {compare.map((id) => (
+              <button key={id} className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => { setCompareOpen(false); go({ name: 'item', id }) }}>
+                View {getItem(id).emoji}
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

@@ -107,14 +107,29 @@ export default function ItemDetail({ id }: { id: string }) {
                   {item.offersAccepted && <Badge tone="purple">💰 Offers OK</Badge>}
                 </div>
               </div>
-              <button
-                className="icon-btn"
-                style={wishlisted ? { color: 'var(--red)' } : undefined}
-                onClick={() => { buzz(); dispatch({ type: 'TOGGLE_WISHLIST', itemId: id }) }}
-                aria-label="Toggle wishlist"
-              >
-                {wishlisted ? '♥' : '♡'}
-              </button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  className="icon-btn"
+                  onClick={async () => {
+                    const url = location.href
+                    try {
+                      if (navigator.share) await navigator.share({ title: item.name, text: `${item.name} on Papa Rentals`, url })
+                      else { await navigator.clipboard?.writeText(url); toast('Link copied — send it to your producer 🔗') }
+                    } catch { /* user dismissed share sheet */ }
+                  }}
+                  aria-label="Share listing"
+                >
+                  ↗
+                </button>
+                <button
+                  className="icon-btn"
+                  style={wishlisted ? { color: 'var(--red)' } : undefined}
+                  onClick={() => { buzz(); dispatch({ type: 'TOGGLE_WISHLIST', itemId: id }) }}
+                  aria-label="Toggle wishlist"
+                >
+                  {wishlisted ? '♥' : '♡'}
+                </button>
+              </div>
             </div>
             <p style={{ fontSize: 14, opacity: 0.9 }}>{item.description}</p>
             <h4 style={{ fontSize: 14 }}>What's included</h4>
@@ -286,6 +301,11 @@ export default function ItemDetail({ id }: { id: string }) {
                     setEndDate(toISO(d))
                   }
                 }}>{fmtDate(nextFree)} — tap to apply</button></>}
+                {' · '}
+                <button onClick={() => {
+                  dispatch({ type: 'ADD_AVAIL_ALERT', itemId: id })
+                  toast('We’ll notify you the moment it frees up 🔔')
+                }}>🔔 Notify me</button>
               </div>
             ) : (
               <p className="muted small" style={{ margin: '10px 0 0' }}>

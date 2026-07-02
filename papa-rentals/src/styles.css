@@ -459,5 +459,37 @@ label.field input, label.field select {
 .kit-thumbs { display: flex; gap: 6px; }
 .kit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
 
+/* ---------- FAQ ---------- */
+.faq-q {
+  display: flex; align-items: center; width: 100%; text-align: left; background: none; border: none;
+  font-size: 14px; font-weight: 700; color: var(--ink); padding: 13px 0; cursor: pointer; min-height: var(--tap); gap: 8px;
+}
+
+/* ---------- Compare tray ---------- */
+.compare-tray {
+  position: fixed; bottom: calc(78px + env(safe-area-inset-bottom)); left: 12px; right: 12px; z-index: 45;
+  background: var(--ink); color: var(--bg); border-radius: 16px; padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); animation: slideup 0.18s ease;
+}
+.compare-tray .btn { min-height: 38px; padding: 8px 14px; }
+.cmp-btn {
+  position: absolute; top: 8px; right: 52px; z-index: 2; border: none; cursor: pointer;
+  background: rgba(255,255,255,0.92); border-radius: 999px; width: 40px; height: 40px; font-size: 15px; color: #78716c;
+  display: flex; align-items: center; justify-content: center;
+}
+.cmp-btn.on { color: var(--accent-dark); background: #ffe4d1; }
+.cmp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cmp-table th, .cmp-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.cmp-table th:first-child, .cmp-table td:first-child { color: var(--muted); font-weight: 600; width: 88px; }
+
+/* ---------- Pull to refresh ---------- */
+.ptr {
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  height: 0; color: var(--muted); font-size: 13px; font-weight: 700; transition: height 0.15s ease;
+}
+.ptr.active { height: 48px; }
+.ptr .spin { display: inline-block; animation: spin 0.8s linear infinite; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ---------- Onboarding ---------- */
 .city-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }

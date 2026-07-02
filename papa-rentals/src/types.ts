@@ -83,6 +83,7 @@ export interface Item {
   pendingVerifyAt?: number
   inquiryAt?: number
   listingVerified?: boolean
+  nextRequestAt?: number // when the next simulated booking request may arrive
 }
 
 export interface Kit {
@@ -171,6 +172,8 @@ export interface Order {
   cancellationFee?: number
   refundedToWallet?: number
   extendedDays?: number
+  autoAdvanceAt?: number // orders progress on their own, foodpanda-style
+  reminded?: boolean // shoot-day reminder sent
 }
 
 export type OfferStatus = 'pending' | 'accepted' | 'countered' | 'declined' | 'expired'
@@ -223,6 +226,45 @@ export interface AppNotification {
   link?: string // hash route to open
 }
 
+export type OwnerBookingStatus = 'pending' | 'accepted' | 'declined' | 'completed' | 'paid_out'
+
+export interface OwnerBooking {
+  id: string
+  listingId: string
+  renterName: string
+  renterRating: number
+  startDate: string
+  endDate: string
+  unit: RentalUnit
+  hours: number
+  rate: number // what the renter offered/agreed per unit
+  total: number
+  status: OwnerBookingStatus
+  requestedAt: number
+  completesAt?: number
+  payoutAt?: number
+}
+
+export type ClaimStatus = 'filed' | 'reviewing' | 'approved'
+
+export interface Claim {
+  id: string
+  orderId: string
+  itemName: string
+  reason: string
+  amount: number
+  status: ClaimStatus
+  filedAt: number
+  reviewAt: number
+  approveAt: number
+}
+
+export interface AvailAlert {
+  id: string
+  itemId: string
+  notifyAt: number
+}
+
 export interface Address {
   id: string
   label: string
@@ -254,5 +296,9 @@ export interface AppState {
   blockedOwners: string[]
   promoCodesUsed: string[]
   myListings: Item[]
+  ownerBookings: OwnerBooking[]
+  claims: Claim[]
+  availAlerts: AvailAlert[]
+  referralRedeemed: boolean
   freeVanPerkMonth?: string // YYYY-MM when the Silver free-delivery perk was last used
 }

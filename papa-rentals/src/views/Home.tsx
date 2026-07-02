@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { CATEGORIES, ITEMS, KITS, getItem } from '../data/catalog'
 import { useNav } from '../nav'
 import { useStore } from '../store'
@@ -7,6 +8,31 @@ import { Badge, ItemArt, ItemCard } from '../components/ui'
 export default function Home() {
   const { go, toast } = useNav()
   const { state, dispatch } = useStore()
+  const [pulling, setPulling] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const pullStart = useRef<number | null>(null)
+
+  function onTouchStart(e: React.TouchEvent) {
+    if (window.scrollY <= 0) pullStart.current = e.touches[0].clientY
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (pullStart.current == null) return
+    const delta = e.touches[0].clientY - pullStart.current
+    setPulling(delta > 70)
+  }
+  function onTouchEnd() {
+    pullStart.current = null
+    if (pulling) {
+      setPulling(false)
+      setRefreshing(true)
+      setTimeout(() => {
+        setRefreshing(false)
+        toast('You’re up to date ✓')
+      }, 700)
+    } else {
+      setPulling(false)
+    }
+  }
 
   const live = state.myListings.filter((l) => !l.paused)
   const visible = [...ITEMS, ...live].filter((i) => !state.blockedOwners.includes(i.ownerId))
@@ -16,7 +42,10 @@ export default function Home() {
   const recentlyViewed = state.recentlyViewed.map(getItem).filter((i) => !state.blockedOwners.includes(i.ownerId))
 
   return (
-    <div>
+    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+      <div className={`ptr ${pulling || refreshing ? 'active' : ''}`} aria-hidden="true">
+        <span className="spin">↻</span> {refreshing ? 'Refreshing…' : 'Release to refresh'}
+      </div>
       <div className="hero">
         <div className="hero-emoji">🎬</div>
         <h1>

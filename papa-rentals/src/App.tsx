@@ -5,6 +5,8 @@ import { CATEGORIES, ITEMS, getCategory } from './data/catalog'
 import { buzz, fmtTimeAgo, fuzzyMatch, money } from './utils'
 import { Modal } from './components/ui'
 import ListSpace from './views/ListSpace'
+import HostDashboard from './views/HostDashboard'
+import Support from './views/Support'
 import Home from './views/Home'
 import Browse from './views/Browse'
 import ItemDetail from './views/ItemDetail'
@@ -221,6 +223,8 @@ function Shell() {
           {view.name === 'orders' && <OrdersView />}
           {view.name === 'profile' && <ProfileView />}
           {view.name === 'post' && <ListSpace />}
+          {view.name === 'dashboard' && <HostDashboard />}
+          {view.name === 'support' && <Support />}
         </main>
       </div>
 
@@ -239,7 +243,7 @@ function Shell() {
           <span className="nav-ico">📦</span>Orders
           {activeOrders > 0 && <span className="dot">{activeOrders}</span>}
         </button>
-        <button className={view.name === 'profile' || view.name === 'post' ? 'active' : ''} onClick={() => go({ name: 'profile' })}>
+        <button className={['profile', 'post', 'dashboard', 'support'].includes(view.name) ? 'active' : ''} onClick={() => go({ name: 'profile' })}>
           <span className="nav-ico">👤</span>Profile
         </button>
       </nav>

@@ -34,6 +34,7 @@ export const OWNERS: Owner[] = [
   { id: 'o5', name: 'GripMasters PK', avatar: '💪', rating: 4.6, ratingCount: 154, verified: true, superOwner: false, responseMins: 21, area: 'Model Town', distanceKm: 7.2, memberSince: '2022' },
   { id: 'o6', name: 'Noor Haveli Estates', avatar: '🏛️', rating: 4.9, ratingCount: 68, verified: true, superOwner: true, responseMins: 12, area: 'Walled City', distanceKm: 11.3, memberSince: '2023' },
   { id: 'me', name: 'You', avatar: '🎬', rating: 5, ratingCount: 0, verified: true, superOwner: false, responseMins: 1, area: 'Your location', distanceKm: 0, memberSince: '2026' },
+  { id: 'support', name: 'Papa Support', avatar: '🎧', rating: 5, ratingCount: 9999, verified: true, superOwner: false, responseMins: 1, area: 'HQ', distanceKm: 0, memberSince: '2024' },
 ]
 
 const r = (author: string, rating: number, text: string, date: string): import('../types').Review => ({
@@ -308,6 +309,14 @@ export const PAYMENT_METHODS = [
   { id: 'jazzcash', name: 'JazzCash', emoji: '📱' },
   { id: 'easypaisa', name: 'Easypaisa', emoji: '📲' },
   { id: 'cod', name: 'Cash on delivery', emoji: '💵' },
+]
+
+export const RENTER_POOL = [
+  { name: 'Rabia N.', rating: 4.9 },
+  { name: 'Shayan L.', rating: 4.7 },
+  { name: 'Mehak Z.', rating: 5.0 },
+  { name: 'Usman G.', rating: 4.6 },
+  { name: 'Fatima D.', rating: 4.8 },
 ]
 
 export const DRIVER_POOL = [

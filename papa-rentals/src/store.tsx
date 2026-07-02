@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react'
 import type { ReactNode } from 'react'
-import { DRIVER_POOL, PROMO_CODES, getItem, getOwner, syncUserListings } from './data/catalog'
+import { DRIVER_POOL, PROMO_CODES, RENTER_POOL, getItem, getOwner, syncUserListings } from './data/catalog'
 import type {
   Address, AppNotification, AppState, Booking, ChatMessage, ChatThread,
-  Item, Offer, Order, OrderStatus, Review, UserReport,
+  Item, Offer, Order, OrderStatus, OwnerBooking, Review, UserReport,
 } from './types'
 import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, todayISO, uid } from './utils'
 import type { TotalsInput } from './utils'
@@ -32,6 +32,10 @@ const initialState: AppState = {
   blockedOwners: [],
   promoCodesUsed: [],
   myListings: [],
+  ownerBookings: [],
+  claims: [],
+  availAlerts: [],
+  referralRedeemed: false,
 }
 
 export interface PlaceOrderOpts extends TotalsInput {
@@ -64,12 +68,63 @@ type Action =
   | { type: 'ADD_LISTING'; item: Item }
   | { type: 'TOGGLE_LISTING_PAUSE'; itemId: string }
   | { type: 'DELETE_LISTING'; itemId: string }
+  | { type: 'ACCEPT_OWNER_BOOKING'; id: string }
+  | { type: 'DECLINE_OWNER_BOOKING'; id: string }
+  | { type: 'FILE_CLAIM'; orderId: string; itemName: string; reason: string; amount: number }
+  | { type: 'ADD_AVAIL_ALERT'; itemId: string }
+  | { type: 'REDEEM_REFERRAL'; code: string }
   | { type: 'TICK'; now: number }
 
 const STATUS_FLOW: OrderStatus[] = ['confirmed', 'preparing', 'in_transit', 'in_use', 'returned', 'completed']
 
 function notify(state: AppState, n: Omit<AppNotification, 'id' | 'at' | 'read'>): AppNotification[] {
   return [{ id: uid(), at: Date.now(), read: false, ...n }, ...state.notifications].slice(0, 40)
+}
+
+type NotifSpec = Omit<AppNotification, 'id' | 'at' | 'read'>
+
+/** One step forward on the order timeline — used by the manual button AND the auto-advance heartbeat. */
+function stepOrderForward(o: Order): { order: Order; notifs: NotifSpec[] } {
+  const notifs: NotifSpec[] = []
+  if (o.status === 'requested') {
+    notifs.push({ emoji: '🤝', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: '#/orders' })
+    return { order: { ...o, status: 'confirmed', approveAt: undefined, autoAdvanceAt: Date.now() + 30000 }, notifs }
+  }
+  const idx = STATUS_FLOW.indexOf(o.status)
+  if (idx < 0 || idx >= STATUS_FLOW.length - 1) return { order: o, notifs }
+  const next = STATUS_FLOW[idx + 1]
+  let patch: Partial<Order> = { status: next, autoAdvanceAt: next === 'completed' ? undefined : Date.now() + 35000 }
+  if (next === 'in_transit' && !o.driver) {
+    const d = DRIVER_POOL[Math.floor(Math.random() * DRIVER_POOL.length)]
+    patch = { ...patch, driver: { ...d, pin: String(1000 + Math.floor(Math.random() * 9000)) } }
+    notifs.push({ emoji: '🚐', title: `${o.id} is on the way`, body: `${d.name} is driving your gear over. Handover PIN inside.`, link: '#/orders' })
+  }
+  if (next === 'completed') {
+    patch = { ...patch, depositReleased: true }
+    notifs.push({ emoji: '🏁', title: `${o.id} complete — deposit hold released`, body: 'Rate your experience while it’s fresh!', link: '#/orders' })
+  }
+  return { order: { ...o, ...patch }, notifs }
+}
+
+const SUPPORT_RULES: [RegExp, string][] = [
+  [/refund|cancel/i, 'Cancellations are free up to 48h before your start date; inside 48h a 10% fee applies. Refunds land in your Papa Wallet instantly — Orders → Cancel order. 💚'],
+  [/deposit|hold/i, 'Deposits are authorization holds, never charges. They release automatically within 24h of a damage-free return — watch the status right on the order card.'],
+  [/late|driver|delivery/i, 'Sorry about that! Your courier’s live card (with a call button and PIN) is on the order. If they’re 15+ minutes late, we auto-credit your delivery fee.'],
+  [/damage|claim|broke|broken/i, 'If gear arrived damaged, file a claim from the order (🛡️ File claim). Papa Protection covers accidental damage up to full value — most claims resolve within a day.'],
+  [/offer|price|negotiat/i, 'Tap “Offer your price” on any listing showing 💰 Offers OK. Offers ≥92% of the recommended fare are usually accepted instantly, and accepted deals stay locked for 24h.'],
+  [/payout|earning|host|listing/i, 'Host payouts land in your wallet within 24h of a completed booking — you keep 90%. Track requests and earnings in Profile → Host dashboard.'],
+]
+const SUPPORT_FALLBACK = 'I’ve opened a ticket for a human specialist — they’ll follow up shortly. Meanwhile the Help Center FAQ might have your answer. 🎧'
+
+function pickReply(ownerId: string, t: ChatThread): string {
+  if (ownerId === 'support') {
+    const lastMe = [...t.messages].reverse().find((m) => m.from === 'me')
+    if (lastMe) {
+      for (const [re, reply] of SUPPORT_RULES) if (re.test(lastMe.text)) return reply
+    }
+    return SUPPORT_FALLBACK
+  }
+  return OWNER_REPLIES[t.messages.length % OWNER_REPLIES.length]
 }
 
 const OWNER_REPLIES = [
@@ -123,6 +178,7 @@ function reducer(state: AppState, action: Action): AppState {
         lines: state.cart,
         status: needsApproval ? 'requested' : 'confirmed',
         approveAt: needsApproval ? Date.now() + 12000 : undefined,
+        autoAdvanceAt: needsApproval ? undefined : Date.now() + 25000,
         subtotal: t.subtotal,
         transportFee: t.transportFee,
         insuranceFee: t.insuranceFee,
@@ -160,24 +216,9 @@ function reducer(state: AppState, action: Action): AppState {
       let notifications = state.notifications
       const orders = state.orders.map((o) => {
         if (o.id !== action.orderId) return o
-        if (o.status === 'requested') {
-          notifications = notify({ ...state, notifications }, { emoji: '🤝', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: '#/orders' })
-          return { ...o, status: 'confirmed' as OrderStatus, approveAt: undefined }
-        }
-        const idx = STATUS_FLOW.indexOf(o.status)
-        if (idx < 0 || idx >= STATUS_FLOW.length - 1) return o
-        const next = STATUS_FLOW[idx + 1]
-        let patch: Partial<Order> = { status: next }
-        if (next === 'in_transit' && !o.driver) {
-          const d = DRIVER_POOL[Math.floor(Math.random() * DRIVER_POOL.length)]
-          patch = { ...patch, driver: { ...d, pin: String(1000 + Math.floor(Math.random() * 9000)) } }
-          notifications = notify({ ...state, notifications }, { emoji: '🚐', title: `${o.id} is on the way`, body: `${d.name} is driving your gear over. Handover PIN inside.`, link: '#/orders' })
-        }
-        if (next === 'completed') {
-          patch = { ...patch, depositReleased: true }
-          notifications = notify({ ...state, notifications }, { emoji: '🏁', title: `${o.id} complete — deposit hold released`, body: 'Rate your experience while it’s fresh!', link: '#/orders' })
-        }
-        return { ...o, ...patch }
+        const step = stepOrderForward(o)
+        for (const n of step.notifs) notifications = notify({ ...state, notifications }, n)
+        return step.order
       })
       return { ...state, orders, notifications }
     }
@@ -349,6 +390,58 @@ function reducer(state: AppState, action: Action): AppState {
       syncUserListings(myListings)
       return { ...state, myListings }
     }
+    case 'ACCEPT_OWNER_BOOKING': {
+      const b = state.ownerBookings.find((x) => x.id === action.id)
+      if (!b || b.status !== 'pending') return state
+      return {
+        ...state,
+        ownerBookings: state.ownerBookings.map((x) =>
+          x.id === b.id ? { ...x, status: 'accepted', completesAt: Date.now() + 50000 } : x
+        ),
+        notifications: notify(state, {
+          emoji: '✅', title: `You accepted ${b.renterName}'s booking`,
+          body: `Payout of Rs ${Math.round(b.total * 0.9).toLocaleString()} lands after the booking completes.`,
+          link: '#/dashboard',
+        }),
+      }
+    }
+    case 'DECLINE_OWNER_BOOKING':
+      return {
+        ...state,
+        ownerBookings: state.ownerBookings.map((x) => (x.id === action.id && x.status === 'pending' ? { ...x, status: 'declined' } : x)),
+      }
+
+    case 'FILE_CLAIM': {
+      const now = Date.now()
+      return {
+        ...state,
+        claims: [
+          { id: uid(), orderId: action.orderId, itemName: action.itemName, reason: action.reason, amount: action.amount, status: 'filed', filedAt: now, reviewAt: now + 6000, approveAt: now + 18000 },
+          ...state.claims,
+        ],
+        notifications: notify(state, {
+          emoji: '🛡️', title: `Claim filed for ${action.itemName}`,
+          body: 'Papa Protection is reviewing — most claims resolve within a day.',
+          link: '#/support',
+        }),
+      }
+    }
+
+    case 'ADD_AVAIL_ALERT': {
+      if (state.availAlerts.some((a) => a.itemId === action.itemId)) return state
+      return { ...state, availAlerts: [...state.availAlerts, { id: uid(), itemId: action.itemId, notifyAt: Date.now() + 25000 }] }
+    }
+
+    case 'REDEEM_REFERRAL': {
+      if (state.referralRedeemed || !/^PAPA-/i.test(action.code.trim())) return state
+      return {
+        ...state,
+        referralRedeemed: true,
+        walletBalance: state.walletBalance + 500,
+        notifications: notify(state, { emoji: '🎁', title: 'Referral applied — Rs 500 added', body: 'Your friend gets Rs 500 too. Shukriya!' }),
+      }
+    }
+
     case 'DELETE_LISTING': {
       const myListings = state.myListings.filter((l) => l.id !== action.itemId)
       syncUserListings(myListings)
@@ -394,7 +487,7 @@ function reducer(state: AppState, action: Action): AppState {
         for (const [ownerId, t] of dueChats) {
           const reply: ChatMessage = {
             id: uid(), from: 'owner',
-            text: OWNER_REPLIES[t.messages.length % OWNER_REPLIES.length],
+            text: pickReply(ownerId, t),
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             at: now,
           }
@@ -414,7 +507,7 @@ function reducer(state: AppState, action: Action): AppState {
         const orders = next.orders.map((o) => {
           if (!dueOrders.includes(o)) return o
           notifications = notify({ ...next, notifications }, { emoji: '🤝', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed. 🎬', link: '#/orders' })
-          return { ...o, status: 'confirmed' as OrderStatus, approveAt: undefined }
+          return { ...o, status: 'confirmed' as OrderStatus, approveAt: undefined, autoAdvanceAt: now + 25000 }
         })
         next = { ...next, orders, notifications }
       }
@@ -430,7 +523,7 @@ function reducer(state: AppState, action: Action): AppState {
           if (!dueListings.includes(l)) return l
           let out = l
           if (l.pendingVerifyAt && l.pendingVerifyAt <= now) {
-            out = { ...out, pendingVerifyAt: undefined, listingVerified: true }
+            out = { ...out, pendingVerifyAt: undefined, listingVerified: true, nextRequestAt: now + 30000 }
             notifications = notify({ ...next, notifications }, {
               emoji: '✅', title: `${l.name} is live!`,
               body: 'Verified and visible to every filmmaker on Papa Rentals.',
@@ -448,6 +541,143 @@ function reducer(state: AppState, action: Action): AppState {
           return out
         })
         next = { ...next, myListings, notifications }
+      }
+
+      // 5. host side: booking requests arrive on live listings
+      const requestDue = next.myListings.filter((l) => l.listingVerified && !l.paused && l.nextRequestAt && l.nextRequestAt <= now)
+      if (requestDue.length) {
+        changed = true
+        let notifications = next.notifications
+        let ownerBookings = next.ownerBookings
+        const myListings = next.myListings.map((l) => {
+          if (!requestDue.includes(l)) return l
+          const open = ownerBookings.filter((b) => b.listingId === l.id && b.status === 'pending').length
+          if (open >= 2) return { ...l, nextRequestAt: now + 180000 }
+          const seed = ownerBookings.length + l.name.length
+          const renter = RENTER_POOL[seed % RENTER_POOL.length]
+          const unit = l.hourly && seed % 2 === 0 ? ('hour' as const) : ('day' as const)
+          const dur = unit === 'hour' ? (l.space?.minHours ?? 4) : 1 + (seed % 3)
+          const baseRate = unit === 'hour' ? Math.round(l.pricePerDay / 6) : l.pricePerDay
+          const offered = l.offersAccepted && seed % 2 === 1
+          const rate = offered ? Math.round((baseRate * 0.9) / 50) * 50 : baseRate
+          const startOff = 2 + (seed % 5)
+          const start = todayISO(startOff)
+          const booking: OwnerBooking = {
+            id: uid(), listingId: l.id, renterName: renter.name, renterRating: renter.rating,
+            startDate: start, endDate: unit === 'hour' ? start : todayISO(startOff + dur - 1),
+            unit, hours: unit === 'hour' ? dur : 0, rate, total: rate * dur,
+            status: 'pending', requestedAt: now,
+          }
+          ownerBookings = [booking, ...ownerBookings]
+          notifications = notify({ ...next, notifications }, {
+            emoji: '📩', title: `Booking request: ${l.name}`,
+            body: `${renter.name} (★${renter.rating}) wants ${dur} ${unit}${dur > 1 ? 's' : ''}${offered ? ` at an offered Rs ${rate.toLocaleString()}/${unit}` : ''}. Respond in your Host dashboard.`,
+            link: '#/dashboard',
+          })
+          return { ...l, nextRequestAt: now + 150000 }
+        })
+        next = { ...next, myListings, ownerBookings, notifications }
+      }
+
+      // 6. accepted host bookings complete, then pay out 90% to the wallet
+      const hostDue = next.ownerBookings.filter(
+        (b) => (b.status === 'accepted' && b.completesAt && b.completesAt <= now) || (b.status === 'completed' && b.payoutAt && b.payoutAt <= now)
+      )
+      if (hostDue.length) {
+        changed = true
+        let notifications = next.notifications
+        let walletBalance = next.walletBalance
+        let myListings = next.myListings
+        const ownerBookings = next.ownerBookings.map((b) => {
+          if (!hostDue.includes(b)) return b
+          if (b.status === 'accepted') {
+            notifications = notify({ ...next, notifications }, {
+              emoji: '🎬', title: `${b.renterName}'s booking completed`,
+              body: 'Great hosting! Your payout is on the way.', link: '#/dashboard',
+            })
+            myListings = myListings.map((l) => (l.id === b.listingId ? { ...l, timesRented: l.timesRented + 1 } : l))
+            return { ...b, status: 'completed' as const, payoutAt: now + 20000 }
+          }
+          const payout = Math.round(b.total * 0.9)
+          walletBalance += payout
+          notifications = notify({ ...next, notifications }, {
+            emoji: '💰', title: `Payout received: Rs ${payout.toLocaleString()}`,
+            body: `${b.renterName}'s booking — 90% of Rs ${b.total.toLocaleString()}, straight to your wallet.`, link: '#/dashboard',
+          })
+          return { ...b, status: 'paid_out' as const, payoutAt: undefined }
+        })
+        next = { ...next, ownerBookings, walletBalance, myListings, notifications }
+      }
+
+      // 7. damage claims: filed → reviewing → approved (credited to wallet)
+      const claimsDue = next.claims.filter(
+        (c) => (c.status === 'filed' && c.reviewAt <= now) || (c.status === 'reviewing' && c.approveAt <= now)
+      )
+      if (claimsDue.length) {
+        changed = true
+        let notifications = next.notifications
+        let walletBalance = next.walletBalance
+        const claims = next.claims.map((c) => {
+          if (!claimsDue.includes(c)) return c
+          if (c.status === 'filed') return { ...c, status: 'reviewing' as const }
+          walletBalance += c.amount
+          notifications = notify({ ...next, notifications }, {
+            emoji: '✅', title: `Claim approved: Rs ${c.amount.toLocaleString()}`,
+            body: `${c.itemName} — credited to your wallet. Sorry that happened!`, link: '#/support',
+          })
+          return { ...c, status: 'approved' as const }
+        })
+        next = { ...next, claims, walletBalance, notifications }
+      }
+
+      // 8. availability alerts
+      const alertsDue = next.availAlerts.filter((a) => a.notifyAt <= now)
+      if (alertsDue.length) {
+        changed = true
+        let notifications = next.notifications
+        for (const a of alertsDue) {
+          const item = getItem(a.itemId)
+          notifications = notify({ ...next, notifications }, {
+            emoji: '🎉', title: `${item.name} is now available`,
+            body: 'The conflicting booking freed up — grab your dates before someone else does.',
+            link: `#/item/${a.itemId}`,
+          })
+        }
+        next = { ...next, availAlerts: next.availAlerts.filter((a) => !alertsDue.includes(a)), notifications }
+      }
+
+      // 9. shoot-day reminders the day before your start date
+      const remindDue = next.orders.filter(
+        (o) => !o.reminded && ['confirmed', 'preparing'].includes(o.status) && o.lines.some((l) => l.startDate <= todayISO(1))
+      )
+      if (remindDue.length) {
+        changed = true
+        let notifications = next.notifications
+        const orders = next.orders.map((o) => {
+          if (!remindDue.includes(o)) return o
+          notifications = notify({ ...next, notifications }, {
+            emoji: '🎬', title: `Shoot day soon — ${o.id}`,
+            body: 'Gear arrives at your slot time. Charge your batteries and sleep well!', link: '#/orders',
+          })
+          return { ...o, reminded: true }
+        })
+        next = { ...next, orders, notifications }
+      }
+
+      // 10. orders drive themselves forward, foodpanda-style
+      const autoDue = next.orders.filter(
+        (o) => o.autoAdvanceAt && o.autoAdvanceAt <= now && !['completed', 'cancelled', 'requested'].includes(o.status)
+      )
+      if (autoDue.length) {
+        changed = true
+        let notifications = next.notifications
+        const orders = next.orders.map((o) => {
+          if (!autoDue.includes(o)) return o
+          const step = stepOrderForward(o)
+          for (const n of step.notifs) notifications = notify({ ...next, notifications }, n)
+          return step.order
+        })
+        next = { ...next, orders, notifications }
       }
 
       return changed ? next : state
