@@ -1,22 +1,25 @@
 import { CATEGORIES, ITEMS, KITS, getItem } from '../data/catalog'
 import { useNav } from '../nav'
 import { useStore } from '../store'
-import { money } from '../utils'
+import { buzz, dealActive, money, todayISO } from '../utils'
 import { Badge, ItemArt, ItemCard } from '../components/ui'
 
 export default function Home() {
   const { go, toast } = useNav()
   const { state, dispatch } = useStore()
 
-  const deals = ITEMS.filter((i) => i.flashDeal)
-  const trending = [...ITEMS].sort((a, b) => b.timesRented - a.timesRented).slice(0, 8)
+  const visible = ITEMS.filter((i) => !state.blockedOwners.includes(i.ownerId))
+  const deals = visible.filter((i) => dealActive(i.id))
+  const trending = [...visible].sort((a, b) => b.timesRented - a.timesRented).slice(0, 8)
+  const recentlyViewed = state.recentlyViewed.map(getItem).filter((i) => !state.blockedOwners.includes(i.ownerId))
 
   return (
     <div>
       <div className="hero">
         <div className="hero-emoji">🎬</div>
         <h1>
-          Rent everything for<br />your next shoot.
+          {state.profile.name ? `Salaam, ${state.profile.name}!` : 'Rent everything for'}<br />
+          {state.profile.name ? 'What are we shooting?' : 'your next shoot.'}
         </h1>
         <p>Cameras, glass, lights, grip trucks and crew vans — delivered to set like a food order, priced like a negotiation.</p>
         <div className="hero-badges">
@@ -33,7 +36,7 @@ export default function Home() {
           <button className="link-btn" onClick={() => go({ name: 'browse' })}>Browse all →</button>
         </div>
         <div className="cat-row">
-          {CATEGORIES.slice(0, 10).map((c) => (
+          {CATEGORIES.map((c) => (
             <button key={c.id} className="cat-chip" onClick={() => go({ name: 'browse', category: c.id })}>
               <span className="cat-ico" style={{ background: c.gradient }}>{c.emoji}</span>
               {c.name}
@@ -42,23 +45,42 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="section">
-        <div className="section-head">
-          <h2>⚡ Flash deals</h2>
-          <button className="link-btn" onClick={() => go({ name: 'browse', dealsOnly: true })}>See all →</button>
+      {recentlyViewed.length > 0 && (
+        <div className="section">
+          <div className="section-head"><h2>👀 Recently viewed</h2></div>
+          <div className="h-scroll">
+            {recentlyViewed.map((item) => (
+              <ItemCard
+                key={item.id}
+                item={item}
+                onOpen={() => go({ name: 'item', id: item.id })}
+                wishlisted={state.wishlist.includes(item.id)}
+                onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
+              />
+            ))}
+          </div>
         </div>
-        <div className="grid">
-          {deals.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              onOpen={() => go({ name: 'item', id: item.id })}
-              wishlisted={state.wishlist.includes(item.id)}
-              onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
-            />
-          ))}
+      )}
+
+      {deals.length > 0 && (
+        <div className="section">
+          <div className="section-head">
+            <h2>⚡ Flash deals</h2>
+            <button className="link-btn" onClick={() => go({ name: 'browse', dealsOnly: true })}>See all →</button>
+          </div>
+          <div className="grid">
+            {deals.map((item) => (
+              <ItemCard
+                key={item.id}
+                item={item}
+                onOpen={() => go({ name: 'item', id: item.id })}
+                wishlisted={state.wishlist.includes(item.id)}
+                onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="section">
         <div className="section-head">
@@ -85,19 +107,22 @@ export default function Home() {
                 <button
                   className="btn btn-primary btn-sm"
                   onClick={() => {
+                    buzz()
                     kitItems.forEach((i) =>
                       dispatch({
                         type: 'ADD_TO_CART',
                         booking: {
                           itemId: i.id,
-                          startDate: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
-                          endDate: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
+                          startDate: todayISO(2),
+                          endDate: todayISO(2),
                           pickupTime: '09:00',
                           qty: 1,
+                          unit: 'day',
+                          hours: 4,
                           insurance: true,
                           operator: false,
                           transport: 'van',
-                          agreedPricePerDay: Math.round(i.pricePerDay * (1 - kit.percentOff / 100)),
+                          rate: Math.round(i.pricePerDay * (1 - kit.percentOff / 100)),
                           negotiated: false,
                         },
                       })

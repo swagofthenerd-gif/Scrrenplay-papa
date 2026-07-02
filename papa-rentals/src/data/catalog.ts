@@ -1,5 +1,16 @@
 import type { Category, Item, Kit, Owner, TransportOption } from '../types'
 
+// booked ranges are generated relative to "today" so the demo always has realistic availability
+function rel(startOffset: number, endOffset: number) {
+  const d = (o: number) => {
+    const x = new Date()
+    x.setDate(x.getDate() + o)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`
+  }
+  return { start: d(startOffset), end: d(endOffset) }
+}
+
 export const CURRENCY = 'Rs'
 
 export const CATEGORIES: Category[] = [
@@ -34,10 +45,11 @@ export const ITEMS: Item[] = [
     specs: ['Large-format 4.5K sensor', 'ARRIRAW & ProRes', '2× 1TB Codex drives', 'EF & LPL mounts included', 'V-mount plates + 4 batteries'],
     description: 'The industry-standard large format cine camera. Package includes media, batteries, cage and top handle. Perfect for commercials, music videos and feature work.',
     tags: ['cinema', '4K', 'pro'], timesRented: 342, instantBook: true, offersAccepted: true,
+    bookedRanges: [rel(4, 6), rel(12, 14)],
     reviews: [
       r('Ayesha K.', 5, 'Immaculate condition, owner even helped with the LUT setup. Will rent again.', '2026-06-18'),
       r('Bilal R.', 5, 'Sensor was spotless, batteries all held charge for the full 12h day.', '2026-05-30'),
-      r('Danish M.', 4, 'Great camera, pickup took a little longer than promised.', '2026-05-02'),
+      { ...r('Danish M.', 4, 'Great camera, pickup took a little longer than promised.', '2026-05-02'), ownerReply: 'Apologies for the wait, Danish — we now prep pickups the night before. Hope to host you again!' },
     ],
   },
   {
@@ -46,6 +58,7 @@ export const ITEMS: Item[] = [
     specs: ['4K 120fps full-frame', 'Dual base ISO 800/12800', '2× 160GB CFexpress', 'Top handle + smallrig cage', '24-105 f/4 G included'],
     description: 'Run-and-gun favourite for documentaries and corporate shoots. Comes ready to roll with media, cage and a versatile zoom.',
     tags: ['documentary', '4K', 'run-and-gun'], timesRented: 518, instantBook: true, offersAccepted: true,
+    bookedRanges: [rel(7, 8)],
     flashDeal: { percentOff: 15, endsInHours: 9 },
     reviews: [
       r('Hira S.', 5, 'Flawless kit, autofocus saved my one-man-band shoot.', '2026-06-21'),
@@ -82,6 +95,7 @@ export const ITEMS: Item[] = [
     specs: ['600W daylight LED', 'Bowens mount', 'Light Dome II softbox', 'Sidus Link app control', 'Rolling case + stand'],
     description: 'Punchy sun-through-window key light. App controllable, silent fan mode for sound takes.',
     tags: ['LED', 'key light', 'bowens'], timesRented: 402, instantBook: true, offersAccepted: true,
+    bookedRanges: [rel(5, 5)],
     flashDeal: { percentOff: 20, endsInHours: 5 },
     reviews: [r('Sana J.', 5, 'Bright as advertised, softbox was pristine.', '2026-06-22')],
   },
@@ -163,6 +177,7 @@ export const ITEMS: Item[] = [
     specs: ['Fully restored, runs & drives', 'Handler on set included', 'Trailer delivery available', 'Insurance mandatory'],
     description: 'Hero picture car for that period look. Comes with a handler; insurance add-on is required at checkout.',
     tags: ['picture car', 'period', 'hero'], timesRented: 52, instantBook: false, offersAccepted: false,
+    insuranceRequired: true, bookedRanges: [rel(3, 4)],
     reviews: [r('Kiran V.', 5, 'Stole every frame it was in.', '2026-05-15')],
   },
   {
@@ -171,6 +186,7 @@ export const ITEMS: Item[] = [
     specs: ['2000 sqft, 14ft ceiling', 'North-facing daylight wall', 'Cyc wall + blackout option', 'Makeup room, kitchen, parking', '3-phase power'],
     description: 'Sunlit studio with a white cyc. Includes basic furniture, apple boxes and cleaning.',
     tags: ['studio', 'cyc', 'daylight'], timesRented: 264, instantBook: true, offersAccepted: true,
+    hourly: true, bookedRanges: [rel(6, 6)],
     flashDeal: { percentOff: 10, endsInHours: 22 },
     reviews: [r('Mehak Z.', 5, 'Light in there is unreal from 10am–2pm. Host was lovely.', '2026-06-17')],
   },
@@ -180,6 +196,7 @@ export const ITEMS: Item[] = [
     specs: ['3-wall chroma cove', 'Lighting grid + 12 fresnels', 'Sound-treated', 'Client lounge + wifi'],
     description: 'Pre-lit greenscreen stage. Walk in, white balance, shoot.',
     tags: ['studio', 'chroma', 'VFX'], timesRented: 143, instantBook: true, offersAccepted: true,
+    hourly: true,
     reviews: [r('Wali R.', 4, 'Great keying results. AC struggled a bit at noon.', '2026-06-06')],
   },
   {
@@ -221,10 +238,46 @@ export const TRANSPORT_OPTIONS: TransportOption[] = [
   { id: 'truck', name: 'Grip truck + crew', emoji: '🚚', fee: 9000, eta: 'Scheduled', detail: 'Truck with a 2-person crew who load, deliver and help you rig.' },
 ]
 
-export const PROMO_CODES: Record<string, { percentOff: number; maxOff: number; label: string }> = {
-  PAPA10: { percentOff: 10, maxOff: 10000, label: '10% off (up to Rs 10,000)' },
-  FIRSTSHOOT: { percentOff: 20, maxOff: 15000, label: '20% off your first shoot (up to Rs 15,000)' },
+export interface PromoRule {
+  percentOff: number
+  maxOff: number
+  label: string
+  minSubtotal?: number
+  firstOrderOnly?: boolean
+  singleUse?: boolean
+}
+
+export const PROMO_CODES: Record<string, PromoRule> = {
+  PAPA10: { percentOff: 10, maxOff: 10000, label: '10% off (up to Rs 10,000)', minSubtotal: 5000 },
+  FIRSTSHOOT: { percentOff: 20, maxOff: 15000, label: '20% off your first shoot (up to Rs 15,000)', firstOrderOnly: true, singleUse: true },
   INDIE5: { percentOff: 5, maxOff: 25000, label: '5% off, no minimum' },
+}
+
+export const PAYMENT_METHODS = [
+  { id: 'card', name: 'Debit / credit card', emoji: '💳' },
+  { id: 'jazzcash', name: 'JazzCash', emoji: '📱' },
+  { id: 'easypaisa', name: 'Easypaisa', emoji: '📲' },
+  { id: 'cod', name: 'Cash on delivery', emoji: '💵' },
+]
+
+export const DRIVER_POOL = [
+  { name: 'Rashid A.', phone: '+92 300 1234567', vehicle: 'Hiace LEB-1234' },
+  { name: 'Imran K.', phone: '+92 321 7654321', vehicle: 'Shehzore LES-8890' },
+  { name: 'Waqas M.', phone: '+92 333 4455667', vehicle: 'Bolan LEC-5521' },
+]
+
+// what people also rent alongside each department — powers cross-sell
+export const ALSO_RENTED: Record<string, string[]> = {
+  cameras: ['lenses', 'grip', 'audio'],
+  lenses: ['cameras', 'grip'],
+  lighting: ['grip', 'transport'],
+  audio: ['cameras', 'crew'],
+  grip: ['lighting', 'transport'],
+  drones: ['cameras', 'crew'],
+  transport: ['grip', 'lighting'],
+  studios: ['lighting', 'props'],
+  props: ['studios', 'transport'],
+  crew: ['cameras', 'audio'],
 }
 
 export function getOwner(id: string): Owner {

@@ -1,26 +1,34 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { TRANSPORT_OPTIONS, getItem, getOwner } from '../data/catalog'
+import { ALSO_RENTED, ITEMS, TRANSPORT_OPTIONS, getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
-import { useMyReview, useStore } from '../store'
-import type { Offer, TransportId } from '../types'
+import { useStore } from '../store'
+import type { Offer, RentalUnit, TransportId } from '../types'
 import {
-  INSURANCE_RATE, OPERATOR_FEE_PER_DAY, daysBetween, evaluateOffer,
-  fmtDate, money, recommendedPerDay, todayISO, uid,
+  INSURANCE_RATE, OFFER_TTL_MS, OPERATOR_FEE_PER_DAY, buzz, daysBetween, dealActive,
+  findConflict, fmtCountdown, fmtDate, hourlyRate, money, nextAvailable, ratingHistogram,
+  recommendedRate, todayISO, toISO, uid, unavailableRanges, rangesOverlap,
 } from '../utils'
-import { Badge, ItemArt, Modal, Stars } from '../components/ui'
+import { Badge, DealCountdown, ItemArt, ItemCard, Modal, Stars } from '../components/ui'
+
+const TIME_SLOTS = ['06:00', '09:00', '12:00', '15:00', '18:00']
 
 export default function ItemDetail({ id }: { id: string }) {
   const item = getItem(id)
   const owner = getOwner(item.ownerId)
-  const { go, toast } = useNav()
+  const { go, back, toast } = useNav()
   const { state, dispatch } = useStore()
-  const myReview = useMyReview(id)
+
+  useEffect(() => {
+    dispatch({ type: 'VIEW_ITEM', itemId: id })
+  }, [id, dispatch])
 
   const [startDate, setStartDate] = useState(todayISO(2))
   const [endDate, setEndDate] = useState(todayISO(3))
   const [pickupTime, setPickupTime] = useState('09:00')
   const [qty, setQty] = useState(1)
-  const [insurance, setInsurance] = useState(item.deposit >= 100000)
+  const [unit, setUnit] = useState<RentalUnit>('day')
+  const [hours, setHours] = useState(4)
+  const [insurance, setInsurance] = useState(item.insuranceRequired || item.deposit >= 100000)
   const [operator, setOperator] = useState(false)
   const [transport, setTransport] = useState<TransportId>('van')
 
@@ -28,36 +36,62 @@ export default function ItemDetail({ id }: { id: string }) {
   const [chatOpen, setChatOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
 
-  const days = daysBetween(startDate, endDate)
-  const recPerDay = recommendedPerDay(id, days)
+  const effEnd = unit === 'hour' ? startDate : endDate
+  const days = unit === 'hour' ? 1 : daysBetween(startDate, effEnd)
+  const recRate = recommendedRate(id, days, unit)
 
-  // latest accepted offer for this item at this duration wins
-  const acceptedOffer = state.offers.find((o) => o.itemId === id && o.status === 'accepted' && o.days === days)
-  const perDay = acceptedOffer ? acceptedOffer.offeredPerDay : recPerDay
-  const negotiated = Boolean(acceptedOffer)
+  // sticky negotiation: latest accepted, unexpired offer for this item+unit applies to any dates
+  const deal = state.offers.find((o) => o.itemId === id && o.unit === unit && o.status === 'accepted' && o.expiresAt > Date.now())
+  const rate = deal ? Math.min(deal.offeredRate, recRate) : recRate
+  const negotiated = Boolean(deal && deal.offeredRate < recRate)
 
-  const sub = perDay * days * qty
+  const duration = unit === 'hour' ? hours : days
+  const sub = rate * duration * qty
   const insuranceFee = insurance ? Math.round(sub * INSURANCE_RATE) : 0
   const operatorFee = operator ? OPERATOR_FEE_PER_DAY * days : 0
   const transportFee = TRANSPORT_OPTIONS.find((t) => t.id === transport)?.fee ?? 0
 
+  const conflict = findConflict(id, { start: startDate, end: effEnd }, state.orders, state.cart)
+  const nextFree = conflict ? nextAvailable(id, effEnd, duration === 0 ? 1 : days, state.orders, state.cart) : null
+  const invalidRange = unit === 'day' && endDate < startDate
+
   const wishlisted = state.wishlist.includes(id)
+  const thread = state.chats[owner.id]
+  const chatUnread = thread?.unread ?? 0
+
+  const alsoRented = useMemo(() => {
+    const cats = ALSO_RENTED[item.category] ?? []
+    return ITEMS.filter((i) => i.id !== id && cats.includes(i.category) && !state.blockedOwners.includes(i.ownerId))
+      .sort((a, b) => b.timesRented - a.timesRented)
+      .slice(0, 6)
+  }, [id, item.category, state.blockedOwners])
+
+  const histo = ratingHistogram(item.rating, item.ratingCount)
+  const myReviews = state.myReviews[id] ?? []
 
   function addToCart() {
-    if (endDate < startDate) {
+    if (invalidRange) {
       toast('Return date must be after the start date')
       return
     }
+    if (conflict) {
+      toast('Those dates are already booked — try the next free date')
+      return
+    }
+    buzz()
     dispatch({
       type: 'ADD_TO_CART',
-      booking: { itemId: id, startDate, endDate, pickupTime, qty, insurance, operator, transport, agreedPricePerDay: perDay, negotiated },
+      booking: {
+        itemId: id, startDate, endDate: effEnd, pickupTime, qty, unit, hours,
+        insurance: item.insuranceRequired ? true : insurance, operator, transport, rate, negotiated,
+      },
     })
     toast(`${item.name} added to cart 🛒`)
   }
 
   return (
     <div>
-      <button className="back-btn" onClick={() => go({ name: 'browse', category: item.category })}>← Back to {item.category}</button>
+      <button className="back-btn" onClick={back}>← Back</button>
 
       <div className="detail-grid">
         <div>
@@ -69,15 +103,20 @@ export default function ItemDetail({ id }: { id: string }) {
                 <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <Stars value={item.rating} />
                   <span className="muted small">{item.rating} · {item.ratingCount} ratings · rented {item.timesRented}×</span>
-                  {item.instantBook && <Badge tone="green">⚡ Instant book</Badge>}
-                  {item.offersAccepted && <Badge tone="purple">🤝 Offers accepted</Badge>}
+                  {item.instantBook ? <Badge tone="green">⚡ Instant book</Badge> : <Badge tone="purple">🤝 Owner approval</Badge>}
+                  {item.offersAccepted && <Badge tone="purple">💰 Offers OK</Badge>}
                 </div>
               </div>
-              <button className={`icon-btn ${wishlisted ? '' : ''}`} onClick={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: id })}>
+              <button
+                className="icon-btn"
+                style={wishlisted ? { color: 'var(--red)' } : undefined}
+                onClick={() => { buzz(); dispatch({ type: 'TOGGLE_WISHLIST', itemId: id }) }}
+                aria-label="Toggle wishlist"
+              >
                 {wishlisted ? '♥' : '♡'}
               </button>
             </div>
-            <p style={{ fontSize: 14, color: '#44403c' }}>{item.description}</p>
+            <p style={{ fontSize: 14, opacity: 0.9 }}>{item.description}</p>
             <h4 style={{ fontSize: 14 }}>What's included</h4>
             <ul className="spec-list">
               {item.specs.map((s) => <li key={s}>{s}</li>)}
@@ -87,34 +126,44 @@ export default function ItemDetail({ id }: { id: string }) {
           <div className="panel">
             <div className="owner-row">
               <div className="owner-avatar">{owner.avatar}</div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ fontSize: 14 }}>
                   {owner.name} {owner.verified && <Badge tone="green">✔︎ Verified</Badge>}
                   {owner.superOwner && <Badge tone="orange">👑 Super Owner</Badge>}
                 </b>
                 <div className="muted small">
-                  ★ {owner.rating} ({owner.ratingCount}) · replies in ~{owner.responseMins} min · {owner.area} · {owner.distanceKm} km away · since {owner.memberSince}
+                  ★ {owner.rating} ({owner.ratingCount}) · replies in ~{owner.responseMins} min · {owner.area} · {owner.distanceKm} km · since {owner.memberSince}
                 </div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="btn btn-outline btn-sm" onClick={() => setChatOpen(true)}>💬 Chat with owner</button>
+              <button className="btn btn-outline btn-sm" style={{ position: 'relative' }} onClick={() => setChatOpen(true)}>
+                💬 Chat with owner{chatUnread > 0 && <span className="dot" style={{ position: 'absolute', top: -5, right: -5, background: 'var(--accent)', color: '#fff', borderRadius: 999, minWidth: 17, height: 17, lineHeight: '17px', fontSize: 10, fontWeight: 700 }}>{chatUnread}</span>}
+              </button>
               <button className="btn btn-ghost btn-sm" onClick={() => setReportOpen(true)}>🚩 Report</button>
             </div>
           </div>
 
           <div className="panel">
             <h3 style={{ fontSize: 16 }}>Reviews</h3>
-            {myReview && (
-              <div className="review">
+            <div className="histo">
+              {histo.map((count, i) => {
+                const total = histo.reduce((a, b) => a + b, 0) || 1
+                return (
+                  <FragmentRow key={i} stars={5 - i} count={count} pct={(count / total) * 100} />
+                )
+              })}
+            </div>
+            {myReviews.map((rv) => (
+              <div className="review" key={rv.id}>
                 <div className="review-head">
-                  <b>{myReview.author} <Badge>You</Badge></b>
-                  <Stars value={myReview.rating} />
+                  <b>{rv.author} <Badge>You</Badge></b>
+                  <Stars value={rv.rating} />
                 </div>
-                <div className="muted small">{myReview.date}</div>
-                <p style={{ margin: '6px 0 0' }}>{myReview.text}</p>
+                <div className="muted small">{rv.date}</div>
+                <p style={{ margin: '6px 0 0' }}>{rv.text}</p>
               </div>
-            )}
+            ))}
             {item.reviews.map((rv) => (
               <div className="review" key={rv.id}>
                 <div className="review-head">
@@ -123,6 +172,12 @@ export default function ItemDetail({ id }: { id: string }) {
                 </div>
                 <div className="muted small">{rv.date}</div>
                 <p style={{ margin: '6px 0 0' }}>{rv.text}</p>
+                {rv.ownerReply && (
+                  <div className="owner-reply">
+                    <b style={{ fontSize: 12 }}>{owner.avatar} {owner.name} replied:</b>
+                    <div>{rv.ownerReply}</div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -132,40 +187,97 @@ export default function ItemDetail({ id }: { id: string }) {
         <div>
           <div className="panel">
             <h3 style={{ fontSize: 16 }}>📅 Book your dates</h3>
+
+            {item.hourly && (
+              <div className="unit-toggle" role="tablist">
+                <button className={unit === 'day' ? 'active' : ''} onClick={() => setUnit('day')}>By day</button>
+                <button className={unit === 'hour' ? 'active' : ''} onClick={() => { setUnit('hour'); setEndDate(startDate) }}>
+                  By hour · {money(hourlyRate(id))}/hr
+                </button>
+              </div>
+            )}
+
+            <AvailabilityStrip itemId={id} selectedStart={startDate} selectedEnd={effEnd} onPick={(d) => {
+              setStartDate(d)
+              if (unit === 'day' && endDate < d) setEndDate(d)
+            }} />
+
             <div className="form-row">
               <label className="field">
                 Start date
-                <input type="date" value={startDate} min={todayISO()} onChange={(e) => setStartDate(e.target.value)} />
+                <input type="date" value={startDate} min={todayISO()} onChange={(e) => { setStartDate(e.target.value); if (unit === 'day' && endDate < e.target.value) setEndDate(e.target.value) }} />
               </label>
-              <label className="field">
-                Return date
-                <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
-              </label>
+              {unit === 'day' ? (
+                <label className="field">
+                  Return date
+                  <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
+                </label>
+              ) : (
+                <label className="field">
+                  Hours
+                  <span className="qty-stepper">
+                    <button onClick={() => setHours(Math.max(3, hours - 1))} aria-label="Fewer hours">−</button>
+                    <b>{hours}h</b>
+                    <button onClick={() => setHours(Math.min(14, hours + 1))} aria-label="More hours">+</button>
+                  </span>
+                </label>
+              )}
             </div>
+
+            <div className="field" style={{ marginTop: 10 }}>
+              {transport === 'pickup' ? 'Pickup time' : 'Delivery slot'}
+              <div className="slot-row">
+                {TIME_SLOTS.map((t) => (
+                  <button key={t} className={`slot-chip ${pickupTime === t ? 'active' : ''}`} onClick={() => setPickupTime(t)}>{t}</button>
+                ))}
+                <input
+                  type="time" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)}
+                  style={{ border: '1px solid var(--line)', borderRadius: 999, padding: '8px 12px', fontSize: 13, background: 'var(--card)', color: 'var(--ink)' }}
+                  aria-label="Custom time"
+                />
+              </div>
+            </div>
+
             <div className="form-row">
-              <label className="field">
-                Pickup / delivery time
-                <input type="time" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} />
-              </label>
               <label className="field">
                 Quantity
                 <span className="qty-stepper">
-                  <button onClick={() => setQty(Math.max(1, qty - 1))}>−</button>
+                  <button onClick={() => setQty(Math.max(1, qty - 1))} aria-label="Decrease quantity">−</button>
                   <b>{qty}</b>
-                  <button onClick={() => setQty(Math.min(5, qty + 1))}>+</button>
+                  <button onClick={() => setQty(Math.min(5, qty + 1))} aria-label="Increase quantity">+</button>
                 </span>
               </label>
             </div>
-            <p className="muted small" style={{ margin: '10px 0 0' }}>
-              {days} day{days > 1 ? 's' : ''} · {fmtDate(startDate)} → {fmtDate(endDate)} at {pickupTime}
-              {days >= 7 ? ' · 🎉 weekly rate applied (20% off)' : days >= 3 ? ' · 🎉 3+ day rate applied (10% off)' : ''}
-            </p>
 
-            <label className="toggle-row">
-              <input type="checkbox" checked={insurance} onChange={(e) => setInsurance(e.target.checked)} />
+            {conflict ? (
+              <div className="conflict-note">
+                ⛔ Booked {fmtDate(conflict.start)}–{fmtDate(conflict.end)}.
+                {nextFree && <> Next free: <button onClick={() => {
+                  setStartDate(nextFree)
+                  if (unit === 'day') {
+                    const d = new Date(nextFree + 'T00:00:00')
+                    d.setDate(d.getDate() + days - 1)
+                    setEndDate(toISO(d))
+                  }
+                }}>{fmtDate(nextFree)} — tap to apply</button></>}
+              </div>
+            ) : (
+              <p className="muted small" style={{ margin: '10px 0 0' }}>
+                ✅ Available · {unit === 'hour' ? `${hours}h on ${fmtDate(startDate)}` : `${days} day${days > 1 ? 's' : ''} · ${fmtDate(startDate)} → ${fmtDate(effEnd)}`} at {pickupTime}
+                {unit === 'day' && (days >= 7 ? ' · 🎉 weekly rate (20% off)' : days >= 3 ? ' · 🎉 3+ day rate (10% off)' : '')}
+              </p>
+            )}
+
+            <label className="toggle-row" style={item.insuranceRequired ? { opacity: 0.9 } : undefined}>
+              <input
+                type="checkbox"
+                checked={item.insuranceRequired ? true : insurance}
+                disabled={item.insuranceRequired}
+                onChange={(e) => setInsurance(e.target.checked)}
+              />
               <span>
                 <b>🛡️ Papa Damage Protection</b> — {Math.round(INSURANCE_RATE * 100)}% of rental. Covers accidental damage up to full value.
-                {item.deposit >= 100000 && <span className="muted small"> (Strongly recommended for this item)</span>}
+                {item.insuranceRequired && <b style={{ color: 'var(--accent-dark)' }}> Required for this item.</b>}
               </span>
             </label>
             <label className="toggle-row">
@@ -179,7 +291,7 @@ export default function ItemDetail({ id }: { id: string }) {
             {TRANSPORT_OPTIONS.map((t) => (
               <div key={t.id} className={`transport-opt ${transport === t.id ? 'active' : ''}`} onClick={() => setTransport(t.id)}>
                 <span className="t-emoji">{t.emoji}</span>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontSize: 14 }}>{t.name}</b> <span className="muted small">· {t.eta}</span>
                   <div className="muted small">{t.detail}</div>
                 </div>
@@ -188,10 +300,14 @@ export default function ItemDetail({ id }: { id: string }) {
             ))}
 
             <div className="fare-box">
-              <div className="muted small">Recommended fare {negotiated && '· you negotiated 🤝'}</div>
+              <div className="muted small">
+                Recommended fare
+                {negotiated && deal && <> · 🤝 your deal, expires in {fmtCountdown(deal.expiresAt - Date.now())}</>}
+                {dealActive(id) && <> · <DealCountdown itemId={id} /></>}
+              </div>
               <div className="fare-amount">
-                {money(perDay)} <span style={{ fontSize: 13, fontWeight: 600 }}>/day</span>
-                {negotiated && <s className="muted" style={{ fontSize: 14, marginLeft: 8 }}>{money(recPerDay)}</s>}
+                {money(rate)} <span style={{ fontSize: 13, fontWeight: 600 }}>/{unit}</span>
+                {negotiated && <s className="muted" style={{ fontSize: 14, marginLeft: 8 }}>{money(recRate)}</s>}
               </div>
               {item.offersAccepted ? (
                 <button className="btn btn-outline btn-sm btn-block" style={{ marginTop: 10 }} onClick={() => setOfferOpen(true)}>
@@ -203,86 +319,140 @@ export default function ItemDetail({ id }: { id: string }) {
             </div>
 
             <div className="price-summary">
-              <div className="price-line"><span>{money(perDay)} × {days} day{days > 1 ? 's' : ''} × {qty}</span><b>{money(sub)}</b></div>
-              {insurance && <div className="price-line"><span>Damage protection</span><b>{money(insuranceFee)}</b></div>}
+              <div className="price-line"><span>{money(rate)} × {duration} {unit}{duration > 1 ? 's' : ''} × {qty}</span><b>{money(sub)}</b></div>
+              {(insurance || item.insuranceRequired) && <div className="price-line"><span>Damage protection</span><b>{money(insuranceFee)}</b></div>}
               {operator && <div className="price-line"><span>Operator ({days}d)</span><b>{money(operatorFee)}</b></div>}
               <div className="price-line"><span>Transport</span>{transportFee === 0 ? <b className="free">Free</b> : <b>{money(transportFee)}</b>}</div>
-              <div className="price-line"><span>Refundable deposit</span><b>{money(item.deposit * qty)}</b></div>
-              <div className="price-line total"><span>Est. total</span><span>{money(sub + insuranceFee + operatorFee + transportFee + item.deposit * qty)}</span></div>
+              <div className="price-line"><span>Deposit (hold only — released after return)</span><b>{money(item.deposit * qty)}</b></div>
+              <div className="price-line total"><span>Est. charge</span><span>{money(sub + insuranceFee + operatorFee + transportFee)}</span></div>
             </div>
 
-            <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={addToCart}>
-              {item.instantBook ? '⚡ Add to cart — instant book' : 'Add to cart — request booking'}
+            <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={addToCart} disabled={Boolean(conflict) || invalidRange}>
+              {conflict ? '⛔ Unavailable for these dates' : item.instantBook ? '⚡ Add to cart — instant book' : 'Add to cart — request booking'}
             </button>
           </div>
         </div>
       </div>
 
-      {offerOpen && (
-        <OfferModal
-          itemId={id}
-          days={days}
-          recommended={recPerDay}
-          onClose={() => setOfferOpen(false)}
-        />
+      {alsoRented.length > 0 && (
+        <div className="section">
+          <div className="section-head"><h2>🎒 People also rented</h2></div>
+          <div className="h-scroll">
+            {alsoRented.map((i) => (
+              <ItemCard
+                key={i.id}
+                item={i}
+                onOpen={() => go({ name: 'item', id: i.id })}
+                wishlisted={state.wishlist.includes(i.id)}
+                onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: i.id })}
+              />
+            ))}
+          </div>
+        </div>
       )}
+
+      {offerOpen && <OfferModal itemId={id} unit={unit} recommended={recRate} onClose={() => setOfferOpen(false)} />}
       {chatOpen && <ChatModal ownerId={owner.id} ownerName={owner.name} itemName={item.name} onClose={() => setChatOpen(false)} />}
-      {reportOpen && <ReportModal targetName={owner.name} onClose={() => setReportOpen(false)} />}
+      {reportOpen && <ReportModal targetName={owner.name} ownerId={owner.id} onClose={() => setReportOpen(false)} />}
     </div>
   )
 }
 
-/* ---------------- inDrive-style offer flow ---------------- */
-function OfferModal({ itemId, days, recommended, onClose }: { itemId: string; days: number; recommended: number; onClose: () => void }) {
-  const { dispatch } = useStore()
+function FragmentRow({ stars, count, pct }: { stars: number; count: number; pct: number }) {
+  return (
+    <>
+      <span>{stars}★</span>
+      <div className="bar"><i style={{ width: `${pct}%` }} /></div>
+      <span className="muted">{count}</span>
+    </>
+  )
+}
+
+/* ---------------- availability strip: next 14 days at a glance ---------------- */
+function AvailabilityStrip({ itemId, selectedStart, selectedEnd, onPick }: {
+  itemId: string
+  selectedStart: string
+  selectedEnd: string
+  onPick: (date: string) => void
+}) {
+  const { state } = useStore()
+  const ranges = unavailableRanges(itemId, state.orders, state.cart)
+  const days = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() + i)
+    return d
+  })
+  return (
+    <div className="avail-strip" aria-label="Next two weeks availability">
+      {days.map((d) => {
+        const iso = toISO(d)
+        const busy = ranges.some((r) => rangesOverlap({ start: iso, end: iso }, r))
+        const sel = iso >= selectedStart && iso <= selectedEnd
+        return (
+          <button
+            key={iso}
+            className={`avail-day ${busy ? 'busy' : ''} ${sel ? 'sel' : ''}`}
+            disabled={busy}
+            onClick={() => onPick(iso)}
+            aria-label={`${iso} ${busy ? 'booked' : 'available'}`}
+          >
+            {d.toLocaleDateString('en-GB', { weekday: 'short' }).slice(0, 2)}
+            <div className="d">{d.getDate()}</div>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ---------------- inDrive-style offer flow (store-driven, survives closing) ---------------- */
+function OfferModal({ itemId, unit, recommended, onClose }: { itemId: string; unit: RentalUnit; recommended: number; onClose: () => void }) {
+  const { state, dispatch } = useStore()
   const { toast } = useNav()
   const [amount, setAmount] = useState(Math.round(recommended * 0.85 / 50) * 50)
-  const [pending, setPending] = useState<Offer | null>(null)
-  const timer = useRef<ReturnType<typeof setTimeout>>()
+  const [sentId, setSentId] = useState<string | null>(null)
 
-  useEffect(() => () => clearTimeout(timer.current), [])
+  const sent = sentId ? state.offers.find((o) => o.id === sentId) : null
 
   const min = Math.round(recommended * 0.5 / 50) * 50
   const max = recommended
+  const pct = Math.round((amount / recommended) * 100)
 
   function submit() {
+    buzz()
     const offer: Offer = {
-      id: uid(), itemId, days, recommendedPerDay: recommended, offeredPerDay: amount,
-      status: 'pending', createdAt: new Date().toISOString(),
+      id: uid(), itemId, unit, recommendedRate: recommended, offeredRate: amount,
+      status: 'pending', createdAt: Date.now(),
+      resolveAt: Date.now() + 1400 + Math.random() * 1200,
+      expiresAt: Date.now() + OFFER_TTL_MS,
     }
-    setPending(offer)
-    // simulate the owner reviewing your offer
-    timer.current = setTimeout(() => {
-      const verdict = evaluateOffer(recommended, amount)
-      const resolved: Offer = { ...offer, status: verdict.status, counterPerDay: verdict.counter }
-      dispatch({ type: 'ADD_OFFER', offer: resolved })
-      setPending(resolved)
-      if (verdict.status === 'accepted') toast('Offer accepted! Price locked in 🎉')
-    }, 1400)
+    dispatch({ type: 'ADD_OFFER', offer })
+    setSentId(offer.id)
   }
 
   function acceptCounter() {
-    if (!pending) return
-    dispatch({ type: 'ACCEPT_COUNTER', offerId: pending.id })
-    toast('Counter-offer accepted — price locked in 🤝')
+    if (!sent) return
+    buzz()
+    dispatch({ type: 'ACCEPT_COUNTER', offerId: sent.id })
+    toast('Counter accepted — price locked for 24h 🤝')
     onClose()
   }
 
-  const pct = Math.round((amount / recommended) * 100)
-
   return (
     <Modal title="🤝 Offer your price" onClose={onClose}>
-      {!pending ? (
+      {!sent ? (
         <>
           <p className="muted" style={{ fontSize: 14, marginTop: 0 }}>
-            Recommended fare is <b>{money(recommended)}/day</b> for {days} day{days > 1 ? 's' : ''}. Name your price — the owner can accept, counter or decline. Fair offers get fast yeses.
+            Recommended fare is <b>{money(recommended)}/{unit}</b>. Name your price — the owner accepts, counters or declines.
+            Accepted deals stay locked for 24 hours, even if you change dates.
           </p>
           <div className="fare-box">
-            <div className="fare-amount">{money(amount)} /day</div>
+            <div className="fare-amount">{money(amount)} /{unit}</div>
             <div className="muted small">{pct}% of recommended {pct >= 92 ? '· 🟢 very likely accepted' : pct >= 72 ? '· 🟡 may get countered' : '· 🔴 likely declined'}</div>
             <input
               className="offer-slider" type="range" min={min} max={max} step={50}
               value={amount} onChange={(e) => setAmount(Number(e.target.value))}
+              aria-label="Your offer amount"
             />
             <div style={{ display: 'flex', justifyContent: 'space-between' }} className="muted small">
               <span>{money(min)}</span><span>{money(max)}</span>
@@ -291,84 +461,93 @@ function OfferModal({ itemId, days, recommended, onClose }: { itemId: string; da
           <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={submit}>
             Send offer to owner
           </button>
+          <p className="muted small" style={{ textAlign: 'center', marginBottom: 0 }}>
+            You can close this — we’ll notify you when the owner responds.
+          </p>
         </>
-      ) : pending.status === 'pending' ? (
+      ) : sent.status === 'pending' ? (
         <div className="empty-state" style={{ padding: '30px 10px' }}>
           <div className="big">⏳</div>
-          <p>Offer of <b>{money(pending.offeredPerDay)}/day</b> sent.<br />Waiting for the owner…</p>
+          <p>Offer of <b>{money(sent.offeredRate)}/{unit}</b> sent.<br />The owner is looking at it…</p>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>Close — notify me</button>
         </div>
-      ) : pending.status === 'accepted' ? (
+      ) : sent.status === 'accepted' ? (
         <>
-          <div className="offer-status accepted">✅ Accepted! You locked in {money(pending.offeredPerDay)}/day (was {money(recommended)}).</div>
+          <div className="offer-status accepted">✅ Accepted! Locked at {money(sent.offeredRate)}/{unit} (was {money(recommended)}) for 24h.</div>
           <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={onClose}>Book at this price</button>
         </>
-      ) : pending.status === 'countered' ? (
+      ) : sent.status === 'countered' ? (
         <>
           <div className="offer-status countered">
-            ↩️ Owner countered with <b>{money(pending.counterPerDay!)}/day</b> (you offered {money(pending.offeredPerDay)}).
+            ↩️ Owner countered with <b>{money(sent.counterRate!)}/{unit}</b> (you offered {money(sent.offeredRate)}).
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button className="btn btn-primary" style={{ flex: 1 }} onClick={acceptCounter}>Accept counter</button>
-            <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setPending(null)}>Try again</button>
+            <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setSentId(null)}>Try again</button>
           </div>
         </>
       ) : (
         <>
-          <div className="offer-status declined">❌ Declined — that one was too low. Try something closer to the recommended fare.</div>
-          <button className="btn btn-outline btn-block" style={{ marginTop: 12 }} onClick={() => setPending(null)}>Make a new offer</button>
+          <div className="offer-status declined">❌ Declined — too low. Try something closer to the recommended fare.</div>
+          <button className="btn btn-outline btn-block" style={{ marginTop: 12 }} onClick={() => setSentId(null)}>Make a new offer</button>
         </>
       )}
     </Modal>
   )
 }
 
-/* ---------------- Chat with owner ---------------- */
-const OWNER_REPLIES = [
-  'Salaam! Yes, it’s available for those dates. 👍',
-  'We can include an extra battery at no charge if you book today.',
-  'Pickup any time after 8am works. Delivery also possible!',
-  'It was serviced last week — everything is in perfect shape.',
-  'For multi-day bookings I can be flexible on the rate, send an offer!',
-]
-
+/* ---------------- chat: typing indicator, read receipts, replies survive closing ---------------- */
 function ChatModal({ ownerId, ownerName, itemName, onClose }: { ownerId: string; ownerName: string; itemName: string; onClose: () => void }) {
   const { state, dispatch } = useStore()
   const [text, setText] = useState('')
-  const timer = useRef<ReturnType<typeof setTimeout>>()
-  const msgs = state.chats[ownerId] ?? []
   const boxRef = useRef<HTMLDivElement>(null)
+  const thread = state.chats[ownerId]
+  const msgs = thread?.messages ?? []
+  const typing = Boolean(thread?.typingUntil && thread.typingUntil > Date.now())
+
+  useEffect(() => {
+    dispatch({ type: 'READ_CHAT', ownerId })
+  }, [ownerId, msgs.length, dispatch])
 
   useEffect(() => {
     boxRef.current?.scrollTo({ top: boxRef.current.scrollHeight })
-  }, [msgs.length])
-  useEffect(() => () => clearTimeout(timer.current), [])
+  }, [msgs.length, typing])
 
   function send() {
     const t = text.trim()
     if (!t) return
-    dispatch({ type: 'ADD_CHAT', ownerId, message: { id: uid(), from: 'me', text: t, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) } })
+    buzz()
+    dispatch({
+      type: 'ADD_CHAT', ownerId,
+      message: { id: uid(), from: 'me', text: t, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), at: Date.now() },
+    })
     setText('')
-    const reply = OWNER_REPLIES[Math.floor(Math.random() * OWNER_REPLIES.length)]
-    timer.current = setTimeout(() => {
-      dispatch({ type: 'ADD_CHAT', ownerId, message: { id: uid(), from: 'owner', text: reply, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) } })
-    }, 1200)
   }
 
   return (
     <Modal title={`💬 ${ownerName}`} onClose={onClose}>
       <p className="muted small" style={{ marginTop: 0 }}>Asking about: {itemName}</p>
       <div className="chat-box" ref={boxRef}>
-        {msgs.length === 0 && <div className="muted small" style={{ textAlign: 'center', padding: 20 }}>Say salaam — owners reply in minutes.</div>}
-        {msgs.map((m) => (
-          <div key={m.id} className={`chat-msg ${m.from}`}>{m.text}</div>
-        ))}
+        {msgs.length === 0 && <div className="muted small" style={{ textAlign: 'center', padding: 20 }}>Say salaam — owners reply in minutes. Replies arrive even if you close this.</div>}
+        {msgs.map((m, i) => {
+          const delivered = m.from === 'me' && msgs.slice(i + 1).some((x) => x.from === 'owner')
+          return (
+            <div key={m.id} className={`chat-msg ${m.from}`}>
+              {m.text}
+              {m.from === 'me' && <span className="ticks">{delivered ? '✓✓' : '✓'}</span>}
+            </div>
+          )
+        })}
+        {typing && <div className="typing">{ownerName} is typing<i>…</i></div>}
       </div>
       <div className="chat-input-row">
         <input
           value={text}
           placeholder="Type a message…"
+          enterKeyHint="send"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && send()}
+          aria-label="Message"
         />
         <button className="btn btn-primary btn-sm" onClick={send}>Send</button>
       </div>
@@ -376,19 +555,20 @@ function ChatModal({ ownerId, ownerName, itemName, onClose }: { ownerId: string;
   )
 }
 
-/* ---------------- Report ---------------- */
+/* ---------------- report: case numbers + block ---------------- */
 const REPORT_REASONS = ['Item not as described', 'No-show / late handover', 'Unsafe or damaged equipment', 'Inappropriate behaviour', 'Suspected scam or fraud', 'Other']
 
-export function ReportModal({ targetName, orderId, onClose }: { targetName: string; orderId?: string; onClose: () => void }) {
+export function ReportModal({ targetName, ownerId, orderId, onClose }: { targetName: string; ownerId?: string; orderId?: string; onClose: () => void }) {
   const { dispatch } = useStore()
   const { toast } = useNav()
   const [reason, setReason] = useState(REPORT_REASONS[0])
   const [note, setNote] = useState('')
+  const [block, setBlock] = useState(false)
 
   return (
     <Modal title={`🚩 Report ${targetName}`} onClose={onClose}>
       <p className="muted" style={{ fontSize: 14, marginTop: 0 }}>
-        Reports go to our Trust & Safety team and are reviewed within 24 hours. Serious reports can freeze payouts and suspend accounts.
+        Reports go to Trust & Safety and get a case number you can track in your profile. Serious reports freeze payouts and suspend accounts.
       </p>
       <label className="field">
         Reason
@@ -400,12 +580,22 @@ export function ReportModal({ targetName, orderId, onClose }: { targetName: stri
         Details (optional)
         <input value={note} placeholder="Tell us what happened…" onChange={(e) => setNote(e.target.value)} />
       </label>
+      {ownerId && (
+        <label className="toggle-row">
+          <input type="checkbox" checked={block} onChange={(e) => setBlock(e.target.checked)} />
+          <span><b>Block {targetName}</b> — hide their listings and stop messages.</span>
+        </label>
+      )}
       <button
         className="btn btn-primary btn-block"
         style={{ marginTop: 14 }}
         onClick={() => {
-          dispatch({ type: 'REPORT', orderId, report: { id: uid(), targetName, reason, note, date: todayISO() } })
-          toast('Report submitted — Trust & Safety will review it 🚩')
+          const caseNo = `TS-${Date.now().toString().slice(-6)}`
+          dispatch({
+            type: 'REPORT', orderId, block: block ? ownerId : undefined,
+            report: { id: uid(), caseNo, targetName, reason, note, date: todayISO(), status: 'under_review' },
+          })
+          toast(`Report filed — case ${caseNo} 🚩`)
           onClose()
         }}
       >

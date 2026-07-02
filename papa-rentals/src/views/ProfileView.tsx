@@ -1,6 +1,7 @@
+import { getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { useStore } from '../store'
-import { money } from '../utils'
+import { GOLD_POINTS, SILVER_POINTS, buzz, money } from '../utils'
 import { Badge, Stars } from '../components/ui'
 
 export default function ProfileView() {
@@ -8,9 +9,15 @@ export default function ProfileView() {
   const { state, dispatch } = useStore()
 
   const completed = state.orders.filter((o) => o.status === 'completed')
-  const ownerRatings = completed.map((o) => o.ownerRatingOfMe ?? 5)
+  const ownerRatings = completed.map((o) => o.ownerRatingOfMe).filter((r): r is number => r != null)
   const myRating = ownerRatings.length ? ownerRatings.reduce((a, b) => a + b, 0) / ownerRatings.length : 5
-  const tier = state.points >= 2000 ? '🥇 Gold Papa' : state.points >= 500 ? '🥈 Silver Papa' : '🥉 Bronze Papa'
+  const tier = state.points >= GOLD_POINTS ? '🥇 Gold Papa' : state.points >= SILVER_POINTS ? '🥈 Silver Papa' : '🥉 Bronze Papa'
+  const nextTier = state.points >= GOLD_POINTS ? null : state.points >= SILVER_POINTS
+    ? { name: '🥇 Gold', at: GOLD_POINTS }
+    : { name: '🥈 Silver', at: SILVER_POINTS }
+  const acceptedOffers = state.offers.filter((o) => o.status === 'accepted').length
+  const chatThreads = Object.entries(state.chats).filter(([, t]) => t.messages.length > 0)
+  const unreadTotal = chatThreads.reduce((s, [, t]) => s + t.unread, 0)
 
   return (
     <div className="section">
@@ -19,10 +26,10 @@ export default function ProfileView() {
       <div className="panel">
         <div className="owner-row">
           <div className="owner-avatar">🎬</div>
-          <div style={{ flex: 1 }}>
-            <b>Filmmaker <Badge tone="green">✔︎ ID Verified</Badge> <Badge tone="purple">{tier}</Badge></b>
-            <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              Your renter rating: <Stars value={myRating} /> {myRating.toFixed(1)} · {completed.length} completed rental{completed.length === 1 ? '' : 's'}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <b>{state.profile.name || 'Filmmaker'} <Badge tone="green">✔︎ ID Verified</Badge> <Badge tone="purple">{tier}</Badge></b>
+            <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              📍 {state.profile.city} · renter rating <Stars value={myRating} size={12} /> {myRating.toFixed(1)} · {completed.length} completed
             </div>
           </div>
         </div>
@@ -32,10 +39,10 @@ export default function ProfileView() {
       </div>
 
       <div className="wallet-card">
-        <div className="muted" style={{ color: '#d6d3d1', fontSize: 13 }}>👛 Papa Wallet</div>
+        <div style={{ color: '#d6d3d1', fontSize: 13 }}>👛 Papa Wallet</div>
         <div className="balance">{money(state.walletBalance)}</div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button className="btn btn-primary btn-sm" onClick={() => { dispatch({ type: 'ADD_WALLET', amount: 10000 }); toast('Rs 10,000 added to wallet 👛') }}>
+          <button className="btn btn-primary btn-sm" onClick={() => { buzz(); dispatch({ type: 'ADD_WALLET', amount: 10000 }); toast('Rs 10,000 added to wallet 👛') }}>
             + Top up Rs 10,000
           </button>
         </div>
@@ -46,6 +53,20 @@ export default function ProfileView() {
         <div className="stat-tile"><div className="stat-num">📦 {state.orders.length}</div><div className="muted small">Orders</div></div>
         <div className="stat-tile"><div className="stat-num">♥ {state.wishlist.length}</div><div className="muted small">Wishlist</div></div>
       </div>
+
+      {nextTier && (
+        <div className="panel" style={{ marginTop: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700 }}>
+            <span>{tier}</span><span className="muted">{nextTier.name} at {nextTier.at} pts</span>
+          </div>
+          <div className="histo" style={{ gridTemplateColumns: '1fr', margin: '8px 0 0' }}>
+            <div className="bar" style={{ height: 10 }}><i style={{ width: `${Math.min(100, (state.points / nextTier.at) * 100)}%` }} /></div>
+          </div>
+          <p className="muted small" style={{ margin: '8px 0 0' }}>
+            {nextTier.at - state.points} points to go — earn 1 pt per Rs 100 spent, redeem 1 pt = Rs 1 at checkout.
+          </p>
+        </div>
+      )}
 
       <div className="list-row" style={{ cursor: 'pointer' }} onClick={() => go({ name: 'browse', wishlistOnly: true })}>
         <span>♥ Your wishlist</span><span className="muted">{state.wishlist.length} items →</span>
@@ -60,21 +81,53 @@ export default function ProfileView() {
       <div className="list-row">
         <span>🤝 Offers you've made</span>
         <span className="muted">
-          {state.offers.length === 0 ? 'None yet' : `${state.offers.filter((o) => o.status === 'accepted').length}/${state.offers.length} accepted`}
+          {state.offers.length === 0 ? 'None yet' : `${acceptedOffers}/${state.offers.length} accepted`}
         </span>
       </div>
       <div className="list-row">
-        <span>🚩 Reports filed</span><span className="muted">{state.reports.length}</span>
+        <span>💬 Chats</span>
+        <span className="muted">
+          {chatThreads.length === 0 ? 'None yet' : `${chatThreads.length} thread${chatThreads.length > 1 ? 's' : ''}${unreadTotal > 0 ? ` · ${unreadTotal} unread` : ''}`}
+        </span>
       </div>
-      <div className="list-row">
-        <span>🛡️ Trust & Safety</span><span className="muted">24/7 on-set support</span>
-      </div>
+
+      {state.reports.length > 0 && (
+        <div className="panel" style={{ marginTop: 14 }}>
+          <h3 style={{ fontSize: 15 }}>🚩 Your reports</h3>
+          {state.reports.map((r) => (
+            <div key={r.id} className="review">
+              <div className="review-head">
+                <b>{r.caseNo} · {r.targetName}</b>
+                <Badge tone={r.status === 'under_review' ? 'orange' : 'green'}>{r.status === 'under_review' ? 'Under review' : 'Resolved'}</Badge>
+              </div>
+              <div className="muted small">{r.reason} · filed {r.date}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {state.blockedOwners.length > 0 && (
+        <div className="panel" style={{ marginTop: 14 }}>
+          <h3 style={{ fontSize: 15 }}>🚫 Blocked</h3>
+          {state.blockedOwners.map((id) => (
+            <div key={id} className="review" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{getOwner(id).avatar} {getOwner(id).name}</span>
+              <span className="muted small">listings hidden</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="panel" style={{ marginTop: 14 }}>
         <h3 style={{ fontSize: 15 }}>🏆 PapaPoints perks</h3>
-        <p className="muted small">
-          Earn 1 point per Rs 100 spent. <b>Silver (500)</b>: free van delivery once a month. <b>Gold (2000)</b>: 5% off everything + priority support + early access to hero gear.
+        <p className="muted small" style={{ marginBottom: 0 }}>
+          Earn 1 point per Rs 100 spent, redeem anytime at checkout. <b>Silver (500)</b>: one free van delivery every month — applied automatically.
+          <b> Gold (2000)</b>: 5% off everything, automatically, plus priority support and early access to hero gear.
         </p>
+      </div>
+
+      <div className="list-row">
+        <span>🛡️ Trust & Safety</span><span className="muted">24/7 on-set support</span>
       </div>
     </div>
   )

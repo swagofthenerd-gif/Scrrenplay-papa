@@ -38,6 +38,12 @@ export interface Review {
   text: string
   date: string
   role: 'renter' | 'owner'
+  ownerReply?: string
+}
+
+export interface DateRange {
+  start: string
+  end: string
 }
 
 export interface Item {
@@ -56,7 +62,10 @@ export interface Item {
   timesRented: number
   instantBook: boolean
   offersAccepted: boolean
+  insuranceRequired?: boolean
+  hourly?: boolean // studios etc. can also be booked by the hour
   flashDeal?: { percentOff: number; endsInHours: number }
+  bookedRanges?: DateRange[] // dates already rented out by others
   reviews: Review[]
 }
 
@@ -80,26 +89,39 @@ export interface TransportOption {
   detail: string
 }
 
+export type RentalUnit = 'day' | 'hour'
+
 export interface Booking {
   itemId: string
   startDate: string
   endDate: string
   pickupTime: string
   qty: number
+  unit: RentalUnit
+  hours: number // used when unit === 'hour'
   insurance: boolean
   operator: boolean
   transport: TransportId
-  agreedPricePerDay: number // recommended, or the negotiated price
+  rate: number // agreed price per unit (day or hour) — recommended or negotiated
   negotiated: boolean
 }
 
 export type OrderStatus =
+  | 'requested'
   | 'confirmed'
   | 'preparing'
   | 'in_transit'
   | 'in_use'
   | 'returned'
   | 'completed'
+  | 'cancelled'
+
+export interface Driver {
+  name: string
+  phone: string
+  vehicle: string
+  pin: string // handover PIN, foodpanda-style
+}
 
 export interface Order {
   id: string
@@ -111,28 +133,43 @@ export interface Order {
   insuranceFee: number
   operatorFee: number
   serviceFee: number
-  discount: number
+  promoDiscount: number
+  tierDiscount: number
+  vanPerk: number
   promoCode?: string
   walletUsed: number
-  deposit: number
-  total: number
+  pointsUsed: number
+  depositHold: number
+  depositReleased?: boolean
+  total: number // amount actually charged (deposit is a hold, not a charge)
   pointsEarned: number
+  paymentMethod: string
+  address: string
+  approveAt?: number // for request-to-book orders
+  driver?: Driver
+  lineRatings?: number[]
   myRatingOfOwner?: number
   ownerRatingOfMe?: number
   reported?: boolean
+  cancelledAt?: string
+  cancellationFee?: number
+  refundedToWallet?: number
+  extendedDays?: number
 }
 
-export type OfferStatus = 'pending' | 'accepted' | 'countered' | 'declined'
+export type OfferStatus = 'pending' | 'accepted' | 'countered' | 'declined' | 'expired'
 
 export interface Offer {
   id: string
   itemId: string
-  days: number
-  recommendedPerDay: number
-  offeredPerDay: number
-  counterPerDay?: number
+  unit: RentalUnit
+  recommendedRate: number
+  offeredRate: number
+  counterRate?: number
   status: OfferStatus
-  createdAt: string
+  createdAt: number
+  resolveAt?: number // owner "reviews" the offer at this time
+  expiresAt: number // accepted deals expire like inDrive fares
 }
 
 export interface ChatMessage {
@@ -140,24 +177,65 @@ export interface ChatMessage {
   from: 'me' | 'owner'
   text: string
   time: string
+  at: number
+}
+
+export interface ChatThread {
+  messages: ChatMessage[]
+  unread: number
+  typingUntil?: number
+  pendingReplyAt?: number
 }
 
 export interface UserReport {
   id: string
+  caseNo: string
   targetName: string
   reason: string
   note: string
   date: string
+  status: 'under_review' | 'resolved'
+}
+
+export interface AppNotification {
+  id: string
+  emoji: string
+  title: string
+  body?: string
+  at: number
+  read: boolean
+  link?: string // hash route to open
+}
+
+export interface Address {
+  id: string
+  label: string
+  detail: string
+}
+
+export interface Profile {
+  name: string
+  city: string
+  onboarded: boolean
 }
 
 export interface AppState {
+  profile: Profile
   cart: Booking[]
   wishlist: string[]
   orders: Order[]
   offers: Offer[]
-  chats: Record<string, ChatMessage[]> // keyed by ownerId
+  chats: Record<string, ChatThread>
+  notifications: AppNotification[]
   walletBalance: number
   points: number
-  myReviews: Record<string, Review> // itemId -> my review
+  myReviews: Record<string, Review[]>
   reports: UserReport[]
+  addresses: Address[]
+  selectedAddressId: string
+  recentSearches: string[]
+  recentlyViewed: string[]
+  blockedOwners: string[]
+  promoCodesUsed: string[]
+  freeVanPerkMonth?: string // YYYY-MM when the Silver free-delivery perk was last used
 }

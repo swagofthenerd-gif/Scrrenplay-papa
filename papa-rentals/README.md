@@ -25,6 +25,19 @@ Papa Rentals combines the best ideas from the apps that dominate their categorie
 - 👛 **Wallet, promos & points**: welcome credit, promo codes (`PAPA10`, `FIRSTSHOOT`, `INDIE5`), PapaPoints tiers, referral rewards
 - ⚡ **Flash deals & kits**: time-limited discounts and designer-curated bundles at package prices
 
+## v2 — the "breeze on any device" release
+
+Every gap from the competitive audit, closed:
+
+- **Real navigation**: hash router — hardware back button, deep links (`#/item/i1`), shareable URLs, per-route scroll restoration
+- **Availability engine**: per-item booked ranges, 14-day availability strip, double-booking blocked with "next free date — tap to apply"
+- **Money done right**: deposits are authorization *holds* (auto-released, never charged), cancellation flow with 48h policy + wallet refunds, per-owner transport fees, promo rules (first-order-only / min subtotal / single-use) with clear errors, PapaPoints redemption, Gold 5% + Silver free-delivery perks applied automatically, downloadable receipts, JazzCash/Easypaisa/card/COD selection
+- **Sticky negotiation**: accepted offers lock for 24h and survive date changes (you always keep the better of deal vs. recommended); offers resolve via notifications even with the sheet closed
+- **Mobile feel**: scroll-locked swipe-to-dismiss bottom sheets, 44px+ touch targets, safe-area + `dvh` layout, haptic taps, dark mode, reduced-motion support, real ticking flash-deal countdowns
+- **PWA**: installable with manifest + icons; service worker makes it open instantly and work fully offline
+- **Trust**: owner-approval flow for non-instant listings, courier card with call button + handover PIN, blind two-way ratings published together, per-item ratings with half-stars + histograms, owner replies to reviews, report case numbers with status tracking, block owners
+- **Discovery**: typo-tolerant search with suggestions + recent searches, recently-viewed row, "people also rented" cross-sell, wishlist price-drop alerts, Bayesian-weighted "top rated" sort, book-again, hourly studio rentals, mid-shoot rental extension, address book, delivery time slots, 10-second onboarding
+
 ## Run it
 
 ```bash
