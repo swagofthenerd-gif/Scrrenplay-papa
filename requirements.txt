@@ -1,2 +1,7 @@
 PyQt6>=6.6
 reportlab>=4.0
+# lightplot (AI lighting visualization)
+Pillow>=10.0
+numpy>=1.26
+# optional, for the Claude vision analyzer:
+# anthropic>=0.40
