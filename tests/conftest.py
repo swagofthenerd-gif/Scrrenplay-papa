@@ -23,7 +23,7 @@ def synthetic_portrait(key_side: str = "left", softness: float = 0.5,
     lx = -1.0 if key_side == "left" else 1.0
     nx = (xx - cx) / r
     ny = (yy - cy) / r
-    lam = np.clip(nx * lx * -1.0 + ny * -0.4 + 0.55, 0.0, 1.6)
+    lam = np.clip(nx * lx + ny * -0.4 + 0.55, 0.0, 1.6)
     # softness flattens the curve (soft light wraps)
     gamma = 2.4 - 1.8 * softness
     shade = np.clip(lam, 0, 1) ** gamma

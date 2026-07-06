@@ -109,7 +109,7 @@ def analyze_image(path_or_image, source_name: str = "") -> LightingRig:
     # dx > 0 means the luminance centroid is on image-right, so the key is camera-left
     # (positive azimuth). dx < 0 → centroid image-left → key is camera-right (negative).
     side_amount = np.clip((ratio - 1.2) / 6.0, 0.0, 1.0)     # 0 flat .. 1 side
-    azimuth = math.copysign(15.0 + 75.0 * side_amount, dx)
+    azimuth = -math.copysign(15.0 + 75.0 * side_amount, dx)
     if abs(dx) < 0.005:                                       # symmetric = frontal
         azimuth = 0.0
 
