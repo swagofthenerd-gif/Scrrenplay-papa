@@ -1,7 +1,5 @@
 import json
 
-import pytest
-
 from lightplot.analyze import analyze_image
 from lightplot.rig import LightingRig, ROLE_KEY
 from tests.conftest import synthetic_portrait
