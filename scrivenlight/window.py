@@ -25,6 +25,7 @@ from .elements import ElementType
 from .theme import DARK_QSS, LIGHT_QSS
 from .tab_script import ScriptTab
 from .tab_storyboard import StoryboardTab
+from .tab_lighting import LightingTab
 from .tabs_grid import ShotListTab, ScheduleTab, ContactsTab, BudgetTab
 from .tabs_callsheet import CallSheetsTab
 
@@ -85,19 +86,21 @@ class MainWindow(QMainWindow):
         self.script_tab = ScriptTab()
         self.shotlist_tab = ShotListTab(self.project)
         self.storyboard_tab = StoryboardTab(self.project)
+        self.lighting_tab = LightingTab(self.project)
         self.schedule_tab = ScheduleTab(self.project)
         self.callsheets_tab = CallSheetsTab(self.project)
         self.contacts_tab = ContactsTab(self.project)
         self.budget_tab = BudgetTab(self.project)
 
         for w in (self.script_tab, self.shotlist_tab, self.storyboard_tab,
-                  self.schedule_tab, self.callsheets_tab, self.contacts_tab,
-                  self.budget_tab):
+                  self.lighting_tab, self.schedule_tab, self.callsheets_tab,
+                  self.contacts_tab, self.budget_tab):
             w.changed.connect(self._mark_dirty)
 
         self.tabs.addTab(self.script_tab, "  Script  ")
         self.tabs.addTab(self.shotlist_tab, "  Shot List  ")
         self.tabs.addTab(self.storyboard_tab, "  Storyboard  ")
+        self.tabs.addTab(self.lighting_tab, "  Lighting  ")
         self.tabs.addTab(self.schedule_tab, "  Schedule  ")
         self.tabs.addTab(self.callsheets_tab, "  Call Sheets  ")
         self.tabs.addTab(self.contacts_tab, "  Contacts  ")
@@ -122,6 +125,7 @@ class MainWindow(QMainWindow):
         self._add(pdfm, "Call Sheet (current)…", "", self.export_callsheet_pdf)
         self._add(pdfm, "Shot List…", "", self.export_shotlist_pdf)
         self._add(pdfm, "Storyboard…", "", self.export_storyboard_pdf)
+        self._add(pdfm, "Lighting Breakdown (current)…", "", self.export_lightplan_pdf)
         filem.addSeparator()
         self._add(filem, "Quit", "Ctrl+Q", self.close)
 
@@ -141,7 +145,7 @@ class MainWindow(QMainWindow):
             fmt.addAction(a)
 
         go = m.addMenu("&Go")
-        names = ["Script", "Shot List", "Storyboard", "Schedule",
+        names = ["Script", "Shot List", "Storyboard", "Lighting", "Schedule",
                  "Call Sheets", "Contacts", "Budget"]
         for i, n in enumerate(names):
             a = QAction(n, self)
@@ -212,6 +216,8 @@ class MainWindow(QMainWindow):
     def apply_theme(self):
         self.setStyleSheet(DARK_QSS if self._dark else LIGHT_QSS)
         self.theme_btn.setText("☀  Light" if self._dark else "☾  Dark")
+        if hasattr(self, "lighting_tab"):
+            self.lighting_tab.set_dark(self._dark)
 
     def toggle_theme(self):
         self._dark = not self._dark
@@ -237,6 +243,7 @@ class MainWindow(QMainWindow):
         self.script_tab.load(self.project.screenplay)
         self.shotlist_tab.rebind(self.project)
         self.storyboard_tab.rebind(self.project)
+        self.lighting_tab.rebind(self.project)
         self.schedule_tab.rebind(self.project)
         self.callsheets_tab.rebind(self.project)
         self.contacts_tab.rebind(self.project)
@@ -356,6 +363,23 @@ class MainWindow(QMainWindow):
             return
         self._sync_project_from_ui()
         self._run_pdf(lambda: _pdf().export_storyboard_pdf(self.project, path), path)
+
+    def export_lightplan_pdf(self):
+        lp = self.lighting_tab.current_plan()
+        if lp is None:
+            QMessageBox.information(self, "No lighting plan",
+                                    "Select or create a lighting plan first.")
+            return
+        path = self._pdf_save_path((lp.get("name") or "lighting") + "_breakdown")
+        if not path:
+            return
+        self._sync_project_from_ui()
+        import tempfile, os
+        dgm = os.path.join(tempfile.gettempdir(), "scrivenlight_lightplan.png")
+        if not self.lighting_tab.render_diagram_png(dgm):
+            dgm = None
+        self._run_pdf(
+            lambda: _pdf().export_lightplan_pdf(self.project, lp, dgm, path), path)
 
     def _run_pdf(self, fn, path):
         try:

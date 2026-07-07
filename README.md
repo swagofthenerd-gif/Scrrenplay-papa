@@ -19,6 +19,16 @@ saved to a single project file.
   T-stop, filter, frame rate, shutter, ISO, white balance, codec, support/rig,
   full lighting setup (key/fill/background units), sound, VFX, props, wardrobe,
   takes, and notes. Generate one frame per scene; export to PDF.
+- **Lighting** — a DP's **lighting breakdown**: a draggable top-down diagram
+  where you drop numbered fixtures (key, fill/bounce, back/rim, diffusion,
+  practical, negative-fill flags, ambient spill) around a subject and camera.
+  Each fixture carries its unit, modifier, intensity and gel; the numbered
+  **legend** and **set notes** read straight off the diagram. Attach a
+  reference frame, seed a plan from any storyboard frame's Lighting Setup with
+  **Generate from Storyboard**, and export a one-page breakdown to PDF.
+  Optional **Draft from Frame** uses a vision model to propose a fixture layout
+  from a reference still (needs `ANTHROPIC_API_KEY` + the `anthropic` package;
+  it only ever suggests a starting point).
 - **Schedule** — stripboard shooting schedule (Day, Scene, INT/EXT, Set, D/N,
   Pages, Cast, Time). **Generate from Script** auto-fills INT/EXT and Day/Night
   by parsing each scene heading.

@@ -224,6 +224,109 @@ def project_camera_default(storyboard):
     return ""
 
 
+# ---- Lighting: schematic lighting-diagram / "lighting breakdown" ----
+# A lighting plan is a top-down schematic of one setup: a room with a camera,
+# a subject, and numbered fixtures (key / fill / back / practical / flags /
+# diffusion / ambient). It mirrors the breakdown a DP or gaffer hands off so a
+# setup is reproducible — each fixture carries its modifier, intensity and gel,
+# and the legend + set notes read straight off what is on the plan.
+#
+# Positions are stored normalized (0..1) inside the plan area so the diagram is
+# resolution-independent and the .slt stays small and human-readable.
+
+FIXTURE_TYPES = {
+    "key":       {"label": "Key Light",       "color": "#4d8dff", "aims": True},
+    "fill":      {"label": "Fill / Bounce",   "color": "#ffb14d", "aims": True},
+    "back":      {"label": "Back / Rim",      "color": "#b07cff", "aims": True},
+    "diffusion": {"label": "Diffusion Frame", "color": "#7fd0d8", "aims": False},
+    "practical": {"label": "Practical",       "color": "#ffd24d", "aims": False},
+    "flag":      {"label": "Neg Fill / Flag", "color": "#4a4a4a", "aims": False},
+    "ambient":   {"label": "Ambient / Spill", "color": "#7fd18c", "aims": False},
+}
+# order fixtures are offered in the toolbar / used for the numbered legend
+FIXTURE_ORDER = ["key", "fill", "back", "diffusion", "practical", "flag", "ambient"]
+
+FIXTURE_MODIFIERS = ["Bare", "Fresnel / Spot", "Softbox", "Book Light",
+                     "Silk / Diffusion", "Full Grid Cloth", "China Ball / Lantern",
+                     "Bounce (Ultrabounce)", "Foam Core / Floppy", "Solid Flag",
+                     "Negative Fill", "Grid / Egg Crate", "Snoot", "Umbrella"]
+
+FIXTURE_INTENSITIES = ["Key", "+2 stops", "+1 stop", "-1 stop", "-2 stops",
+                       "100%", "75%", "50%", "25%", "10%", "Low fill"]
+
+GELS = ["None", "Full CTO", "1/2 CTO", "1/4 CTO", "Full CTB", "1/2 CTB",
+        "1/4 CTB", "Plus Green", "Minus Green", "3200K", "4300K", "5600K",
+        "Warm (practical)", "Lavender", "Steel Blue", "Straw"]
+
+CAMERA_HEIGHTS = ["Floor", "Low", "Below eye", "Eye level",
+                  "Slightly above eye", "High", "Overhead"]
+
+LIGHTPLAN_FIELDS = ["name", "scene", "shot", "reference_image",
+                    "camera_body", "lens", "focal_length", "aperture",
+                    "camera_height", "camera_angle", "set_notes"]
+
+# reuse the storyboard vocabularies so a lighting plan speaks the same language
+LIGHTPLAN_DROPDOWNS = {
+    "camera_body": CAMERA_BODIES, "lens": LENS_SERIES,
+    "focal_length": FOCAL_LENGTHS, "aperture": APERTURES,
+    "camera_height": CAMERA_HEIGHTS, "camera_angle": CAMERA_ANGLES,
+}
+
+
+def new_fixture(ftype="key", x=0.30, y=0.34):
+    return {
+        "type": ftype,
+        "label": FIXTURE_TYPES.get(ftype, {}).get("label", ftype),
+        "unit": "",          # fixture model (from LIGHT_UNITS)
+        "modifier": "",      # softbox / bounce / grid cloth …
+        "intensity": "",     # relative level or %
+        "gel": "",           # colour temp / correction
+        "x": float(x), "y": float(y),
+        "notes": "",
+    }
+
+
+def new_lightplan(name="Lighting Setup"):
+    lp = {k: "" for k in LIGHTPLAN_FIELDS}
+    lp["name"] = name
+    lp["camera_height"] = "Eye level"
+    lp["fixtures"] = []
+    # camera at bottom-centre shooting up the plan; subject in the middle
+    lp["camera"] = {"x": 0.50, "y": 0.86}
+    lp["subject"] = {"x": 0.50, "y": 0.50}
+    return lp
+
+
+# Starter fixture layouts keyed to the storyboard's Lighting Setup names, so
+# "Generate from Storyboard" seeds a sensible diagram you then refine.
+_STARTER_SETUPS = {
+    "Three-Point": [("key", 0.26, 0.30), ("fill", 0.74, 0.40), ("back", 0.58, 0.15)],
+    "High-Key": [("key", 0.28, 0.32), ("fill", 0.72, 0.36), ("back", 0.50, 0.15),
+                 ("ambient", 0.86, 0.68)],
+    "Low-Key": [("key", 0.24, 0.30), ("flag", 0.76, 0.42), ("back", 0.60, 0.15)],
+    "Motivated Practical": [("practical", 0.80, 0.28), ("key", 0.28, 0.34),
+                            ("fill", 0.70, 0.44)],
+    "Soft Wrap": [("key", 0.26, 0.32), ("diffusion", 0.28, 0.20),
+                  ("fill", 0.74, 0.42)],
+    "Hard Light": [("key", 0.24, 0.24), ("flag", 0.74, 0.44)],
+    "Silhouette / Backlit": [("back", 0.50, 0.15), ("flag", 0.28, 0.42),
+                             ("flag", 0.72, 0.42)],
+    "Day Exterior (Negative Fill)": [("key", 0.30, 0.16), ("flag", 0.74, 0.44),
+                                     ("fill", 0.72, 0.62)],
+    "Night Exterior": [("key", 0.24, 0.20), ("back", 0.60, 0.15),
+                       ("practical", 0.82, 0.30)],
+    "Interview": [("key", 0.28, 0.32), ("fill", 0.72, 0.40), ("back", 0.58, 0.15),
+                  ("ambient", 0.86, 0.68)],
+}
+
+
+def starter_fixtures(setup_name):
+    """Return a list of fixtures seeding a common named setup (empty if the
+    name is unknown, e.g. 'Available / Natural')."""
+    specs = _STARTER_SETUPS.get((setup_name or "").strip())
+    return [new_fixture(t, x, y) for (t, x, y) in specs] if specs else []
+
+
 def _blank_row(columns):
     return {c: "" for c in columns}
 
@@ -266,6 +369,7 @@ class Project:
     screenplay: Screenplay = field(default_factory=Screenplay)
     shots: List[Dict[str, Any]] = field(default_factory=list)
     storyboard: List[Dict[str, Any]] = field(default_factory=list)
+    lightplans: List[Dict[str, Any]] = field(default_factory=list)
     schedule: List[Dict[str, Any]] = field(default_factory=list)
     contacts: List[Dict[str, Any]] = field(default_factory=list)
     budget: List[Dict[str, Any]] = field(default_factory=list)
@@ -280,6 +384,7 @@ class Project:
             "screenplay": self.screenplay.to_dict(),
             "shots": self.shots,
             "storyboard": self.storyboard,
+            "lightplans": self.lightplans,
             "schedule": self.schedule,
             "contacts": self.contacts,
             "budget": self.budget,
@@ -298,6 +403,7 @@ class Project:
             p.title = d.get("title", p.title)
         p.shots = d.get("shots", [])
         p.storyboard = d.get("storyboard", [])
+        p.lightplans = d.get("lightplans", [])
         p.schedule = d.get("schedule", [])
         p.contacts = d.get("contacts", [])
         p.budget = d.get("budget", [])
@@ -332,6 +438,38 @@ class Project:
 
     def new_budget_line(self):
         return _blank_row(BUDGET_COLUMNS)
+
+    def new_lightplan(self, name="Lighting Setup"):
+        return new_lightplan(name)
+
+    def merge_lightplans_from_storyboard(self):
+        """Create a lighting plan for each storyboard frame not already
+        represented (keyed by scene/shot), seeding the camera package and a
+        starter fixture layout from the frame's Lighting Setup. Returns the
+        number of plans added."""
+        existing = {(str(lp.get("scene", "")).strip(), str(lp.get("shot", "")).strip())
+                    for lp in self.lightplans}
+        added = 0
+        for fr in self.storyboard:
+            key = (str(fr.get("scene", "")).strip(), str(fr.get("shot", "")).strip())
+            if key in existing:
+                continue
+            subj = fr.get("subject", "") or fr.get("location", "") or "Setup"
+            lp = new_lightplan(
+                f"Sc {fr.get('scene', '?')} / Sh {fr.get('shot', '?')} — {subj}")
+            lp["scene"] = fr.get("scene", "")
+            lp["shot"] = fr.get("shot", "")
+            lp["reference_image"] = fr.get("frame_image", "")
+            lp["camera_body"] = fr.get("camera_body", "")
+            lp["lens"] = fr.get("lens", "")
+            lp["focal_length"] = fr.get("focal_length", "")
+            lp["aperture"] = fr.get("aperture", "")
+            lp["camera_angle"] = fr.get("camera_angle", "")
+            lp["fixtures"] = starter_fixtures(fr.get("lighting_setup", ""))
+            self.lightplans.append(lp)
+            existing.add(key)
+            added += 1
+        return added
 
     def generate_shots_from_script(self):
         """Create one placeholder shot row per scene heading, like
