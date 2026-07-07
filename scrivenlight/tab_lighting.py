@@ -40,15 +40,50 @@ PAD = 48
 NODE_R = 15
 
 
-def _to_scene(nx, ny):
+# --- plan projection (flat top-down) ---
+def _plan_proj(nx, ny):
     return QPointF(PAD + nx * (CANVAS_W - 2 * PAD),
                    PAD + ny * (CANVAS_H - 2 * PAD))
 
 
-def _to_norm(pt):
+def _plan_unproj(pt):
     nx = (pt.x() - PAD) / (CANVAS_W - 2 * PAD)
     ny = (pt.y() - PAD) / (CANVAS_H - 2 * PAD)
-    return max(0.0, min(1.0, nx)), max(0.0, min(1.0, ny))
+    return nx, ny
+
+
+# --- room projection (one-point perspective: a receding floor) ---
+# ny is depth (0 = far / background wall, 1 = near / camera side); the far edge
+# is higher on screen and inset horizontally, so the floor reads as a room seen
+# from the front. Forward and inverse are exact inverses, so drag round-trips.
+ISO_TOP = 132.0
+ISO_BOTTOM = 448.0
+ISO_INSET = 148.0
+ISO_LEFT = 74.0
+ISO_RIGHT = CANVAS_W - 74.0
+WALL_H = 118.0
+
+
+def _room_edges(depth):
+    inset = (1.0 - depth) * ISO_INSET
+    return ISO_LEFT + inset, ISO_RIGHT - inset
+
+
+def _room_proj(nx, ny):
+    y = ISO_TOP + ny * (ISO_BOTTOM - ISO_TOP)
+    left, right = _room_edges(ny)
+    return QPointF(left + nx * (right - left), y)
+
+
+def _room_unproj(pt):
+    depth = (pt.y() - ISO_TOP) / (ISO_BOTTOM - ISO_TOP)
+    left, right = _room_edges(depth)
+    nx = (pt.x() - left) / (right - left) if right != left else 0.5
+    return nx, depth
+
+
+def _clamp01(v):
+    return max(0.0, min(1.0, v))
 
 
 # ============================================================= draggable nodes
@@ -70,11 +105,12 @@ class _Draggable(QGraphicsItem):
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange \
                 and self.scene() is not None:
-            # clamp inside the plan area
-            p = value
-            x = min(max(p.x(), PAD), CANVAS_W - PAD)
-            y = min(max(p.y(), PAD), CANVAS_H - PAD)
-            value = QPointF(x, y)
+            # snap onto the valid surface by clamping in normalized space and
+            # re-projecting — keeps items inside the room/plan in either view
+            nx, ny = self._canvas.unproj(value)
+            nx = min(max(nx, 0.0), 1.0)
+            ny = min(max(ny, 0.0), 1.0)
+            value = self._canvas.proj(nx, ny)
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
             self._canvas._on_node_dragged()
         return super().itemChange(change, value)
@@ -99,22 +135,33 @@ class FixtureItem(_Draggable):
 
     def boundingRect(self):
         r = NODE_R + 3
-        return QRectF(-r, -r, 2 * r, 2 * r)
+        # room view raises the head on a stand, so extend the bounds upward
+        top = -r - (28 if self._canvas._mode == "room" else 0)
+        return QRectF(-r, top, 2 * r, (NODE_R + 3) - top)
 
     def paint(self, p, opt, w=None):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         sel = self.isSelected()
+        room = self._canvas._mode == "room"
+        if room:
+            # floor shadow + a little stand so fixtures stand up in the room
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QBrush(QColor(0, 0, 0, 55)))
+            p.drawEllipse(QPointF(0, 2), NODE_R * 0.9, NODE_R * 0.4)
+            p.setPen(QPen(QColor(0, 0, 0, 110), 2))
+            p.drawLine(QPointF(0, 0), QPointF(0, -26))
+        cy = -26 if room else 0
         pen = QPen(QColor("#ffffff") if sel else QColor(0, 0, 0, 90),
                    2.5 if sel else 1.2)
         p.setPen(pen)
         p.setBrush(QBrush(self.color))
-        p.drawEllipse(QPointF(0, 0), NODE_R, NODE_R)
-        # number badge
+        p.drawEllipse(QPointF(0, cy), NODE_R, NODE_R)
+        # number badge, centred on the disc
         p.setPen(QPen(QColor("#101010")
                       if self.color.lightnessF() > 0.5 else QColor("#ffffff")))
         f = QFont(); f.setBold(True); f.setPointSize(10); p.setFont(f)
-        p.drawText(self.boundingRect(), Qt.AlignmentFlag.AlignCenter,
-                   str(self.number))
+        p.drawText(QRectF(-NODE_R, cy - NODE_R, 2 * NODE_R, 2 * NODE_R),
+                   Qt.AlignmentFlag.AlignCenter, str(self.number))
 
 
 class CameraItem(_Draggable):
@@ -170,10 +217,18 @@ class LightCanvas(QGraphicsView):
         self._subj_item = None
         self._beam_items = []
         self._dark = True
+        self._mode = "plan"          # "plan" (top-down) or "room" (isometric)
         self._beam_timer = QTimer(self)
         self._beam_timer.setSingleShot(True)
         self._beam_timer.setInterval(30)
         self._beam_timer.timeout.connect(self._refresh_beams)
+
+    # -------- projection (mode-aware) --------
+    def proj(self, nx, ny):
+        return _room_proj(nx, ny) if self._mode == "room" else _plan_proj(nx, ny)
+
+    def unproj(self, pt):
+        return _room_unproj(pt) if self._mode == "room" else _plan_unproj(pt)
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
@@ -182,6 +237,11 @@ class LightCanvas(QGraphicsView):
     def set_dark(self, dark):
         self._dark = dark
         self.rebuild()
+
+    def set_mode(self, mode):
+        if mode != self._mode:
+            self._mode = mode
+            self.rebuild()
 
     def set_plan(self, lp):
         self._lp = lp
@@ -202,15 +262,15 @@ class LightCanvas(QGraphicsView):
         if self._lp is None:
             return
         if self._cam_item is not None:
-            x, y = _to_norm(self._cam_item.pos())
-            self._lp["camera"] = {"x": x, "y": y}
+            x, y = self.unproj(self._cam_item.pos())
+            self._lp["camera"] = {"x": _clamp01(x), "y": _clamp01(y)}
         if self._subj_item is not None:
-            x, y = _to_norm(self._subj_item.pos())
-            self._lp["subject"] = {"x": x, "y": y}
+            x, y = self.unproj(self._subj_item.pos())
+            self._lp["subject"] = {"x": _clamp01(x), "y": _clamp01(y)}
         for it in self._fx_items:
-            x, y = _to_norm(it.pos())
-            it.fixture["x"] = x
-            it.fixture["y"] = y
+            x, y = self.unproj(it.pos())
+            it.fixture["x"] = _clamp01(x)
+            it.fixture["y"] = _clamp01(y)
 
     # -------- drawing --------
     def rebuild(self):
@@ -220,7 +280,10 @@ class LightCanvas(QGraphicsView):
         self._cam_item = self._subj_item = None
         if self._lp is None:
             return
-        self._draw_room()
+        if self._mode == "room":
+            self._draw_room_iso()
+        else:
+            self._draw_plan()
         subj = self._lp.get("subject", {"x": 0.5, "y": 0.5})
         cam = self._lp.get("camera", {"x": 0.5, "y": 0.86})
 
@@ -228,17 +291,17 @@ class LightCanvas(QGraphicsView):
             self._draw_beam(fx, subj)
 
         self._subj_item = SubjectItem(self, lambda: self.fixtureSelected.emit(-1))
-        self._subj_item.setPos(_to_scene(subj.get("x", 0.5), subj.get("y", 0.5)))
+        self._subj_item.setPos(self.proj(subj.get("x", 0.5), subj.get("y", 0.5)))
         self._scene.addItem(self._subj_item)
 
         self._cam_item = CameraItem(self, lambda: self.fixtureSelected.emit(-1))
-        self._cam_item.setPos(_to_scene(cam.get("x", 0.5), cam.get("y", 0.86)))
+        self._cam_item.setPos(self.proj(cam.get("x", 0.5), cam.get("y", 0.86)))
         self._scene.addItem(self._cam_item)
 
         for i, fx in enumerate(self._lp.get("fixtures", [])):
             it = FixtureItem(self, i + 1, fx,
                              on_select=lambda i=i: self.fixtureSelected.emit(i))
-            it.setPos(_to_scene(fx.get("x", 0.3), fx.get("y", 0.3)))
+            it.setPos(self.proj(fx.get("x", 0.3), fx.get("y", 0.3)))
             self._scene.addItem(it)
             self._fx_items.append(it)
         self.fitInView(self._scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
@@ -247,15 +310,18 @@ class LightCanvas(QGraphicsView):
         for i, it in enumerate(self._fx_items):
             it.setSelected(i == idx)
 
-    def _draw_room(self):
+    def _bg(self):
+        self._scene.setBackgroundBrush(
+            QBrush(QColor("#101116") if self._dark else QColor("#e8e8e5")))
+
+    def _draw_plan(self):
         dark = self._dark
         wall = QColor("#2a2d38") if dark else QColor("#c9cbc8")
         floor = QColor("#181a20") if dark else QColor("#f0f0ee")
         grid = QColor(255, 255, 255, 12) if dark else QColor(0, 0, 0, 12)
         txt = QColor("#6b6e78") if dark else QColor("#9a9c9f")
 
-        self._scene.setBackgroundBrush(
-            QBrush(QColor("#101116") if dark else QColor("#e8e8e5")))
+        self._bg()
         room = QRectF(PAD * 0.6, PAD * 0.6,
                       CANVAS_W - PAD * 1.2, CANVAS_H - PAD * 1.2)
         self._scene.addRect(room, QPen(wall, 3), QBrush(floor))
@@ -277,12 +343,70 @@ class LightCanvas(QGraphicsView):
         t2.setDefaultTextColor(txt)
         t2.setPos(room.left() + 6, room.bottom() - 18)
 
+    def _draw_room_iso(self):
+        """A one-point-perspective open room: receding floor + back and side
+        walls, with a window on the back wall to motivate the key. Purely a
+        backdrop — the same fixtures/camera/subject sit on top."""
+        dark = self._dark
+        self._bg()
+        floor_c = QColor("#20222c") if dark else QColor("#ecece9")
+        back_c = QColor("#2b2e39") if dark else QColor("#dcdcd8")
+        left_c = QColor("#23252f") if dark else QColor("#d2d2ce")
+        right_c = QColor("#191b22") if dark else QColor("#c6c6c2")
+        edge = QColor("#3a3e4b") if dark else QColor("#b8b9b5")
+        grid = QColor(255, 255, 255, 12) if dark else QColor(0, 0, 0, 10)
+        txt = QColor("#6b6e78") if dark else QColor("#9a9c9f")
+
+        # floor corners (in scene space)
+        fl = _room_proj(0, 0); fr = _room_proj(1, 0)      # far left/right
+        nl = _room_proj(0, 1); nr = _room_proj(1, 1)      # near left/right
+
+        def poly(pts):
+            return QPolygonF([QPointF(*p) if not isinstance(p, QPointF) else p
+                              for p in pts])
+
+        def up(pt, h):
+            return QPointF(pt.x(), pt.y() - h)
+
+        # side + back walls first (behind floor grid)
+        self._scene.addPolygon(poly([nl, fl, up(fl, WALL_H), up(nl, WALL_H)]),
+                               QPen(edge, 1.5), QBrush(left_c))
+        self._scene.addPolygon(poly([nr, fr, up(fr, WALL_H), up(nr, WALL_H)]),
+                               QPen(edge, 1.5), QBrush(right_c))
+        self._scene.addPolygon(poly([fl, fr, up(fr, WALL_H), up(fl, WALL_H)]),
+                               QPen(edge, 1.5), QBrush(back_c))
+        # window on the back wall (motivated key source)
+        w0 = _room_proj(0.55, 0); w1 = _room_proj(0.88, 0)
+        win = QColor("#3d5170") if dark else QColor("#cfe0f2")
+        self._scene.addPolygon(
+            poly([up(w0, WALL_H * 0.28), up(w1, WALL_H * 0.28),
+                  up(w1, WALL_H * 0.82), up(w0, WALL_H * 0.82)]),
+            QPen(edge, 1.2), QBrush(win))
+        wlbl = self._scene.addText("WINDOW", QFont("Inter", 6))
+        wlbl.setDefaultTextColor(txt)
+        wlbl.setPos(up(w0, WALL_H * 0.86))
+
+        # floor
+        self._scene.addPolygon(poly([fl, fr, nr, nl]),
+                               QPen(edge, 1.5), QBrush(floor_c))
+        # floor depth grid
+        for t in (0.25, 0.5, 0.75):
+            a = _room_proj(0, t); b = _room_proj(1, t)
+            self._scene.addLine(a.x(), a.y(), b.x(), b.y(), QPen(grid, 1))
+        for t in (0.25, 0.5, 0.75):
+            a = _room_proj(t, 0); b = _room_proj(t, 1)
+            self._scene.addLine(a.x(), a.y(), b.x(), b.y(), QPen(grid, 1))
+
+        t2 = self._scene.addText("CAMERA SIDE", QFont("Inter", 7))
+        t2.setDefaultTextColor(txt)
+        t2.setPos(nl.x(), nl.y() + 2)
+
     def _draw_beam(self, fx, subj):
         ftype = fx.get("type", "key")
         meta = FIXTURE_TYPES.get(ftype, {})
         col = QColor(meta.get("color", "#888888"))
-        fp = _to_scene(fx.get("x", 0.3), fx.get("y", 0.3))
-        sp = _to_scene(subj.get("x", 0.5), subj.get("y", 0.5))
+        fp = self.proj(fx.get("x", 0.3), fx.get("y", 0.3))
+        sp = self.proj(subj.get("x", 0.5), subj.get("y", 0.5))
         if meta.get("aims"):
             # translucent throw toward the subject
             beam = QColor(col); beam.setAlpha(70)
@@ -317,10 +441,10 @@ class LightCanvas(QGraphicsView):
         if self._lp is None or self._subj_item is None:
             return
         subj = {}
-        subj["x"], subj["y"] = _to_norm(self._subj_item.pos())
+        subj["x"], subj["y"] = self.unproj(self._subj_item.pos())
         for it in self._fx_items:
             fx = dict(it.fixture)
-            fx["x"], fx["y"] = _to_norm(it.pos())
+            fx["x"], fx["y"] = self.unproj(it.pos())
             self._draw_beam(fx, subj)
 
 
@@ -407,6 +531,16 @@ class LightingTab(QWidget):
             b.clicked.connect(lambda _=False, t=ftype: self._add_fixture(t))
             bar.addWidget(b)
         bar.addStretch(1)
+        view_lbl = QLabel("VIEW:"); view_lbl.setObjectName("sbFieldLabel")
+        bar.addWidget(view_lbl)
+        self.plan_btn = QToolButton(); self.plan_btn.setObjectName("viewBtn")
+        self.plan_btn.setText("Plan"); self.plan_btn.setCheckable(True)
+        self.plan_btn.setChecked(True)
+        self.room_btn = QToolButton(); self.room_btn.setObjectName("viewBtn")
+        self.room_btn.setText("Room"); self.room_btn.setCheckable(True)
+        self.plan_btn.clicked.connect(lambda: self._set_view("plan"))
+        self.room_btn.clicked.connect(lambda: self._set_view("room"))
+        bar.addWidget(self.plan_btn); bar.addWidget(self.room_btn)
         v.addLayout(bar)
 
         self.canvas = LightCanvas()
@@ -824,6 +958,13 @@ class LightingTab(QWidget):
             self.canvas.set_dark(True)
             self.canvas.select_fixture(self._fx_idx)
         return ok
+
+    def _set_view(self, mode):
+        self.plan_btn.setChecked(mode == "plan")
+        self.room_btn.setChecked(mode == "room")
+        self.canvas.set_mode(mode)
+        # keep the current fixture highlighted after the rebuild
+        self.canvas.select_fixture(self._fx_idx)
 
     # ---------- theme / rebind ----------
     def set_dark(self, dark):
