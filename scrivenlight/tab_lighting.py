@@ -62,6 +62,7 @@ ISO_INSET = 148.0
 ISO_LEFT = 74.0
 ISO_RIGHT = CANVAS_W - 74.0
 WALL_H = 118.0
+HEAD_RAISE = 26.0     # how high a fixture head sits above the floor in room view
 
 
 def _room_edges(depth):
@@ -136,7 +137,7 @@ class FixtureItem(_Draggable):
     def boundingRect(self):
         r = NODE_R + 3
         # room view raises the head on a stand, so extend the bounds upward
-        top = -r - (28 if self._canvas._mode == "room" else 0)
+        top = -r - (int(HEAD_RAISE) + 2 if self._canvas._mode == "room" else 0)
         return QRectF(-r, top, 2 * r, (NODE_R + 3) - top)
 
     def paint(self, p, opt, w=None):
@@ -149,8 +150,8 @@ class FixtureItem(_Draggable):
             p.setBrush(QBrush(QColor(0, 0, 0, 55)))
             p.drawEllipse(QPointF(0, 2), NODE_R * 0.9, NODE_R * 0.4)
             p.setPen(QPen(QColor(0, 0, 0, 110), 2))
-            p.drawLine(QPointF(0, 0), QPointF(0, -26))
-        cy = -26 if room else 0
+            p.drawLine(QPointF(0, 0), QPointF(0, -HEAD_RAISE))
+        cy = -HEAD_RAISE if room else 0
         pen = QPen(QColor("#ffffff") if sel else QColor(0, 0, 0, 90),
                    2.5 if sel else 1.2)
         p.setPen(pen)
@@ -407,6 +408,11 @@ class LightCanvas(QGraphicsView):
         col = QColor(meta.get("color", "#888888"))
         fp = self.proj(fx.get("x", 0.3), fx.get("y", 0.3))
         sp = self.proj(subj.get("x", 0.5), subj.get("y", 0.5))
+        if self._mode == "room":
+            # start the throw at the raised fixture head, land near the
+            # subject's mid-height rather than at their feet
+            fp = QPointF(fp.x(), fp.y() - HEAD_RAISE)
+            sp = QPointF(sp.x(), sp.y() - 12)
         if meta.get("aims"):
             # translucent throw toward the subject
             beam = QColor(col); beam.setAlpha(70)
