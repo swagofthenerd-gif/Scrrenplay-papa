@@ -86,6 +86,7 @@ class LightingVisualizerWidget(QWidget):
         exp_menu.addAction("SVG…", self._export_svg_dialog)
         exp_menu.addAction("PNG…", self._export_png_dialog)
         exp_menu.addAction("Side-by-side PNG…", self._export_side_by_side_dialog)
+        exp_menu.addAction("PDF contact sheet…", self._export_pdf_dialog)
         export_btn.setMenu(exp_menu)
         export_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         bar.addWidget(export_btn)
@@ -225,6 +226,19 @@ class LightingVisualizerWidget(QWidget):
             side_by_side_png(self.editor.plot(), path)
             self.status.setText(f"  exported {os.path.basename(path)}")
         except ValueError as e:
+            self._error(str(e))
+
+    def _export_pdf_dialog(self):
+        from .contact_sheet import write_pdf
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export PDF", "lightplots.pdf", "PDF (*.pdf)")
+        if not path:
+            return
+        try:
+            write_pdf([self.editor.plot()], path,
+                      title=self.editor.plot().name)
+            self.status.setText(f"  exported {os.path.basename(path)}")
+        except Exception as e:
             self._error(str(e))
 
     def _error(self, msg: str):
