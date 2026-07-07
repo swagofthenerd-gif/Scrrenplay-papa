@@ -162,9 +162,38 @@ class StoryboardTab(QWidget):
                 if col >= 4:
                     col = 0; rown += 1
             hv.addLayout(grid)
+            if sec_name == "Lighting":
+                self._add_lightplot_buttons(hv)
 
         root.addWidget(self.scroll, 1)
         self.reload()
+
+    # ---------- lightplot integration ----------
+    def _add_lightplot_buttons(self, hv):
+        from .lightplot_bridge import lightplot_available
+        if not lightplot_available():
+            return
+        from .lightplot_bridge import export_storyboard_pdf
+        row = QHBoxLayout()
+        plot_btn = QToolButton(); plot_btn.setObjectName("gridBtn")
+        plot_btn.setText("Open Light Plot…")
+        plot_btn.clicked.connect(self._open_light_plot)
+        pdf_btn = QToolButton(); pdf_btn.setObjectName("gridBtn")
+        pdf_btn.setText("Export Lighting PDF…")
+        pdf_btn.clicked.connect(
+            lambda: export_storyboard_pdf(self, self.project))
+        row.addWidget(plot_btn)
+        row.addWidget(pdf_btn)
+        row.addStretch(1)
+        hv.addLayout(row)
+
+    def _open_light_plot(self):
+        if self._current is None:
+            return
+        from .lightplot_bridge import open_plot_dialog
+        if open_plot_dialog(self, self._current):
+            self._show(self._current)   # refresh autofilled fields
+            self.changed.emit()
 
     # ---------- widget builders ----------
     def _field_label(self, f):
