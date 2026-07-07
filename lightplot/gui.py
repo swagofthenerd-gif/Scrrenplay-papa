@@ -85,6 +85,7 @@ class LightingVisualizerWidget(QWidget):
         exp_menu = QMenu(export_btn)
         exp_menu.addAction("SVG…", self._export_svg_dialog)
         exp_menu.addAction("PNG…", self._export_png_dialog)
+        exp_menu.addAction("Side-by-side PNG…", self._export_side_by_side_dialog)
         export_btn.setMenu(exp_menu)
         export_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         bar.addWidget(export_btn)
@@ -213,6 +214,18 @@ class LightingVisualizerWidget(QWidget):
             self, "Export PNG", "lightplot.png", "PNG (*.png)")
         if path:
             self.export_png(path)
+
+    def _export_side_by_side_dialog(self):
+        from .composite import side_by_side_png
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export side-by-side", "lightplot-board.png", "PNG (*.png)")
+        if not path:
+            return
+        try:
+            side_by_side_png(self.editor.plot(), path)
+            self.status.setText(f"  exported {os.path.basename(path)}")
+        except ValueError as e:
+            self._error(str(e))
 
     def _error(self, msg: str):
         # Always surface in the status bar; only raise a modal box when the
