@@ -13,10 +13,12 @@ GUI (standalone now, embeddable in ScrivenLight later):
     python -m lightplot --gui
 """
 from .rig import LightSource, LightingRig
-from .analyze import analyze, analyze_image
-from .diagram import render_svg, save_svg, render_plot_svg
 from .plot import LightPlot
+from .analyze import analyze, analyze_image
+from .diagram import render_svg, render_plot_svg, save_svg
+from .templates import TEMPLATES
 
-__version__ = "0.1.0"
-__all__ = ["LightSource", "LightingRig", "analyze", "analyze_image",
-           "render_svg", "save_svg", "LightPlot", "render_plot_svg"]
+__version__ = "0.2.0"
+__all__ = ["LightSource", "LightingRig", "LightPlot", "analyze",
+           "analyze_image", "render_svg", "render_plot_svg", "save_svg",
+           "TEMPLATES"]
