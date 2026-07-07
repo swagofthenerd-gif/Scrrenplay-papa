@@ -89,14 +89,19 @@ def claude_available() -> bool:
     return os.path.isdir(os.path.join(cfg, "credentials"))
 
 
-def analyze_with_claude(path: str) -> LightingRig:
+def anthropic_module():
+    """Indirection point so tests can patch the SDK without importing it
+    at module load (the package is optional)."""
     import anthropic
+    return anthropic
 
+
+def analyze_with_claude(path: str) -> LightingRig:
     media_type = mimetypes.guess_type(path)[0] or "image/jpeg"
     with open(path, "rb") as f:
         data = base64.standard_b64encode(f.read()).decode("utf-8")
 
-    client = anthropic.Anthropic()
+    client = anthropic_module().Anthropic()
     response = client.messages.create(
         model=MODEL,
         max_tokens=16000,
@@ -124,3 +129,58 @@ def analyze_with_claude(path: str) -> LightingRig:
         analyzer=f"claude ({MODEL})",
     )
     return rig
+
+
+_DESCRIBE_PROMPT = """You are a director of photography designing a lighting \
+setup from a verbal brief so it can be drawn as a god's-eye light plot and \
+built on set.
+
+Design a practical, buildable rig for the described look. Use the same \
+conventions as lighting analysis:
+- azimuth_deg: 0 = light at camera (frontal), positive = camera LEFT, \
+negative = camera RIGHT, +/-180 = behind subject.
+- elevation_deg: 0 = eye level, 90 = overhead, negative = below.
+- distance_m: plausible distance in meters.
+- softness: 0 = hard point source, 1 = very large soft source.
+- intensity: relative output, key = 1.0.
+- color_temp_k / color_hex: CCT, hex only for a strong gel.
+- modifier: the actual unit and modifier you'd order.
+- confidence: your confidence this source serves the brief.
+
+List every source including practicals and negative fill notes. \
+key_fill_ratio like "4:1". Summary: 2-3 sentences of DOP language.
+
+The brief:
+"""
+
+
+def describe_to_rig(description: str) -> LightingRig:
+    """Draft a LightingRig from a verbal description of the look."""
+    if not claude_available():
+        raise RuntimeError(
+            "Claude backend is not available: install the 'anthropic' package "
+            "and provide an API credential to use describe-to-setup.")
+    client = anthropic_module().Anthropic()
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=16000,
+        thinking={"type": "adaptive"},
+        output_config={"format": {"type": "json_schema", "schema": _RIG_SCHEMA}},
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": _DESCRIBE_PROMPT + description},
+            ],
+        }],
+    )
+    text = next(b.text for b in response.content if b.type == "text")
+    payload = json.loads(text)
+
+    return LightingRig(
+        lights=[LightSource(**l) for l in payload["lights"]],
+        key_fill_ratio=payload["key_fill_ratio"],
+        mood=payload["mood"],
+        summary=payload["summary"],
+        source_image="",
+        analyzer=f"claude ({MODEL})",
+    )
