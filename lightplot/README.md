@@ -1,91 +1,122 @@
-# lightplot — AI lighting visualization for Papa Pre Production
+# lightplot — lighting & blocking pre-production for Papa Pre Production
 
-Give it a reference image; get back a **god's-eye light plot** — an overhead
-set diagram showing where and how each light was (plausibly) placed to get
-that look, in the language a DOP actually uses: key/fill/rim/background,
-azimuth and elevation, softness, contrast ratio, color temperature, and a
-suggested modifier for each unit.
+Design a shot's lighting and blocking before you're on set, and read it back
+as a **god's-eye light plot** — an overhead diagram in the language a DOP
+actually uses: key/fill/rim/background, azimuth and elevation, softness,
+contrast ratio, color temperature, a suggested modifier per unit, plus
+subjects, camera, set elements (walls, doors, windows, flags, furniture) and
+blocking move arrows.
 
 ```
-image ──▶ analyzer ──▶ LightingRig (parametric, JSON) ──▶ SVG god's-eye diagram
-                                                     └──▶ text breakdown
+        analyze a still ┐
+  start from a template ├─▶ LightPlot (editable, JSON) ─▶ god's-eye diagram
+    describe the look   ┘        │                    ├─▶ text breakdown
+                                 └── drag / edit ──────┴─▶ SVG · PNG · side-by-side · PDF
 ```
 
-## What it honestly does
+## Three ways to start
 
-Lighting reconstruction from a single image is ill-posed: a big soft source
-far away and a small soft source close up can produce nearly identical
-images. lightplot therefore outputs **a setup that would reproduce the
-look**, not a forensic measurement. Direction, softness, key/fill ratio and
-color temperature are recovered with useful confidence (each light carries a
-`confidence` value); distances are labeled as suggestions.
-
-## Two analysis backends
-
-| Backend | Needs | Good at |
+| Start | How | Needs |
 |---|---|---|
-| `heuristic` (default) | nothing — offline CV (Pillow + numpy) | single-key portrait/interview looks: key direction, softness, ratio, CT, rim & background detection |
-| `claude` | `pip install anthropic` + an API credential | multi-light scenes, practicals, motivated sources, unusual framings — full DOP-quality readings |
+| **Analyze** a reference still | `New ▸ Analyze image…` (or CLI) | offline CV, or Claude vision if available |
+| **Template** | `New ▸ From template` — Three-Point, Rembrandt, Book Light, Butterfly, Split, Silhouette, Window Daylight | nothing |
+| **Describe the look** | `New ▸ Describe the look… (Claude)` — type a DOP brief, Claude drafts a buildable rig | `pip install anthropic` + API credential |
 
-`--backend auto` uses Claude when available and falls back to the heuristic.
-The Claude backend sends the image to `claude-opus-4-8` with a strict JSON
-schema, so both backends produce the identical `LightingRig` structure.
+## The editor
+
+Everything is a **pure function of the model**: the canvas rebuilds from the
+`LightPlot`, so undo/redo is total and reliable.
+
+- **Draggable:** lights, subjects, camera, set elements, move arrows. Lights
+  aim at the primary subject live as you drag; position labels stay correct.
+- **Add tools:** lights (per role), subjects, and two-click set elements
+  (wall / door / window / flag / furniture). Move arrows: select a subject or
+  camera, click waypoints, double-click to commit. **Esc** cancels a tool.
+- **Properties panel** edits the selected item; every change is undoable.
+  Color-temp presets: Tungsten 3200K, Daylight 5600K, Warm practical 2400K,
+  Cool window 6500K.
+- **Snap** to a 25 cm grid, wheel-zoom, **Fit**, **Ctrl+D** duplicate.
+- **Guards:** you can't delete the camera or the last subject; deleting a
+  subject removes its move arrows and reassigns the primary reference.
+
+## Blocking
+
+Subjects carry a facing direction; the camera carries an aim. Set elements
+are drawn from absolute points (walls/windows as lines, furniture as a box).
+Move arrows are dashed paths with an arrowhead and an optional label — the
+overhead blocking a 1st AD or gaffer can read at a glance.
+
+## Exports
+
+| Form | What |
+|---|---|
+| **SVG** | self-contained vector plot |
+| **PNG** | 2× raster of the plot |
+| **Side-by-side PNG** | reference still next to the rendered plot, equal heights |
+| **PDF contact sheet** | one or many plots, two shots per A4 page — the "send to the gaffer/AD" artifact |
+
+## Inside ScrivenLight
+
+The editor is a plain `QWidget`, so ScrivenLight embeds it against a
+storyboard frame. In the Storyboard tab's **Lighting** section:
+
+- **Open Light Plot…** — edit (or analyze the frame still into) a plot
+  attached to the current frame. On save the plot is stored on the frame as
+  `light_plot` (format `lightplot-2`), and the lighting text fields
+  (`lighting_setup`, `key_light`, `fill_light`, `background_light`) are
+  **autofilled only where empty** — a value you already typed is never
+  overwritten.
+- **Export Lighting PDF…** — a contact sheet of every storyboard frame that
+  carries a plot.
+
+Malformed plot data never breaks project load: `frame_plot()` returns `None`
+and logs. ScrivenLight also runs fine if lightplot isn't importable — every
+lightplot import is lazy behind `lightplot_available()`.
 
 ## Run it
 
 ```bash
-pip install Pillow numpy PyQt6          # PyQt6 only needed for the GUI
-                                        # optional: pip install anthropic
+pip install Pillow numpy PyQt6          # optional: pip install anthropic
 
 # CLI: writes <image>-lightplot.svg
 python -m lightplot still.jpg
 python -m lightplot still.jpg -o plot.svg --json rig.json --backend claude
 
 # Desktop app
-python -m lightplot --gui [still.jpg]
+python -m lightplot --gui [still.jpg | setup.lightplot.json]
 ```
 
 ## Use it as a library
 
 ```python
-from lightplot import analyze, render_svg
+from lightplot import analyze, LightPlot, render_plot_svg, TEMPLATES
 
-rig = analyze("still.jpg")              # LightingRig
-print(rig.summary)                      # DOP-readable paragraph
-for light in rig.lights:
-    print(light.role, light.position_label(), light.softness_label())
-svg = render_svg(rig)                   # self-contained SVG string
+# a template, or from an analyzed still
+plot = TEMPLATES["Rembrandt"]()
+plot = LightPlot.from_rig(analyze("still.jpg"), ref_image="still.jpg")
+
+svg = render_plot_svg(plot)              # self-contained SVG string
+open("setup.lightplot.json", "w").write(plot.to_json())   # round-trips
 ```
 
-`LightingRig.to_json()` / `from_json()` round-trip cleanly, so rigs can be
-stored inside a project file.
+## What it honestly does (and doesn't)
 
-## Adding it to ScrivenLight later
+Lighting reconstruction from a single image is ill-posed: a big soft source
+far away and a small soft source close up can produce nearly identical
+images. lightplot outputs **a setup that would reproduce the look**, not a
+forensic measurement — direction, softness, key/fill ratio and color
+temperature come back with useful confidence (each light carries a
+`confidence`); distances are suggestions.
 
-The GUI is a plain `QWidget` with no dependency on the main window, so the
-integration is one tab:
+Verified against synthetic renders with known ground-truth lighting
+(direction sign, softness ordering, CT class, rim presence/absence,
+elevation). Heuristic limits: assumes a roughly centered subject, a single
+dominant key, no cast-shadow reasoning — the Claude backend covers those.
 
-```python
-# in scrivenlight/window.py, next to the other tabs
-from lightplot.gui import LightingVisualizerWidget
-self.tabs.addTab(LightingVisualizerWidget(), "Light Plot")
-```
-
-Natural deeper integration (future): attach a `LightingRig` to each
-Storyboard frame — the frame already has a "full lighting setup" field —
-and store the rig JSON in the `.slt` project file.
-
-## Module layout
-
-```
-lightplot/
-  rig.py             LightingRig / LightSource dataclasses + JSON (de)serialization
-  analyze.py         offline heuristic analyzer (Pillow + numpy)
-  claude_backend.py  optional Claude-vision analyzer (strict JSON schema)
-  diagram.py         god's-eye SVG renderer (no dependencies)
-  gui.py             PyQt6 widget + standalone window
-  __main__.py        CLI
-```
+**Versus Shot Designer:** lightplot covers 2D overhead plots, blocking
+arrows, and per-shot boards attached to your storyboard. It deliberately does
+**not** do 3D preview, fixture inventories, or DMX/console programming — it's
+a pre-production drawing and communication tool, not a lighting console.
 
 ## Conventions
 
@@ -95,20 +126,22 @@ lightplot/
 - `softness`: 0 = hard point source → 1 = large wrapping source.
 - `intensity`: relative to the key (key = 1.0).
 
-## How the heuristic works (v1)
+## Module layout
 
-Luminance-weighted centroid of a center-weighted subject region gives the
-image-plane light vector (direction); the 80th/20th-percentile contrast
-ratio sets how far off-axis the key sits and the key/fill ratio; softness
-combines shadow *wrap* (how little of the subject sits at the shadow floor)
-with shadow-edge sharpness; color temperature comes from the highlight
-chromaticity via McCamy's CCT approximation; a rim light is detected as a
-bright shell on the side of the subject facing away from the key; the
-background border region is reported as its own source. Verified against
-synthetic renders with known ground-truth lighting (direction sign, softness
-ordering, CT class, rim presence/absence, elevation).
-
-Known v1 limits: assumes the subject is roughly centered; single dominant
-key; no cast-shadow reasoning. The Claude backend covers those cases today;
-a trained model (synthetic Blender data → light-parameter regression) is the
-planned v2 of the offline path.
+```
+lightplot/
+  rig.py             LightingRig / LightSource dataclasses + JSON
+  plot.py            LightPlot editable document (subjects, camera, set, moves)
+  analyze.py         offline heuristic analyzer (Pillow + numpy)
+  claude_backend.py  optional Claude vision + describe-to-setup
+  templates.py       classic lighting-setup factories
+  diagram.py         god's-eye SVG renderer
+  canvas.py          interactive QGraphicsScene / items
+  commands.py        undoable model operations
+  props.py           properties panel
+  editor.py          embeddable editor widget (canvas + toolbar + props + breakdown)
+  gui.py             standalone app shell (file handling + exports)
+  composite.py       side-by-side PNG export
+  contact_sheet.py   PDF contact sheet export
+  __main__.py        CLI
+```
