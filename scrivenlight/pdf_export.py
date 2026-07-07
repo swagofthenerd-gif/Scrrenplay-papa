@@ -186,6 +186,102 @@ def export_storyboard_pdf(project, path):
     return path
 
 
+def export_lightplan_pdf(project, lightplan, diagram_png, path):
+    """One-page lighting breakdown: reference frame + top-down diagram, a
+    numbered legend, camera/lens, and set notes — the deliverable a DP hands
+    to the gaffer. `diagram_png` is a pre-rendered image of the plan (may be
+    None)."""
+    _require_reportlab()
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                    Table, TableStyle, Image)
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from .project import FIXTURE_TYPES
+    import os
+
+    lp = lightplan
+    styles = getSampleStyleSheet()
+    h = ParagraphStyle("h", parent=styles["Heading1"], fontSize=15, spaceAfter=2)
+    sub = ParagraphStyle("sub", parent=styles["Normal"], fontSize=10,
+                         textColor=colors.HexColor("#555555"))
+    sec = ParagraphStyle("sec", parent=styles["Heading2"], fontSize=11,
+                         spaceBefore=10, spaceAfter=4,
+                         textColor=colors.HexColor("#222222"))
+    lab = ParagraphStyle("lab", parent=styles["Normal"], fontSize=8,
+                         textColor=colors.HexColor("#888888"))
+    val = ParagraphStyle("val", parent=styles["Normal"], fontSize=9)
+    leg = ParagraphStyle("leg", parent=styles["Normal"], fontSize=9, leading=12)
+
+    doc = SimpleDocTemplate(path, pagesize=letter,
+                            topMargin=0.6 * inch, bottomMargin=0.6 * inch,
+                            leftMargin=0.7 * inch, rightMargin=0.7 * inch)
+    story = [Paragraph(project.title or "Untitled Production", h),
+             Paragraph(f"Lighting Breakdown — {lp.get('name', 'Setup')}", sub),
+             Spacer(1, 8)]
+
+    # reference frame beside the diagram
+    ref = lp.get("reference_image", "")
+    ref_img = None
+    if ref and os.path.exists(ref):
+        try:
+            ref_img = Image(ref, width=3.0 * inch, height=1.7 * inch)
+        except Exception:
+            ref_img = None
+    diagram = None
+    if diagram_png and os.path.exists(diagram_png):
+        try:
+            diagram = Image(diagram_png, width=3.4 * inch, height=2.36 * inch)
+        except Exception:
+            diagram = None
+    if ref_img or diagram:
+        top = Table([[ref_img or Paragraph("No reference frame", lab),
+                      diagram or Paragraph("No diagram", lab)]],
+                    colWidths=[3.2 * inch, 3.6 * inch])
+        top.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
+        story.append(top)
+        story.append(Spacer(1, 6))
+
+    # legend
+    story.append(Paragraph("Light Legend", sec))
+    rows = [["#", "Fixture", "Modifier", "Level", "Gel", "Notes"]]
+    for i, fx in enumerate(lp.get("fixtures", [])):
+        title = fx.get("label") or FIXTURE_TYPES.get(
+            fx.get("type", ""), {}).get("label", "Light")
+        unit = fx.get("unit", "")
+        name = f"{title}" + (f" — {unit}" if unit else "")
+        rows.append([str(i + 1), name, fx.get("modifier", ""),
+                     fx.get("intensity", ""), fx.get("gel", ""),
+                     fx.get("notes", "")])
+    if len(rows) > 1:
+        story.append(_grid(rows, [0.3, 1.9, 1.3, 0.8, 0.9, 1.8], inch, colors))
+    else:
+        story.append(Paragraph("No fixtures placed.", val))
+
+    # camera & lens
+    story.append(Paragraph("Camera & Lens", sec))
+    cam = [
+        [Paragraph("Camera", lab), Paragraph(lp.get("camera_body", "") or "—", val),
+         Paragraph("Lens", lab), Paragraph(lp.get("lens", "") or "—", val)],
+        [Paragraph("Focal", lab), Paragraph(lp.get("focal_length", "") or "—", val),
+         Paragraph("Aperture", lab), Paragraph(lp.get("aperture", "") or "—", val)],
+        [Paragraph("Height", lab), Paragraph(lp.get("camera_height", "") or "—", val),
+         Paragraph("Angle", lab), Paragraph(lp.get("camera_angle", "") or "—", val)],
+    ]
+    ct = Table(cam, colWidths=[0.8 * inch, 2.0 * inch, 0.8 * inch, 2.0 * inch])
+    ct.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]))
+    story.append(ct)
+
+    if lp.get("set_notes", "").strip():
+        story.append(Paragraph("Set Notes", sec))
+        story.append(Paragraph(lp["set_notes"].replace("\n", "<br/>"),
+                               styles["Normal"]))
+    doc.build(story)
+    return path
+
+
 def _grid(rows, rel_widths, inch, colors):
     from reportlab.platypus import Table, TableStyle
     widths = [w * inch for w in rel_widths]

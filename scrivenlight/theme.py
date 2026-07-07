@@ -289,3 +289,42 @@ _SB_LIGHT = """
 """
 DARK_QSS = DARK_QSS + _SB_DARK
 LIGHT_QSS = LIGHT_QSS + _SB_LIGHT
+
+
+# ---- lighting tab styles ----
+_LT_DARK = """
+#lightMid { background: #14151a; }
+#lightCanvas {
+    background: #101116; border: 1px solid #24262e; border-radius: 10px;
+}
+#fxBtn {
+    background: #1d1f27; color: #d4d6dc; border: 1px solid #2c2f3a;
+    border-radius: 6px; padding: 4px 9px 4px 6px; font-size: 11px;
+}
+#fxBtn:hover { background: #262934; color: #fff; border-color: #3a3e4b; }
+#viewBtn {
+    background: #1d1f27; color: #b7b9c2; border: 1px solid #2c2f3a;
+    border-radius: 6px; padding: 4px 12px; font-size: 11px;
+}
+#viewBtn:checked { background: #2b3350; color: #fff; border-color: #4d5670; }
+#legend { color: #c9cad0; font-size: 12px; }
+"""
+_LT_LIGHT = """
+#lightMid { background: #f4f4f2; }
+#lightCanvas {
+    background: #e8e8e5; border: 1px solid #dcdde0; border-radius: 10px;
+}
+#fxBtn {
+    background: #ffffff; color: #3a3d46; border: 1px solid #d4d5d8;
+    border-radius: 6px; padding: 4px 9px 4px 6px; font-size: 11px;
+}
+#fxBtn:hover { background: #f3f3f1; color: #111; border-color: #bcbdc1; }
+#viewBtn {
+    background: #ffffff; color: #4a4d55; border: 1px solid #d4d5d8;
+    border-radius: 6px; padding: 4px 12px; font-size: 11px;
+}
+#viewBtn:checked { background: #d8e0ff; color: #111; border-color: #aeb6d8; }
+#legend { color: #3a3d46; font-size: 12px; }
+"""
+DARK_QSS = DARK_QSS + _LT_DARK
+LIGHT_QSS = LIGHT_QSS + _LT_LIGHT
