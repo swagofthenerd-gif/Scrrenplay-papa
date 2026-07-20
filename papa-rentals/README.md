@@ -54,6 +54,18 @@ Every gap from the competitive audit, closed:
 - **Damage claims**: file against insured orders; claims move filed → reviewing → approved and pay out to the wallet
 - **Smoothness pack**: side-by-side compare tray (up to 3 items), native share sheet on listings, "notify me when available" alerts on booked dates, shoot-day reminders, "complete your setup" cross-sell in cart, pull-to-refresh on home, referral-code redemption (+Rs 500)
 
+## v5 — the soft redesign
+
+A full visual redesign in the Airbnb direction, plus deeper search and recommendations:
+
+- **Design system**: real token scales (radius, shadow, type, spacing, easing) over a warm cream palette; softer rounded corners everywhere; layered low-opacity shadows; **Plus Jakarta Sans** bundled locally (variable woff2, precached — still works offline); dark mode and reduced-motion kept at full parity
+- **Real photography**: curated Unsplash photos on every listing with a swipeable gallery on detail pages (scroll-snap + dots); skeleton shimmer while loading and automatic fallback to the gradient/emoji art when offline — photo IDs live in one file (`src/data/images.ts`) for easy swapping; the service worker caches photos (capped, stale-while-revalidate)
+- **Airbnb-style cards**: 4:3 photo, heart-pop wishlist overlay, Instant pill on the photo, compact single-star rating line
+- **Search, deepened**: full-screen search overlay (recents, trending, departments) with ranked photo-rich suggestions and match highlighting; ranking blends per-field relevance (name > tags > description > typo-fuzzy) with Bayesian rating and popularity; "Best match" sort on browse when a query is present
+- **Recommendations, deepened**: item-similarity engine (tag Jaccard + category adjacency + price band + quality) powers "People also rented" and cart cross-sell; a recency-decayed category-affinity profile builds "✨ For you" and "Because you viewed …" rows on Home — all client-side
+- **Motion**: springy bottom sheets and nav pill, staggered card entrances, animated rating histograms, wallet count-ups, press-scale feedback — all gated by `prefers-reduced-motion`
+- **Detail page**: photo gallery hero with floating back button, sticky booking panel on desktop, and a fixed price + add-to-cart bar on phones
+
 ## Run it
 
 ```bash

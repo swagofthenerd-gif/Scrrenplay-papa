@@ -433,6 +433,9 @@ select.filter-chip { appearance: none; }
 
 /* ---------- Detail page ---------- */
 .detail-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 22px; margin-top: 18px; align-items: start; }
+/* grid items default to min-width:auto — without this, wide flex strips
+   (availability days, h-scrolls) blow the column out past the viewport */
+.detail-grid > * { min-width: 0; }
 @media (max-width: 800px) { .detail-grid { grid-template-columns: 1fr; } }
 @media (min-width: 801px) { .booking-panel-sticky { position: sticky; top: 84px; } }
 .panel { background: var(--card); border-radius: var(--r-lg); padding: 18px; box-shadow: var(--shadow-sm); }
