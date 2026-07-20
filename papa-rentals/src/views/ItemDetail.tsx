@@ -88,11 +88,14 @@ export default function ItemDetail({ id }: { id: string }) {
 
   return (
     <div>
-      <button className="back-btn" onClick={back}>← Back</button>
+      <button className="back-btn detail-back" onClick={back}>← Back</button>
 
       <div className="detail-grid">
         <div>
-          <ItemArt item={item} size="hero" />
+          <div style={{ position: 'relative' }}>
+            <ItemArt item={item} size="hero" />
+            <button className="float-back" onClick={back} aria-label="Back">←</button>
+          </div>
           <div className="panel" style={{ marginTop: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
               <div>
@@ -219,7 +222,7 @@ export default function ItemDetail({ id }: { id: string }) {
         </div>
 
         {/* ---------------- Booking panel (or manage panel for your own listing) ---------------- */}
-        <div>
+        <div className="booking-panel-sticky">
           {item.mine ? (
             <ManagePanel itemId={item.id} />
           ) : (
@@ -378,6 +381,18 @@ export default function ItemDetail({ id }: { id: string }) {
         </div>
       </div>
 
+      {!item.mine && (
+        <div className="cta-bar">
+          <div className="cta-price">
+            {negotiated && <div className="small" style={{ color: 'var(--green)', fontWeight: 700 }}>🤝 Your deal locked in</div>}
+            <b>{money(rate)}</b><span className="muted small"> /{unit}</span>
+          </div>
+          <button className="btn btn-primary" disabled={Boolean(conflict) || invalidRange} onClick={addToCart}>
+            {conflict ? 'Unavailable' : '🛒 Add to cart'}
+          </button>
+        </div>
+      )}
+
       {alsoRented.length > 0 && (
         <div className="section">
           <div className="section-head"><h2>🎒 People also rented</h2></div>
@@ -461,10 +476,16 @@ function ManagePanel({ itemId }: { itemId: string }) {
 }
 
 function FragmentRow({ stars, count, pct }: { stars: number; count: number; pct: number }) {
+  // start at 0 and grow on mount so the CSS width transition plays
+  const [width, setWidth] = useState(0)
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setWidth(pct))
+    return () => cancelAnimationFrame(raf)
+  }, [pct])
   return (
     <>
       <span>{stars}★</span>
-      <div className="bar"><i style={{ width: `${pct}%` }} /></div>
+      <div className="bar"><i style={{ width: `${width}%` }} /></div>
       <span className="muted">{count}</span>
     </>
   )

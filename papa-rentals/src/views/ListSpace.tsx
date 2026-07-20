@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AMENITY_OPTIONS, RULE_OPTIONS, SPACE_TYPES } from '../data/catalog'
+import { CATEGORY_IMAGE, img } from '../data/images'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import { buzz, money, uid } from '../utils'
@@ -55,6 +56,8 @@ export default function ListSpace() {
       offersAccepted,
       hourly,
       space: { type: type.type, sqft, capacity, amenities, rules, minHours: hourly ? minHours : undefined },
+      image: img(CATEGORY_IMAGE.studios),
+      images: [img(CATEGORY_IMAGE.studios, 1200)],
       reviews: [],
       mine: true,
       pendingVerifyAt: Date.now() + 8000,

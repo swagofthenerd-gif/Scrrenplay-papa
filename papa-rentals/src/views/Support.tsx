@@ -104,11 +104,11 @@ export default function Support() {
         {FAQS.map(([q, a], i) => (
           <div key={q} style={{ borderTop: i > 0 ? '1px solid var(--line)' : 'none' }}>
             <button
-              className="faq-q"
+              className={`faq-q ${open === i ? 'open' : ''}`}
               onClick={() => setOpen(open === i ? null : i)}
               aria-expanded={open === i}
             >
-              {q} <span style={{ marginLeft: 'auto' }}>{open === i ? '−' : '+'}</span>
+              {q} <span className="faq-chev" aria-hidden="true">⌄</span>
             </button>
             {open === i && <p className="muted" style={{ fontSize: 14, margin: '0 0 12px' }}>{a}</p>}
           </div>

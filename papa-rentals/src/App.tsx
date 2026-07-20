@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { NavContext, useHashRouter, useNav } from './nav'
 import { StoreProvider, useStore } from './store'
 import { buzz, fmtTimeAgo } from './utils'
-import { Modal } from './components/ui'
+import { getItem } from './data/catalog'
+import { ItemArt, Modal } from './components/ui'
 import SearchOverlay from './components/SearchOverlay'
 import ListSpace from './views/ListSpace'
 import HostDashboard from './views/HostDashboard'
@@ -81,6 +82,9 @@ function Onboarding() {
 
   return (
     <Modal title="🎬 Welcome to Papa Rentals" onClose={() => dispatch({ type: 'SET_PROFILE', name: '', city })}>
+      <div className="onboard-strip" aria-hidden="true">
+        {['i1', 'i21', 'i12'].map((id) => <ItemArt key={id} item={getItem(id)} size="card" />)}
+      </div>
       <p className="muted" style={{ fontSize: 14, marginTop: 0 }}>
         Rent everything for your shoot — priced like a negotiation, delivered like a food order. Set up takes 10 seconds.
       </p>

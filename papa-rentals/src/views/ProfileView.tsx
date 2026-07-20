@@ -3,7 +3,7 @@ import { getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import { GOLD_POINTS, SILVER_POINTS, buzz, money } from '../utils'
-import { Badge, ItemArt, Stars } from '../components/ui'
+import { Badge, ItemArt, Stars, useCountUp } from '../components/ui'
 
 export default function ProfileView() {
   const { go, toast } = useNav()
@@ -21,6 +21,8 @@ export default function ProfileView() {
   const pendingRequests = state.ownerBookings.filter((b) => b.status === 'pending').length
   const chatThreads = Object.entries(state.chats).filter(([, t]) => t.messages.length > 0)
   const unreadTotal = chatThreads.reduce((s, [, t]) => s + t.unread, 0)
+  const shownBalance = useCountUp(state.walletBalance)
+  const shownPoints = useCountUp(state.points)
 
   return (
     <div className="section">
@@ -43,7 +45,7 @@ export default function ProfileView() {
 
       <div className="wallet-card">
         <div style={{ color: '#d6d3d1', fontSize: 13 }}>👛 Papa Wallet</div>
-        <div className="balance">{money(state.walletBalance)}</div>
+        <div className="balance">{money(shownBalance)}</div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <button className="btn btn-primary btn-sm" onClick={() => { buzz(); dispatch({ type: 'ADD_WALLET', amount: 10000 }); toast('Rs 10,000 added to wallet 👛') }}>
             + Top up Rs 10,000
@@ -52,7 +54,7 @@ export default function ProfileView() {
       </div>
 
       <div className="stat-row">
-        <div className="stat-tile"><div className="stat-num">🏆 {state.points}</div><div className="muted small">PapaPoints</div></div>
+        <div className="stat-tile"><div className="stat-num">🏆 {shownPoints}</div><div className="muted small">PapaPoints</div></div>
         <div className="stat-tile"><div className="stat-num">📦 {state.orders.length}</div><div className="muted small">Orders</div></div>
         <div className="stat-tile"><div className="stat-num">♥ {state.wishlist.length}</div><div className="muted small">Wishlist</div></div>
       </div>

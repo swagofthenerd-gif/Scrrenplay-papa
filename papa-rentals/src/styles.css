@@ -451,8 +451,12 @@ select.filter-chip { appearance: none; }
 .float-back {
   position: absolute; top: 12px; left: 12px; z-index: 4; border: none; cursor: pointer;
   background: rgba(255, 255, 255, 0.92); color: #1c1917; border-radius: var(--r-pill);
-  width: 40px; height: 40px; font-size: 17px; display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; font-size: 17px; display: none; align-items: center; justify-content: center;
   box-shadow: var(--shadow-sm);
+}
+@media (max-width: 800px) {
+  .float-back { display: flex; }
+  .detail-back { display: none; }
 }
 
 /* sticky mobile CTA bar on item detail */
