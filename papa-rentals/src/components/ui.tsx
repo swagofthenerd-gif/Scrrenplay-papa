@@ -156,6 +156,32 @@ export function ItemArt({ item, size = 'card' }: { item: Item; size?: 'card' | '
   )
 }
 
+/* ---------------- count-up number (respects reduced motion) ---------------- */
+export function useCountUp(value: number, ms = 600): number {
+  const [shown, setShown] = useState(value)
+  const prev = useRef(value)
+  useEffect(() => {
+    const from = prev.current
+    prev.current = value
+    if (from === value) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setShown(value)
+      return
+    }
+    let raf = 0
+    const t0 = performance.now()
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / ms)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setShown(Math.round(from + (value - from) * eased))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [value, ms])
+  return shown
+}
+
 /* ---------------- compact rating (single star, Airbnb-style) ---------------- */
 export function RatingCompact({ rating, count }: { rating: number; count?: number }) {
   return (

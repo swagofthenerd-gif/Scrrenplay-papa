@@ -1,5 +1,5 @@
 import { CURRENCY, PROMO_CODES, TRANSPORT_OPTIONS, getItem, getOwner } from './data/catalog'
-import type { Booking, DateRange, OfferStatus, Order } from './types'
+import type { Booking, DateRange, Item, OfferStatus, Order } from './types'
 
 export function money(n: number): string {
   return `${CURRENCY} ${Math.round(n).toLocaleString('en-PK')}`
@@ -315,6 +315,67 @@ export function fuzzyMatch(haystack: string, query: string): boolean {
       return editDistance(w.slice(0, qw.length + 1), qw) <= (qw.length >= 6 ? 2 : 1)
     })
   )
+}
+
+/** One query word fuzzy-matches a haystack word (same tolerance as fuzzyMatch). */
+function wordTypoMatch(w: string, qw: string): boolean {
+  if (w.includes(qw) || (qw.includes(w) && w.length >= 3)) return true
+  if (qw.length < 4) return false
+  return editDistance(w.slice(0, qw.length + 1), qw) <= (qw.length >= 6 ? 2 : 1)
+}
+
+/**
+ * Graded relevance of an item for a query. Every query word must land
+ * somewhere (AND, like fuzzyMatch); words score by where they hit:
+ * name substring > name word-prefix > tag/category > description > typo-fuzzy.
+ * Returns 0 for non-matches.
+ */
+export function fuzzyScore(item: Item, query: string): number {
+  const q = query.toLowerCase().trim()
+  if (!q) return 0
+  const name = item.name.toLowerCase()
+  const tags = `${item.tags.join(' ')} ${item.category}`.toLowerCase()
+  const desc = item.description.toLowerCase()
+  const nameWords = name.split(/[^a-z0-9]+/)
+  const fuzzPool = [...nameWords, ...tags.split(/[^a-z0-9]+/)]
+  let total = 0
+  for (const qw of q.split(/\s+/)) {
+    let best = 0
+    if (name.includes(qw)) best = 3
+    else if (nameWords.some((w) => w.startsWith(qw))) best = 2.5
+    else if (tags.includes(qw)) best = 2
+    else if (desc.includes(qw)) best = 1.2
+    else if (fuzzPool.some((w) => wordTypoMatch(w, qw))) best = 1
+    if (best === 0) return 0
+    total += best
+  }
+  return total
+}
+
+/** Search ranking: relevance first, then reputation and popularity as tiebreakers. */
+export function searchRank(item: Item, query: string): number {
+  const fs = fuzzyScore(item, query)
+  if (fs === 0) return 0
+  return fs * 10 + (weightedRating(item.rating, item.ratingCount) - 4) * 4 + Math.log10(item.timesRented + 1) * 2
+}
+
+/** Split text into segments with query-word hits flagged, for <mark> rendering. */
+export function highlightMatch(text: string, query: string): { text: string; hit: boolean }[] {
+  const words = query.toLowerCase().trim().split(/\s+/).filter((w) => w.length > 1)
+  if (words.length === 0) return [{ text, hit: false }]
+  const lower = text.toLowerCase()
+  const marks = new Array<boolean>(text.length).fill(false)
+  for (const w of words) {
+    for (let at = lower.indexOf(w); at !== -1; at = lower.indexOf(w, at + 1)) {
+      for (let k = at; k < at + w.length; k++) marks[k] = true
+    }
+  }
+  const out: { text: string; hit: boolean }[] = []
+  for (let i = 0; i < text.length; i++) {
+    if (out.length === 0 || out[out.length - 1].hit !== marks[i]) out.push({ text: text[i], hit: marks[i] })
+    else out[out.length - 1].text += text[i]
+  }
+  return out
 }
 
 /* ---------------- receipt ---------------- */

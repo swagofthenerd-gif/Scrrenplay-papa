@@ -5,10 +5,10 @@ import { Modal } from '../components/ui'
 import { money } from '../utils'
 import { useNav } from '../nav'
 import { useStore } from '../store'
-import { dealActive, fuzzyMatch, weightedRating } from '../utils'
+import { dealActive, fuzzyMatch, searchRank, weightedRating } from '../utils'
 import { ItemCard } from '../components/ui'
 
-type Sort = 'popular' | 'price_asc' | 'price_desc' | 'rating' | 'nearest'
+type Sort = 'relevance' | 'popular' | 'price_asc' | 'price_desc' | 'rating' | 'nearest'
 
 export default function Browse({
   category,
@@ -23,7 +23,8 @@ export default function Browse({
 }) {
   const { go, back } = useNav()
   const { state, dispatch } = useStore()
-  const [sort, setSort] = useState<Sort>('popular')
+  // with a query, rank by relevance; otherwise by popularity
+  const [sort, setSort] = useState<Sort>(query ? 'relevance' : 'popular')
   const [verifiedOnly, setVerifiedOnly] = useState(false)
   const [instantOnly, setInstantOnly] = useState(false)
   const [offersOnly, setOffersOnly] = useState(false)
@@ -49,6 +50,10 @@ export default function Browse({
     if (minCapacity) list = list.filter((i) => (i.space?.capacity ?? 0) >= minCapacity)
     if (hourlyOnly) list = list.filter((i) => i.hourly)
     switch (sort) {
+      case 'relevance':
+        if (query) list.sort((a, b) => searchRank(b, query) - searchRank(a, query))
+        else list.sort((a, b) => b.timesRented - a.timesRented)
+        break
       case 'price_asc': list.sort((a, b) => a.pricePerDay - b.pricePerDay); break
       case 'price_desc': list.sort((a, b) => b.pricePerDay - a.pricePerDay); break
       // weighted (Bayesian) so 3 five-star reviews don't beat 400 at 4.9
@@ -133,6 +138,7 @@ export default function Browse({
             </>
           )}
           <select className="filter-chip" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort">
+            {query && <option value="relevance">Best match</option>}
             <option value="popular">Most rented</option>
             <option value="rating">Top rated</option>
             <option value="nearest">Nearest first</option>
@@ -164,10 +170,11 @@ export default function Browse({
           </div>
         ) : (
           <div className="grid">
-            {items.map((item) => (
+            {items.map((item, idx) => (
               <div key={item.id} style={{ position: 'relative' }}>
                 <ItemCard
                   item={item}
+                  index={idx}
                   onOpen={() => go({ name: 'item', id: item.id })}
                   wishlisted={state.wishlist.includes(item.id)}
                   onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
