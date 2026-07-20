@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { getCategory, getOwner } from '../data/catalog'
 import type { Item } from '../types'
 import { buzz, dealActive, dealEndsAt, fmtCountdown, money } from '../utils'
+import { PhotoGallery, SmartImage } from './SmartImage'
 
 /* ---------------- stars with true half-star rendering ---------------- */
 export function Stars({ value, size = 14, onChange }: { value: number; size?: number; onChange?: (v: number) => void }) {
@@ -120,18 +121,48 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   )
 }
 
-/* ---------------- item art ---------------- */
+/* ---------------- item art: photo-first, gradient+emoji fallback ---------------- */
 export function ItemArt({ item, size = 'card' }: { item: Item; size?: 'card' | 'hero' | 'thumb' }) {
   const cat = getCategory(item.category)
+  const ribbon = item.flashDeal && dealActive(item.id) && size !== 'thumb' && (
+    <div className="deal-ribbon">
+      ⚡ {item.flashDeal.percentOff}% OFF · <DealCountdown itemId={item.id} prefix="" />
+    </div>
+  )
+
+  // hero with a multi-photo gallery: swipeable, dots, ribbon overlaid on the whole thing
+  if (size === 'hero' && item.images && item.images.length > 0) {
+    return (
+      <PhotoGallery
+        images={item.images}
+        alt={item.name}
+        overlay={ribbon || undefined}
+        fallback={
+          <div className="grad-fill" style={{ background: cat.gradient }} aria-hidden="true">
+            <span>{item.emoji}</span>
+          </div>
+        }
+      />
+    )
+  }
+
+  // card/thumb (and photo-less hero): gradient+emoji base, photo fades in on top
   return (
     <div className={`item-art art-${size}`} style={{ background: cat.gradient }} role="img" aria-label={item.name}>
       <span>{item.emoji}</span>
-      {item.flashDeal && dealActive(item.id) && size !== 'thumb' && (
-        <div className="deal-ribbon">
-          ⚡ {item.flashDeal.percentOff}% OFF · <DealCountdown itemId={item.id} prefix="" />
-        </div>
-      )}
+      {item.image && <SmartImage src={item.image} alt="" fallback={null} />}
+      {ribbon}
     </div>
+  )
+}
+
+/* ---------------- compact rating (single star, Airbnb-style) ---------------- */
+export function RatingCompact({ rating, count }: { rating: number; count?: number }) {
+  return (
+    <span className="rating-compact" aria-label={`${rating.toFixed(1)} out of 5 stars${count ? `, ${count} reviews` : ''}`}>
+      <span className="rc-star">★</span> {rating.toFixed(1)}
+      {count != null && <span className="rc-count">({count})</span>}
+    </span>
   )
 }
 
@@ -141,18 +172,22 @@ export function ItemCard({
   onOpen,
   wishlisted,
   onToggleWish,
+  index,
 }: {
   item: Item
   onOpen: () => void
   wishlisted: boolean
   onToggleWish: () => void
+  index?: number
 }) {
   const owner = getOwner(item.ownerId)
   const hasDeal = dealActive(item.id)
   const dealPrice = hasDeal ? Math.round(item.pricePerDay * (1 - item.flashDeal!.percentOff / 100)) : null
+  const stagger = index != null ? { className: 'item-card stagger', style: { ['--i' as string]: Math.min(index, 8) } } : { className: 'item-card' }
   return (
-    <div className="item-card" onClick={onOpen}>
+    <div {...stagger} onClick={onOpen}>
       <ItemArt item={item} />
+      {item.instantBook && <div className="photo-badge">⚡ Instant</div>}
       <button
         className={`wish-btn ${wishlisted ? 'on' : ''}`}
         onClick={(e) => {
@@ -167,11 +202,10 @@ export function ItemCard({
       <div className="item-card-body">
         <div className="item-card-title">{item.name}</div>
         <div className="item-card-meta">
-          <Stars value={item.rating} />
-          <span className="muted">{item.rating} ({item.ratingCount})</span>
-        </div>
-        <div className="item-card-meta muted small">
-          {owner.verified && '✔︎ '} {owner.name} · {owner.distanceKm} km
+          <RatingCompact rating={item.rating} count={item.ratingCount} />
+          <span className="muted small" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            · {owner.verified && '✔︎ '}{owner.name}
+          </span>
         </div>
         <div className="item-card-price">
           {dealPrice ? (
@@ -182,7 +216,7 @@ export function ItemCard({
             <b>{money(item.pricePerDay)}</b>
           )}
           <span className="muted"> /day</span>
-          {item.instantBook && <Badge tone="green">⚡ Instant</Badge>}
+          <span className="muted small"> · {owner.distanceKm} km</span>
         </div>
       </div>
     </div>

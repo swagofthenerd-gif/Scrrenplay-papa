@@ -1,4 +1,5 @@
 import type { Category, Item, Kit, Owner, TransportOption } from '../types'
+import { ITEM_IMAGES, img } from './images'
 
 // booked ranges are generated relative to "today" so the demo always has realistic availability
 function rel(startOffset: number, endOffset: number) {
@@ -267,6 +268,15 @@ export const ITEMS: Item[] = [
     reviews: [r('Mahira W.', 5, 'Client walked in and approved the location on the spot.', '2026-06-13')],
   },
 ]
+
+// attach curated photography (see images.ts); gradient art remains the fallback
+for (const item of ITEMS) {
+  const ids = ITEM_IMAGES[item.id]
+  if (ids?.length) {
+    item.image = img(ids[0])
+    item.images = ids.map((id) => img(id, 1200))
+  }
+}
 
 export const KITS: Kit[] = [
   {

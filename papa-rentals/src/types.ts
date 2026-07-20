@@ -68,6 +68,8 @@ export interface Item {
   specs: string[]
   description: string
   tags: string[]
+  image?: string // hero/card photo URL; gradient+emoji art is the fallback
+  images?: string[] // detail-page gallery (first entry === image)
   timesRented: number
   instantBook: boolean
   offersAccepted: boolean
