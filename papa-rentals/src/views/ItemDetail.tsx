@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ALSO_RENTED, ITEMS, TRANSPORT_OPTIONS, getItem, getOwner } from '../data/catalog'
+import { ITEMS, TRANSPORT_OPTIONS, getItem, getOwner } from '../data/catalog'
+import { similarItems } from '../recs'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import type { Offer, RentalUnit, TransportId } from '../types'
@@ -59,12 +60,8 @@ export default function ItemDetail({ id }: { id: string }) {
   const thread = state.chats[owner.id]
   const chatUnread = thread?.unread ?? 0
 
-  const alsoRented = useMemo(() => {
-    const cats = ALSO_RENTED[item.category] ?? []
-    return ITEMS.filter((i) => i.id !== id && cats.includes(i.category) && !state.blockedOwners.includes(i.ownerId))
-      .sort((a, b) => b.timesRented - a.timesRented)
-      .slice(0, 6)
-  }, [id, item.category, state.blockedOwners])
+  // similarity-ranked: tags + category adjacency + price band + quality
+  const alsoRented = useMemo(() => similarItems(id, state, 6), [id, state])
 
   const histo = ratingHistogram(item.rating, item.ratingCount)
   const myReviews = state.myReviews[id] ?? []

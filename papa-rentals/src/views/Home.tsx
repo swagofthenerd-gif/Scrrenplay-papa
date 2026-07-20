@@ -1,6 +1,8 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { CATEGORIES, ITEMS, KITS, getItem } from '../data/catalog'
+import { HERO_IMAGE } from '../data/images'
 import { useNav } from '../nav'
+import { forYou, similarItems } from '../recs'
 import { useStore } from '../store'
 import { buzz, dealActive, money, todayISO } from '../utils'
 import { Badge, ItemArt, ItemCard } from '../components/ui'
@@ -40,6 +42,20 @@ export default function Home() {
   const deals = visible.filter((i) => dealActive(i.id))
   const trending = [...visible].sort((a, b) => b.timesRented - a.timesRented).slice(0, 8)
   const recentlyViewed = state.recentlyViewed.map(getItem).filter((i) => !state.blockedOwners.includes(i.ownerId))
+  const picks = useMemo(() => forYou(state, 8), [state])
+  const lastViewed = recentlyViewed[0]
+  const becauseViewed = useMemo(
+    () => (lastViewed ? similarItems(lastViewed.id, state, 6) : []),
+    [lastViewed, state]
+  )
+
+  const cardProps = (item: (typeof ITEMS)[number], index?: number) => ({
+    item,
+    index,
+    onOpen: () => go({ name: 'item', id: item.id }),
+    wishlisted: state.wishlist.includes(item.id),
+    onToggleWish: () => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id }),
+  })
 
   return (
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
@@ -47,17 +63,27 @@ export default function Home() {
         <span className="spin">↻</span> {refreshing ? 'Refreshing…' : 'Release to refresh'}
       </div>
       <div className="hero">
-        <div className="hero-emoji">🎬</div>
-        <h1>
-          {state.profile.name ? `Salaam, ${state.profile.name}!` : 'Rent everything for'}<br />
-          {state.profile.name ? 'What are we shooting?' : 'your next shoot.'}
-        </h1>
-        <p>Cameras, glass, lights, grip trucks and crew vans — delivered to set like a food order, priced like a negotiation.</p>
-        <div className="hero-badges">
-          <span>⚡ Instant booking</span>
-          <span>🤝 Offer your price</span>
-          <span>🚐 Delivery to set</span>
-          <span>🛡️ Damage protection</span>
+        <img
+          className="hero-photo"
+          src={HERO_IMAGE}
+          alt=""
+          loading="eager"
+          decoding="async"
+          onError={(e) => { e.currentTarget.style.display = 'none' }}
+        />
+        <div className="hero-scrim" aria-hidden="true" />
+        <div className="hero-content">
+          <h1>
+            {state.profile.name ? `Salaam, ${state.profile.name}!` : 'Rent everything for'}<br />
+            {state.profile.name ? 'What are we shooting?' : 'your next shoot.'}
+          </h1>
+          <p>Cameras, glass, lights, grip trucks and crew vans — delivered to set like a food order, priced like a negotiation.</p>
+          <div className="hero-badges">
+            <span>⚡ Instant booking</span>
+            <span>🤝 Offer your price</span>
+            <span>🚐 Delivery to set</span>
+            <span>🛡️ Damage protection</span>
+          </div>
         </div>
       </div>
 
@@ -76,21 +102,27 @@ export default function Home() {
         </div>
       </div>
 
+      {picks.length > 0 && (
+        <div className="section">
+          <div className="section-head">
+            <div>
+              <h2>✨ For you</h2>
+              <div className="section-sub">Picked from what you've been browsing</div>
+            </div>
+          </div>
+          <div className="h-scroll">
+            {picks.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </div>
+        </div>
+      )}
+
       <div className="section">
         <div className="section-head">
           <h2>📍 Spaces to shoot at</h2>
           <button className="link-btn" onClick={() => go({ name: 'browse', category: 'studios' })}>All spaces →</button>
         </div>
         <div className="h-scroll">
-          {spaces.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              onOpen={() => go({ name: 'item', id: item.id })}
-              wishlisted={state.wishlist.includes(item.id)}
-              onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
-            />
-          ))}
+          {spaces.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
         </div>
         <div className="kit-card" style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <span style={{ fontSize: 34 }}>🏡</span>
@@ -106,15 +138,21 @@ export default function Home() {
         <div className="section">
           <div className="section-head"><h2>👀 Recently viewed</h2></div>
           <div className="h-scroll">
-            {recentlyViewed.map((item) => (
-              <ItemCard
-                key={item.id}
-                item={item}
-                onOpen={() => go({ name: 'item', id: item.id })}
-                wishlisted={state.wishlist.includes(item.id)}
-                onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
-              />
-            ))}
+            {recentlyViewed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </div>
+        </div>
+      )}
+
+      {lastViewed && becauseViewed.length > 0 && (
+        <div className="section">
+          <div className="section-head">
+            <div>
+              <h2>🎯 Because you viewed</h2>
+              <div className="section-sub">{lastViewed.name}</div>
+            </div>
+          </div>
+          <div className="h-scroll">
+            {becauseViewed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
           </div>
         </div>
       )}
@@ -126,15 +164,7 @@ export default function Home() {
             <button className="link-btn" onClick={() => go({ name: 'browse', dealsOnly: true })}>See all →</button>
           </div>
           <div className="grid">
-            {deals.map((item) => (
-              <ItemCard
-                key={item.id}
-                item={item}
-                onOpen={() => go({ name: 'item', id: item.id })}
-                wishlisted={state.wishlist.includes(item.id)}
-                onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
-              />
-            ))}
+            {deals.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
           </div>
         </div>
       )}
@@ -200,15 +230,7 @@ export default function Home() {
           <h2>🔥 Trending on set</h2>
         </div>
         <div className="grid">
-          {trending.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              onOpen={() => go({ name: 'item', id: item.id })}
-              wishlisted={state.wishlist.includes(item.id)}
-              onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
-            />
-          ))}
+          {trending.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
         </div>
       </div>
     </div>

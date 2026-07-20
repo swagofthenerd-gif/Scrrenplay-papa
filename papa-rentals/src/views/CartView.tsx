@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ALSO_RENTED, ITEMS, PAYMENT_METHODS, PROMO_CODES, TRANSPORT_OPTIONS, getItem } from '../data/catalog'
+import { PAYMENT_METHODS, PROMO_CODES, TRANSPORT_OPTIONS, getItem } from '../data/catalog'
+import { similarItems } from '../recs'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import { buzz, cartTotals, fmtDate, lineDuration, lineSubtotal, money, uid } from '../utils'
@@ -29,10 +30,10 @@ export default function CartView() {
   const needsDelivery = state.cart.some((b) => b.transport !== 'pickup')
   const needsApproval = state.cart.some((b) => !getItem(b.itemId).instantBook)
   const inCart = new Set(state.cart.map((b) => b.itemId))
-  const crossSell = ITEMS.filter(
-    (i) => !inCart.has(i.id) && !state.blockedOwners.includes(i.ownerId) &&
-      state.cart.some((b) => (ALSO_RENTED[getItem(b.itemId).category] ?? []).includes(i.category))
-  ).sort((a, b) => b.timesRented - a.timesRented).slice(0, 6)
+  // similarity-ranked around the most recent cart line
+  const crossSell = state.cart.length === 0
+    ? []
+    : similarItems(state.cart[state.cart.length - 1].itemId, state, 8).filter((i) => !inCart.has(i.id)).slice(0, 6)
 
   function applyPromo() {
     const code = promoInput.trim().toUpperCase()
