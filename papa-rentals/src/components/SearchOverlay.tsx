@@ -4,6 +4,7 @@ import { useNav } from '../nav'
 import { useStore } from '../store'
 import { buzz, highlightMatch, money, searchRank } from '../utils'
 import { ItemArt, RatingCompact } from './ui'
+import { Icon } from './icons'
 
 function Marked({ text, q }: { text: string; q: string }) {
   return (
@@ -71,7 +72,7 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
     <div className="search-overlay" role="dialog" aria-label="Search">
       <div className="search-overlay-head">
         <div className="searchbox">
-          <span aria-hidden="true">🔍</span>
+          <Icon name="search" size={16} />
           <input
             ref={inputRef}
             type="search"
@@ -83,7 +84,7 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
             onKeyDown={(e) => e.key === 'Enter' && submit()}
             aria-label="Search gear"
           />
-          {q && <button className="clear-btn" onClick={() => setQ('')} aria-label="Clear search">✕</button>}
+          {q && <button className="clear-btn" onClick={() => setQ('')} aria-label="Clear search"><Icon name="x" size={15} /></button>}
         </div>
         <button className="link-btn" onClick={onClose}>Cancel</button>
       </div>
@@ -96,7 +97,7 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
                 <h4>Recent searches</h4>
                 <div className="chip-cloud">
                   {state.recentSearches.map((r) => (
-                    <button key={r} className="filter-chip" onClick={() => submit(r)}>🕐 {r}</button>
+                    <button key={r} className="filter-chip chip-ico" onClick={() => submit(r)}><Icon name="clock" size={14} /> {r}</button>
                   ))}
                 </div>
               </>
@@ -104,15 +105,15 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
             <h4>Trending on set</h4>
             <div className="chip-cloud">
               {trending.map((i) => (
-                <button key={i.id} className="filter-chip" onClick={() => openItem(i.id)}>{i.emoji} {i.name}</button>
+                <button key={i.id} className="filter-chip chip-ico" onClick={() => openItem(i.id)}><Icon name={i.icon} size={14} /> {i.name}</button>
               ))}
             </div>
             <h4>Departments</h4>
             {CATEGORIES.map((c) => (
               <button key={c.id} className="sug-row" onClick={() => { buzz(); onClose(); go({ name: 'browse', category: c.id }) }}>
-                <span className="sug-cat-ico" style={{ background: c.gradient }}>{c.emoji}</span>
+                <span className="sug-cat-ico" style={{ background: c.gradient }}><Icon name={c.icon} size={22} /></span>
                 <span className="sug-title">{c.name}</span>
-                <span className="sug-meta">›</span>
+                <span className="sug-meta"><Icon name="chevron-right" size={16} /></span>
               </button>
             ))}
           </>
@@ -120,7 +121,7 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
           <>
             {results.cats.map((c) => (
               <button key={c.id} className="sug-row" onClick={() => { buzz(); onClose(); go({ name: 'browse', category: c.id }) }}>
-                <span className="sug-cat-ico" style={{ background: c.gradient }}>{c.emoji}</span>
+                <span className="sug-cat-ico" style={{ background: c.gradient }}><Icon name={c.icon} size={22} /></span>
                 <span className="sug-title"><Marked text={c.name} q={q} /></span>
                 <span className="sug-meta">department</span>
               </button>
@@ -139,13 +140,13 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
             ))}
             {results.items.length === 0 && results.cats.length === 0 && (
               <div className="empty-state" style={{ padding: '40px 10px' }}>
-                <div className="big">🔎</div>
+                <div className="big"><Icon name="search" size={56} /></div>
                 <p>Nothing matches “{q}” — try a different spelling; typos are okay.</p>
               </div>
             )}
             {(results.items.length > 0 || results.cats.length > 0) && (
               <button className="search-all-btn" onClick={() => submit()}>
-                Search all results for “{q.trim()}” →
+                Search all results for “{q.trim()}” <Icon name="arrow-right" size={15} />
               </button>
             )}
           </>

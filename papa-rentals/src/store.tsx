@@ -6,6 +6,7 @@ import type {
   Item, Offer, Order, OrderStatus, OwnerBooking, Review, UserReport,
 } from './types'
 import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, todayISO, uid } from './utils'
+import type { IconName } from './components/icons'
 import type { TotalsInput } from './utils'
 
 const STORAGE_KEY = 'papa-rentals-v2'
@@ -23,8 +24,8 @@ const initialState: AppState = {
   myReviews: {},
   reports: [],
   addresses: [
-    { id: 'a1', label: '🎬 Studio', detail: 'Alhamra Arts Council, Gaddafi Stadium, Lahore' },
-    { id: 'a2', label: '🏠 Home base', detail: 'House 12, Street 4, DHA Phase 3, Lahore' },
+    { id: 'a1', label: 'Studio', icon: 'clapperboard', detail: 'Alhamra Arts Council, Gaddafi Stadium, Lahore' },
+    { id: 'a2', label: 'Home base', icon: 'home', detail: 'House 12, Street 4, DHA Phase 3, Lahore' },
   ],
   selectedAddressId: 'a1',
   recentSearches: [],
@@ -87,7 +88,7 @@ type NotifSpec = Omit<AppNotification, 'id' | 'at' | 'read'>
 function stepOrderForward(o: Order): { order: Order; notifs: NotifSpec[] } {
   const notifs: NotifSpec[] = []
   if (o.status === 'requested') {
-    notifs.push({ emoji: '🤝', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: '#/orders' })
+    notifs.push({ icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: '#/orders' })
     return { order: { ...o, status: 'confirmed', approveAt: undefined, autoAdvanceAt: Date.now() + 30000 }, notifs }
   }
   const idx = STATUS_FLOW.indexOf(o.status)
@@ -97,24 +98,24 @@ function stepOrderForward(o: Order): { order: Order; notifs: NotifSpec[] } {
   if (next === 'in_transit' && !o.driver) {
     const d = DRIVER_POOL[Math.floor(Math.random() * DRIVER_POOL.length)]
     patch = { ...patch, driver: { ...d, pin: String(1000 + Math.floor(Math.random() * 9000)) } }
-    notifs.push({ emoji: '🚐', title: `${o.id} is on the way`, body: `${d.name} is driving your gear over. Handover PIN inside.`, link: '#/orders' })
+    notifs.push({ icon: 'van', title: `${o.id} is on the way`, body: `${d.name} is driving your gear over. Handover PIN inside.`, link: '#/orders' })
   }
   if (next === 'completed') {
     patch = { ...patch, depositReleased: true }
-    notifs.push({ emoji: '🏁', title: `${o.id} complete — deposit hold released`, body: 'Rate your experience while it’s fresh!', link: '#/orders' })
+    notifs.push({ icon: 'flag-checkered', title: `${o.id} complete — deposit hold released`, body: 'Rate your experience while it’s fresh!', link: '#/orders' })
   }
   return { order: { ...o, ...patch }, notifs }
 }
 
 const SUPPORT_RULES: [RegExp, string][] = [
-  [/refund|cancel/i, 'Cancellations are free up to 48h before your start date; inside 48h a 10% fee applies. Refunds land in your Papa Wallet instantly — Orders → Cancel order. 💚'],
+  [/refund|cancel/i, 'Cancellations are free up to 48h before your start date; inside 48h a 10% fee applies. Refunds land in your Papa Wallet instantly — Orders › Cancel order.'],
   [/deposit|hold/i, 'Deposits are authorization holds, never charges. They release automatically within 24h of a damage-free return — watch the status right on the order card.'],
   [/late|driver|delivery/i, 'Sorry about that! Your courier’s live card (with a call button and PIN) is on the order. If they’re 15+ minutes late, we auto-credit your delivery fee.'],
-  [/damage|claim|broke|broken/i, 'If gear arrived damaged, file a claim from the order (🛡️ File claim). Papa Protection covers accidental damage up to full value — most claims resolve within a day.'],
-  [/offer|price|negotiat/i, 'Tap “Offer your price” on any listing showing 💰 Offers OK. Offers ≥92% of the recommended fare are usually accepted instantly, and accepted deals stay locked for 24h.'],
-  [/payout|earning|host|listing/i, 'Host payouts land in your wallet within 24h of a completed booking — you keep 90%. Track requests and earnings in Profile → Host dashboard.'],
+  [/damage|claim|broke|broken/i, 'If gear arrived damaged, file a claim from the order (Orders › File claim). Papa Protection covers accidental damage up to full value — most claims resolve within a day.'],
+  [/offer|price|negotiat/i, 'Tap “Offer your price” on any listing showing Offers OK. Offers ≥92% of the recommended fare are usually accepted instantly, and accepted deals stay locked for 24h.'],
+  [/payout|earning|host|listing/i, 'Host payouts land in your wallet within 24h of a completed booking — you keep 90%. Track requests and earnings in Profile › Host dashboard.'],
 ]
-const SUPPORT_FALLBACK = 'I’ve opened a ticket for a human specialist — they’ll follow up shortly. Meanwhile the Help Center FAQ might have your answer. 🎧'
+const SUPPORT_FALLBACK = 'I’ve opened a ticket for a human specialist — they’ll follow up shortly. Meanwhile the Help Center FAQ might have your answer.'
 
 function pickReply(ownerId: string, t: ChatThread): string {
   if (ownerId === 'support') {
@@ -128,7 +129,7 @@ function pickReply(ownerId: string, t: ChatThread): string {
 }
 
 const OWNER_REPLIES = [
-  'Salaam! Yes, it’s available for those dates. 👍',
+  'Salaam! Yes, it’s available for those dates.',
   'We can include an extra battery at no charge if you book today.',
   'Pickup any time after 8am works. Delivery also possible!',
   'It was serviced last week — everything is in perfect shape.',
@@ -154,7 +155,7 @@ function reducer(state: AppState, action: Action): AppState {
       let notifications = state.notifications
       if (adding && dealActive(action.itemId)) {
         notifications = notify(state, {
-          emoji: '💸', title: `Price drop on ${item.name}`,
+          icon: 'coins', title: `Price drop on ${item.name}`,
           body: `${item.flashDeal!.percentOff}% off right now — the deal is ticking.`,
           link: `#/item/${item.id}`,
         })
@@ -207,8 +208,8 @@ function reducer(state: AppState, action: Action): AppState {
           : state.promoCodesUsed,
         freeVanPerkMonth: t.usedVanPerk ? todayISO().slice(0, 7) : state.freeVanPerkMonth,
         notifications: notify(state, needsApproval
-          ? { emoji: '⏳', title: `Booking ${order.id} requested`, body: 'Waiting for owner approval — usually a few minutes.', link: '#/orders' }
-          : { emoji: '✅', title: `Order ${order.id} confirmed`, body: 'Gear is being reserved for your dates.', link: '#/orders' }),
+          ? { icon: 'hourglass', title: `Booking ${order.id} requested`, body: 'Waiting for owner approval — usually a few minutes.', link: '#/orders' }
+          : { icon: 'check-circle', title: `Order ${order.id} confirmed`, body: 'Gear is being reserved for your dates.', link: '#/orders' }),
       }
     }
 
@@ -239,7 +240,7 @@ function reducer(state: AppState, action: Action): AppState {
         walletBalance: state.walletBalance + refund,
         points: state.points + o.pointsUsed - o.pointsEarned,
         notifications: notify(state, {
-          emoji: '↩️', title: `${o.id} cancelled`,
+          icon: 'undo', title: `${o.id} cancelled`,
           body: fee > 0 ? `Refunded ${refund.toLocaleString()} to wallet (10% late-cancel fee applied).` : `Fully refunded to your wallet. Deposit hold released.`,
           link: '#/orders',
         }),
@@ -267,7 +268,7 @@ function reducer(state: AppState, action: Action): AppState {
           x.id === o.id ? { ...x, lines, total: x.total + cost, extendedDays: (x.extendedDays ?? 0) + action.days } : x
         ),
         notifications: notify(state, {
-          emoji: '📅', title: `${o.id} extended by ${action.days} day${action.days > 1 ? 's' : ''}`,
+          icon: 'calendar', title: `${o.id} extended by ${action.days} day${action.days > 1 ? 's' : ''}`,
           body: fromWallet >= cost ? `Rs ${cost.toLocaleString()} paid from wallet.` : `Rs ${cost.toLocaleString()} charged (Rs ${fromWallet.toLocaleString()} from wallet).`,
           link: '#/orders',
         }),
@@ -345,7 +346,7 @@ function reducer(state: AppState, action: Action): AppState {
           : state.blockedOwners,
         orders: action.orderId ? state.orders.map((o) => (o.id === action.orderId ? { ...o, reported: true } : o)) : state.orders,
         notifications: notify(state, {
-          emoji: '🚩', title: `Report ${action.report.caseNo} filed`,
+          icon: 'flag', title: `Report ${action.report.caseNo} filed`,
           body: 'Trust & Safety reviews reports within 24 hours.',
         }),
       }
@@ -379,7 +380,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         myListings,
         notifications: notify(state, {
-          emoji: '📤', title: `${action.item.name} submitted`,
+          icon: 'send', title: `${action.item.name} submitted`,
           body: 'Our team verifies new spaces — usually live within minutes.',
           link: `#/item/${action.item.id}`,
         }),
@@ -399,7 +400,7 @@ function reducer(state: AppState, action: Action): AppState {
           x.id === b.id ? { ...x, status: 'accepted', completesAt: Date.now() + 50000 } : x
         ),
         notifications: notify(state, {
-          emoji: '✅', title: `You accepted ${b.renterName}'s booking`,
+          icon: 'check-circle', title: `You accepted ${b.renterName}'s booking`,
           body: `Payout of Rs ${Math.round(b.total * 0.9).toLocaleString()} lands after the booking completes.`,
           link: '#/dashboard',
         }),
@@ -420,7 +421,7 @@ function reducer(state: AppState, action: Action): AppState {
           ...state.claims,
         ],
         notifications: notify(state, {
-          emoji: '🛡️', title: `Claim filed for ${action.itemName}`,
+          icon: 'shield', title: `Claim filed for ${action.itemName}`,
           body: 'Papa Protection is reviewing — most claims resolve within a day.',
           link: '#/support',
         }),
@@ -438,7 +439,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         referralRedeemed: true,
         walletBalance: state.walletBalance + 500,
-        notifications: notify(state, { emoji: '🎁', title: 'Referral applied — Rs 500 added', body: 'Your friend gets Rs 500 too. Shukriya!' }),
+        notifications: notify(state, { icon: 'gift', title: 'Referral applied — Rs 500 added', body: 'Your friend gets Rs 500 too. Shukriya!' }),
       }
     }
 
@@ -464,11 +465,11 @@ function reducer(state: AppState, action: Action): AppState {
             const verdict = evaluateOffer(of.recommendedRate, of.offeredRate)
             const item = getItem(of.itemId)
             const resolved: Offer = { ...of, status: verdict.status, counterRate: verdict.counter, resolveAt: undefined }
-            const msg = verdict.status === 'accepted'
-              ? { emoji: '🎉', title: `Offer accepted on ${item.name}`, body: `Locked at Rs ${of.offeredRate.toLocaleString()}/${of.unit} for 24h.`, link: `#/item/${of.itemId}` }
+            const msg: Omit<AppNotification, 'id' | 'at' | 'read'> = verdict.status === 'accepted'
+              ? { icon: 'check-circle', title: `Offer accepted on ${item.name}`, body: `Locked at Rs ${of.offeredRate.toLocaleString()}/${of.unit} for 24h.`, link: `#/item/${of.itemId}` }
               : verdict.status === 'countered'
-                ? { emoji: '↩️', title: `Counter-offer on ${item.name}`, body: `Owner suggests Rs ${verdict.counter!.toLocaleString()}/${of.unit}.`, link: `#/item/${of.itemId}` }
-                : { emoji: '❌', title: `Offer declined on ${item.name}`, body: 'Try something closer to the recommended fare.', link: `#/item/${of.itemId}` }
+                ? { icon: 'undo', title: `Counter-offer on ${item.name}`, body: `Owner suggests Rs ${verdict.counter!.toLocaleString()}/${of.unit}.`, link: `#/item/${of.itemId}` }
+                : { icon: 'x-circle', title: `Offer declined on ${item.name}`, body: 'Try something closer to the recommended fare.', link: `#/item/${of.itemId}` }
             notifications = notify({ ...next, notifications }, msg)
             return resolved
           }
@@ -493,7 +494,7 @@ function reducer(state: AppState, action: Action): AppState {
           }
           chats[ownerId] = { messages: [...t.messages, reply], unread: t.unread + 1, typingUntil: undefined, pendingReplyAt: undefined }
           notifications = notify({ ...next, notifications }, {
-            emoji: '💬', title: `${getOwner(ownerId).name} replied`, body: reply.text, link: '#/profile',
+            icon: 'chat', title: `${getOwner(ownerId).name} replied`, body: reply.text, link: '#/profile',
           })
         }
         next = { ...next, chats, notifications }
@@ -506,7 +507,7 @@ function reducer(state: AppState, action: Action): AppState {
         let notifications = next.notifications
         const orders = next.orders.map((o) => {
           if (!dueOrders.includes(o)) return o
-          notifications = notify({ ...next, notifications }, { emoji: '🤝', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed. 🎬', link: '#/orders' })
+          notifications = notify({ ...next, notifications }, { icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: '#/orders' })
           return { ...o, status: 'confirmed' as OrderStatus, approveAt: undefined, autoAdvanceAt: now + 25000 }
         })
         next = { ...next, orders, notifications }
@@ -525,7 +526,7 @@ function reducer(state: AppState, action: Action): AppState {
           if (l.pendingVerifyAt && l.pendingVerifyAt <= now) {
             out = { ...out, pendingVerifyAt: undefined, listingVerified: true, nextRequestAt: now + 30000 }
             notifications = notify({ ...next, notifications }, {
-              emoji: '✅', title: `${l.name} is live!`,
+              icon: 'check-circle', title: `${l.name} is live!`,
               body: 'Verified and visible to every filmmaker on Papa Rentals.',
               link: `#/item/${l.id}`,
             })
@@ -533,7 +534,7 @@ function reducer(state: AppState, action: Action): AppState {
           if (l.inquiryAt && l.inquiryAt <= now) {
             out = { ...out, inquiryAt: undefined }
             notifications = notify({ ...next, notifications }, {
-              emoji: '👀', title: `First inquiry on ${l.name}`,
+              icon: 'eye', title: `First inquiry on ${l.name}`,
               body: '“Salaam! Is it available this Friday for a 6h commercial shoot?” — Rabia N.',
               link: `#/item/${l.id}`,
             })
@@ -570,8 +571,8 @@ function reducer(state: AppState, action: Action): AppState {
           }
           ownerBookings = [booking, ...ownerBookings]
           notifications = notify({ ...next, notifications }, {
-            emoji: '📩', title: `Booking request: ${l.name}`,
-            body: `${renter.name} (★${renter.rating}) wants ${dur} ${unit}${dur > 1 ? 's' : ''}${offered ? ` at an offered Rs ${rate.toLocaleString()}/${unit}` : ''}. Respond in your Host dashboard.`,
+            icon: 'mail', title: `Booking request: ${l.name}`,
+            body: `${renter.name} (rated ${renter.rating}) wants ${dur} ${unit}${dur > 1 ? 's' : ''}${offered ? ` at an offered Rs ${rate.toLocaleString()}/${unit}` : ''}. Respond in your Host dashboard.`,
             link: '#/dashboard',
           })
           return { ...l, nextRequestAt: now + 150000 }
@@ -592,7 +593,7 @@ function reducer(state: AppState, action: Action): AppState {
           if (!hostDue.includes(b)) return b
           if (b.status === 'accepted') {
             notifications = notify({ ...next, notifications }, {
-              emoji: '🎬', title: `${b.renterName}'s booking completed`,
+              icon: 'clapperboard', title: `${b.renterName}'s booking completed`,
               body: 'Great hosting! Your payout is on the way.', link: '#/dashboard',
             })
             myListings = myListings.map((l) => (l.id === b.listingId ? { ...l, timesRented: l.timesRented + 1 } : l))
@@ -601,7 +602,7 @@ function reducer(state: AppState, action: Action): AppState {
           const payout = Math.round(b.total * 0.9)
           walletBalance += payout
           notifications = notify({ ...next, notifications }, {
-            emoji: '💰', title: `Payout received: Rs ${payout.toLocaleString()}`,
+            icon: 'coins', title: `Payout received: Rs ${payout.toLocaleString()}`,
             body: `${b.renterName}'s booking — 90% of Rs ${b.total.toLocaleString()}, straight to your wallet.`, link: '#/dashboard',
           })
           return { ...b, status: 'paid_out' as const, payoutAt: undefined }
@@ -609,7 +610,7 @@ function reducer(state: AppState, action: Action): AppState {
         next = { ...next, ownerBookings, walletBalance, myListings, notifications }
       }
 
-      // 7. damage claims: filed → reviewing → approved (credited to wallet)
+      // 7. damage claims: filed to reviewing to approved (credited to wallet)
       const claimsDue = next.claims.filter(
         (c) => (c.status === 'filed' && c.reviewAt <= now) || (c.status === 'reviewing' && c.approveAt <= now)
       )
@@ -622,7 +623,7 @@ function reducer(state: AppState, action: Action): AppState {
           if (c.status === 'filed') return { ...c, status: 'reviewing' as const }
           walletBalance += c.amount
           notifications = notify({ ...next, notifications }, {
-            emoji: '✅', title: `Claim approved: Rs ${c.amount.toLocaleString()}`,
+            icon: 'check-circle', title: `Claim approved: Rs ${c.amount.toLocaleString()}`,
             body: `${c.itemName} — credited to your wallet. Sorry that happened!`, link: '#/support',
           })
           return { ...c, status: 'approved' as const }
@@ -638,7 +639,7 @@ function reducer(state: AppState, action: Action): AppState {
         for (const a of alertsDue) {
           const item = getItem(a.itemId)
           notifications = notify({ ...next, notifications }, {
-            emoji: '🎉', title: `${item.name} is now available`,
+            icon: 'check-circle', title: `${item.name} is now available`,
             body: 'The conflicting booking freed up — grab your dates before someone else does.',
             link: `#/item/${a.itemId}`,
           })
@@ -656,7 +657,7 @@ function reducer(state: AppState, action: Action): AppState {
         const orders = next.orders.map((o) => {
           if (!remindDue.includes(o)) return o
           notifications = notify({ ...next, notifications }, {
-            emoji: '🎬', title: `Shoot day soon — ${o.id}`,
+            icon: 'clapperboard', title: `Shoot day soon — ${o.id}`,
             body: 'Gear arrives at your slot time. Charge your batteries and sleep well!', link: '#/orders',
           })
           return { ...o, reminded: true }
@@ -688,11 +689,41 @@ function reducer(state: AppState, action: Action): AppState {
   }
 }
 
+// state persisted before the icon overhaul stored emoji glyphs — map them to
+// icon keys (and strip emoji from address labels) so nothing renders raw emoji.
+const EMOJI_RE = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}\u{2190}-\u{21FF}\u{2300}-\u{23FF}]/gu
+const LEGACY_NOTIF: Record<string, IconName> = {
+  '🤝': 'handshake', '🚐': 'van', '🏁': 'flag-checkered', '💸': 'coins', '💰': 'coins',
+  '⏳': 'hourglass', '✅': 'check-circle', '🎉': 'check-circle', '↩️': 'undo', '📅': 'calendar',
+  '🚩': 'flag', '📤': 'send', '💬': 'chat', '👀': 'eye', '📩': 'mail', '🎬': 'clapperboard',
+  '🛡️': 'shield', '🎁': 'gift', '❌': 'x-circle',
+}
+const LEGACY_SPACE: Record<string, IconName> = {
+  '🏢': 'building', '🟩': 'greenscreen', '🌇': 'skyline', '🏛️': 'landmark',
+  '🏭': 'warehouse', '🛋️': 'sofa', '☕': 'coffee', '🌳': 'tree',
+}
+
+function migrate(s: any): any {
+  if (Array.isArray(s.notifications))
+    s.notifications = s.notifications.map((n: any) =>
+      n.icon ? n : { ...n, icon: LEGACY_NOTIF[n.emoji] ?? 'bell', emoji: undefined })
+  if (Array.isArray(s.myListings))
+    s.myListings = s.myListings.map((l: any) =>
+      l.icon ? l : { ...l, icon: LEGACY_SPACE[l.emoji] ?? 'building', emoji: undefined })
+  if (Array.isArray(s.addresses))
+    s.addresses = s.addresses.map((a: any) => ({
+      ...a,
+      icon: a.icon ?? (a.label?.includes('🎬') ? 'clapperboard' : a.label?.includes('🏠') ? 'home' : 'pin'),
+      label: typeof a.label === 'string' ? a.label.replace(EMOJI_RE, '').trim() : a.label,
+    }))
+  return s
+}
+
 function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
-      const saved = JSON.parse(raw)
+      const saved = migrate(JSON.parse(raw))
       const merged = { ...initialState, ...saved, profile: { ...initialState.profile, ...saved.profile } }
       syncUserListings(merged.myListings)
       return merged

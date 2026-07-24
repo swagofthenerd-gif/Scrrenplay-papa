@@ -384,14 +384,14 @@ export function downloadReceipt(order: Order) {
   const rows = order.lines.map((b) => {
     const item = getItem(b.itemId)
     const dur = lineDuration(b)
-    return `<tr><td>${item.name} ×${b.qty}<br><small>${fmtDate(b.startDate)} → ${fmtDate(b.endDate)} · ${dur} ${b.unit}${dur > 1 ? 's' : ''}</small></td><td align="right">${money(lineSubtotal(b))}</td></tr>`
+    return `<tr><td>${item.name} ×${b.qty}<br><small>${fmtDate(b.startDate)} to ${fmtDate(b.endDate)} · ${dur} ${b.unit}${dur > 1 ? 's' : ''}</small></td><td align="right">${money(lineSubtotal(b))}</td></tr>`
   }).join('')
   const fee = (label: string, v: number, neg = false) =>
     v > 0 ? `<tr><td>${label}</td><td align="right">${neg ? '−' : ''}${money(v)}</td></tr>` : ''
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Receipt ${order.id}</title>
 <style>body{font-family:system-ui,sans-serif;max-width:520px;margin:32px auto;color:#1c1917}h1{font-size:20px}table{width:100%;border-collapse:collapse}td{padding:6px 0;border-bottom:1px solid #eee;font-size:14px}.tot td{font-weight:800;border-bottom:none}</style>
 </head><body>
-<h1>🎬 Papa Rentals — Tax Invoice</h1>
+<h1>Papa Rentals — Tax Invoice</h1>
 <p>Order <b>${order.id}</b> · ${new Date(order.createdAt).toLocaleString()}<br>Payment: ${order.paymentMethod} · Deliver to: ${order.address}</p>
 <table>${rows}
 ${fee('Transport', order.transportFee)}${fee('Damage protection', order.insuranceFee)}${fee('Operators', order.operatorFee)}${fee('Service fee', order.serviceFee)}

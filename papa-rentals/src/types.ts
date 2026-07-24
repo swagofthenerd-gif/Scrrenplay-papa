@@ -1,3 +1,5 @@
+import type { IconName } from './components/icons'
+
 export type CategoryId =
   | 'cameras'
   | 'lenses'
@@ -13,14 +15,13 @@ export type CategoryId =
 export interface Category {
   id: CategoryId
   name: string
-  emoji: string
+  icon: IconName
   gradient: string
 }
 
 export interface Owner {
   id: string
   name: string
-  avatar: string
   rating: number
   ratingCount: number
   verified: boolean
@@ -59,7 +60,7 @@ export interface Item {
   id: string
   name: string
   category: CategoryId
-  emoji: string
+  icon: IconName
   pricePerDay: number
   deposit: number
   rating: number
@@ -68,7 +69,7 @@ export interface Item {
   specs: string[]
   description: string
   tags: string[]
-  image?: string // hero/card photo URL; gradient+emoji art is the fallback
+  image?: string // hero/card photo URL; gradient+icon art is the fallback
   images?: string[] // detail-page gallery (first entry === image)
   timesRented: number
   instantBook: boolean
@@ -91,7 +92,7 @@ export interface Item {
 export interface Kit {
   id: string
   name: string
-  emoji: string
+  icon: IconName
   itemIds: string[]
   percentOff: number
   blurb: string
@@ -102,7 +103,7 @@ export type TransportId = 'pickup' | 'van' | 'truck'
 export interface TransportOption {
   id: TransportId
   name: string
-  emoji: string
+  icon: IconName
   fee: number
   eta: string
   detail: string
@@ -220,7 +221,7 @@ export interface UserReport {
 
 export interface AppNotification {
   id: string
-  emoji: string
+  icon: IconName
   title: string
   body?: string
   at: number
@@ -270,6 +271,7 @@ export interface AvailAlert {
 export interface Address {
   id: string
   label: string
+  icon?: IconName
   detail: string
 }
 

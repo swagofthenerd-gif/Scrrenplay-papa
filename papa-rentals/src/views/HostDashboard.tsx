@@ -3,6 +3,7 @@ import { useNav } from '../nav'
 import { useStore } from '../store'
 import { buzz, fmtDate, fmtTimeAgo, money } from '../utils'
 import { Badge, ItemArt, Stars } from '../components/ui'
+import { Icon } from '../components/icons'
 import type { OwnerBooking } from '../types'
 
 export default function HostDashboard() {
@@ -20,7 +21,7 @@ export default function HostDashboard() {
   if (state.myListings.length === 0) {
     return (
       <div className="empty-state">
-        <div className="big">🏡</div>
+        <div className="big"><Icon name="home" size={56} /></div>
         <h3>No listings yet</h3>
         <p>Post a studio, rooftop or any space crews would shoot at — booking requests land here.</p>
         <button className="btn btn-primary" onClick={() => go({ name: 'post' })}>List your space</button>
@@ -30,14 +31,14 @@ export default function HostDashboard() {
 
   return (
     <div className="section">
-      <button className="back-btn" onClick={back}>← Back</button>
+      <button className="back-btn" onClick={back}><Icon name="chevron-left" size={16} /> Back</button>
       <div className="section-head" style={{ marginTop: 4 }}>
-        <h2>📊 Host dashboard</h2>
+        <h2><Icon name="chart" className="h-ico" /> Host dashboard</h2>
         <button className="link-btn" onClick={() => go({ name: 'post' })}>+ New listing</button>
       </div>
 
       <div className="wallet-card" style={{ marginTop: 4 }}>
-        <div style={{ color: '#d6d3d1', fontSize: 13 }}>💰 Total earned as host</div>
+        <div style={{ color: '#d6d3d1', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="coins" size={14} /> Total earned as host</div>
         <div className="balance">{money(totalEarned)}</div>
         <div style={{ color: '#d6d3d1', fontSize: 13, marginTop: 6 }}>
           {money(pendingPayout)} pending payout · {liveListings} live listing{liveListings === 1 ? '' : 's'} · payouts land in your wallet within 24h
@@ -45,13 +46,13 @@ export default function HostDashboard() {
       </div>
 
       <div className="stat-row">
-        <div className="stat-tile"><div className="stat-num">📩 {pending.length}</div><div className="muted small">Requests</div></div>
-        <div className="stat-tile"><div className="stat-num">🎬 {active.length}</div><div className="muted small">Active</div></div>
-        <div className="stat-tile"><div className="stat-num">🏁 {paidOut.length}</div><div className="muted small">Paid out</div></div>
+        <div className="stat-tile"><div className="stat-num"><Icon name="mail" size={16} /> {pending.length}</div><div className="muted small">Requests</div></div>
+        <div className="stat-tile"><div className="stat-num"><Icon name="clapperboard" size={16} /> {active.length}</div><div className="muted small">Active</div></div>
+        <div className="stat-tile"><div className="stat-num"><Icon name="flag-checkered" size={16} /> {paidOut.length}</div><div className="muted small">Paid out</div></div>
       </div>
 
       <div className="panel" style={{ marginTop: 14 }}>
-        <h3 style={{ fontSize: 15 }}>📩 Booking requests</h3>
+        <h3 style={{ fontSize: 15 }}><Icon name="mail" className="h-ico" size={15} /> Booking requests</h3>
         {pending.length === 0 ? (
           <p className="muted small" style={{ marginBottom: 0 }}>
             No open requests. Renters are browsing — verified listings usually get their first request within minutes.
@@ -60,19 +61,19 @@ export default function HostDashboard() {
           pending.map((b) => <RequestCard key={b.id} booking={b} onAct={(accepted) => {
             buzz()
             dispatch({ type: accepted ? 'ACCEPT_OWNER_BOOKING' : 'DECLINE_OWNER_BOOKING', id: b.id })
-            toast(accepted ? `Accepted — ${b.renterName} is booked ✅` : 'Request declined')
+            toast(accepted ? `Accepted — ${b.renterName} is booked` : 'Request declined')
           }} />)
         )}
       </div>
 
       {active.length > 0 && (
         <div className="panel">
-          <h3 style={{ fontSize: 15 }}>🎬 Active bookings</h3>
+          <h3 style={{ fontSize: 15 }}><Icon name="clapperboard" className="h-ico" size={15} /> Active bookings</h3>
           {active.map((b) => (
             <BookingRow key={b.id} booking={b} badge={
               b.status === 'accepted'
-                ? <Badge tone="green">Booked ✓</Badge>
-                : <Badge tone="purple">💸 Payout processing</Badge>
+                ? <Badge tone="green">Booked</Badge>
+                : <Badge tone="purple"><Icon name="coins" size={12} /> Payout processing</Badge>
             } />
           ))}
         </div>
@@ -80,11 +81,11 @@ export default function HostDashboard() {
 
       {history.length > 0 && (
         <div className="panel">
-          <h3 style={{ fontSize: 15 }}>📜 History</h3>
+          <h3 style={{ fontSize: 15 }}><Icon name="scroll" className="h-ico" size={15} /> History</h3>
           {history.map((b) => (
             <BookingRow key={b.id} booking={b} badge={
               b.status === 'paid_out'
-                ? <Badge tone="green">Paid {money(Math.round(b.total * 0.9))} ✓</Badge>
+                ? <Badge tone="green">Paid {money(Math.round(b.total * 0.9))}</Badge>
                 : <Badge tone="red">Declined</Badge>
             } />
           ))}
@@ -106,11 +107,11 @@ function RequestCard({ booking: b, onAct }: { booking: OwnerBooking; onAct: (acc
         <div style={{ flex: 1, minWidth: 0 }}>
           <b style={{ fontSize: 14 }}>{b.renterName}</b> <Stars value={b.renterRating} size={11} /> <span className="muted small">{b.renterRating}</span>
           <div className="muted small">
-            {listing.name} · {b.unit === 'hour' ? `${dur}h on ${fmtDate(b.startDate)}` : `${fmtDate(b.startDate)} → ${fmtDate(b.endDate)}`} · {fmtTimeAgo(b.requestedAt)}
+            {listing.name} · {b.unit === 'hour' ? `${dur}h on ${fmtDate(b.startDate)}` : `${fmtDate(b.startDate)} to ${fmtDate(b.endDate)}`} · {fmtTimeAgo(b.requestedAt)}
           </div>
           <div style={{ fontSize: 13, marginTop: 2 }}>
             {isOffer ? (
-              <span>🤝 Offered <b>{money(b.rate)}/{b.unit}</b> <s className="muted small">{money(baseRate)}</s> · total <b>{money(b.total)}</b></span>
+              <span><Icon name="handshake" size={13} /> Offered <b>{money(b.rate)}/{b.unit}</b> <s className="muted small">{money(baseRate)}</s> · total <b>{money(b.total)}</b></span>
             ) : (
               <span>At your rate · total <b>{money(b.total)}</b></span>
             )}
@@ -119,8 +120,8 @@ function RequestCard({ booking: b, onAct }: { booking: OwnerBooking; onAct: (acc
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-        <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => onAct(true)}>✓ Accept</button>
-        <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => onAct(false)}>✕ Decline</button>
+        <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => onAct(true)}><Icon name="check" size={14} /> Accept</button>
+        <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => onAct(false)}><Icon name="x" size={14} /> Decline</button>
       </div>
     </div>
   )
@@ -134,7 +135,7 @@ function BookingRow({ booking: b, badge }: { booking: OwnerBooking; badge: React
       <div style={{ flex: 1, minWidth: 0 }}>
         <b>{b.renterName}</b> · {listing.name}
         <div className="muted small">
-          {b.unit === 'hour' ? `${b.hours}h on ${fmtDate(b.startDate)}` : `${fmtDate(b.startDate)} → ${fmtDate(b.endDate)}`} · {money(b.total)}
+          {b.unit === 'hour' ? `${b.hours}h on ${fmtDate(b.startDate)}` : `${fmtDate(b.startDate)} to ${fmtDate(b.endDate)}`} · {money(b.total)}
         </div>
       </div>
       {badge}

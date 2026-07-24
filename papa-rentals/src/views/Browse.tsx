@@ -6,7 +6,8 @@ import { money } from '../utils'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import { dealActive, fuzzyMatch, searchRank, weightedRating } from '../utils'
-import { ItemCard } from '../components/ui'
+import { ItemCard, RatingCompact } from '../components/ui'
+import { Icon, type IconName } from '../components/icons'
 
 type Sort = 'relevance' | 'popular' | 'price_asc' | 'price_desc' | 'rating' | 'nearest'
 
@@ -66,10 +67,11 @@ export default function Browse({
 
   const activeFilters = [verifiedOnly, instantOnly, offersOnly, Boolean(maxPrice), Boolean(minCapacity), hourlyOnly].filter(Boolean).length
 
+  const titleIcon: IconName | null = wishlistOnly ? 'heart-filled' : dealsOnly ? 'bolt' : null
   const title = wishlistOnly
-    ? '♥ Your wishlist'
+    ? 'Your wishlist'
     : dealsOnly
-      ? '⚡ Flash deals'
+      ? 'Flash deals'
       : query
         ? `Results for “${query}”`
         : category
@@ -78,10 +80,10 @@ export default function Browse({
 
   return (
     <div>
-      <button className="back-btn" onClick={back}>← Back</button>
+      <button className="back-btn" onClick={back}><Icon name="chevron-left" size={16} /> Back</button>
       <div className="section" style={{ marginTop: 4 }}>
         <div className="section-head">
-          <h2>{title}</h2>
+          <h2>{titleIcon && <Icon name={titleIcon} className="h-ico" />}{title}</h2>
           <span className="muted small">{items.length} listings{activeFilters > 0 && ` · ${activeFilters} filter${activeFilters > 1 ? 's' : ''}`}</span>
         </div>
 
@@ -92,21 +94,21 @@ export default function Browse({
               className={`cat-chip ${category === c.id ? 'active' : ''}`}
               onClick={() => go({ name: 'browse', category: category === c.id ? undefined : c.id })}
             >
-              <span className="cat-ico" style={{ background: c.gradient }}>{c.emoji}</span>
+              <span className="cat-ico" style={{ background: c.gradient }}><Icon name={c.icon} size={24} /></span>
               {c.name}
             </button>
           ))}
         </div>
 
         <div className="filter-row">
-          <button className={`filter-chip ${verifiedOnly ? 'active' : ''}`} onClick={() => setVerifiedOnly(!verifiedOnly)}>
-            ✔︎ Verified
+          <button className={`filter-chip chip-ico ${verifiedOnly ? 'active' : ''}`} onClick={() => setVerifiedOnly(!verifiedOnly)}>
+            <Icon name="check" size={14} /> Verified
           </button>
-          <button className={`filter-chip ${instantOnly ? 'active' : ''}`} onClick={() => setInstantOnly(!instantOnly)}>
-            ⚡ Instant
+          <button className={`filter-chip chip-ico ${instantOnly ? 'active' : ''}`} onClick={() => setInstantOnly(!instantOnly)}>
+            <Icon name="bolt" size={14} /> Instant
           </button>
-          <button className={`filter-chip ${offersOnly ? 'active' : ''}`} onClick={() => setOffersOnly(!offersOnly)}>
-            🤝 Offers OK
+          <button className={`filter-chip chip-ico ${offersOnly ? 'active' : ''}`} onClick={() => setOffersOnly(!offersOnly)}>
+            <Icon name="handshake" size={14} /> Offers OK
           </button>
           <select
             className="filter-chip"
@@ -121,8 +123,8 @@ export default function Browse({
           </select>
           {category === 'studios' && (
             <>
-              <button className={`filter-chip ${hourlyOnly ? 'active' : ''}`} onClick={() => setHourlyOnly(!hourlyOnly)}>
-                ⏱️ Hourly OK
+              <button className={`filter-chip chip-ico ${hourlyOnly ? 'active' : ''}`} onClick={() => setHourlyOnly(!hourlyOnly)}>
+                <Icon name="clock" size={14} /> Hourly OK
               </button>
               <select
                 className="filter-chip"
@@ -142,14 +144,14 @@ export default function Browse({
             <option value="popular">Most rented</option>
             <option value="rating">Top rated</option>
             <option value="nearest">Nearest first</option>
-            <option value="price_asc">Price: low → high</option>
-            <option value="price_desc">Price: high → low</option>
+            <option value="price_asc">Price: low to high</option>
+            <option value="price_desc">Price: high to low</option>
           </select>
         </div>
 
         {category === 'studios' && !wishlistOnly && !dealsOnly && (
-          <div className="kit-card" style={{ margin: '4px 0 14px', flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <span style={{ fontSize: 30 }}>🏡</span>
+          <div className="kit-card promo-card" style={{ margin: '4px 0 14px' }}>
+            <span className="promo-ico"><Icon name="home" size={24} /></span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <b style={{ fontSize: 14 }}>Have a space crews would love?</b>
               <div className="muted small">Post it free — you keep 90% of every booking.</div>
@@ -160,7 +162,7 @@ export default function Browse({
 
         {items.length === 0 ? (
           <div className="empty-state">
-            <div className="big">🎥</div>
+            <div className="big"><Icon name="camera" size={56} /></div>
             <p>Nothing matches — try clearing a filter{query ? ' or check the spelling' : ''}.</p>
             {(verifiedOnly || instantOnly || offersOnly || maxPrice) && (
               <button className="btn btn-outline btn-sm" onClick={() => { setVerifiedOnly(false); setInstantOnly(false); setOffersOnly(false); setMaxPrice(null) }}>
@@ -190,7 +192,7 @@ export default function Browse({
                     )
                   }
                 >
-                  ⚖
+                  <Icon name="scale" size={16} />
                 </button>
               </div>
             ))}
@@ -199,7 +201,7 @@ export default function Browse({
       </div>
       {compare.length >= 1 && (
         <div className="compare-tray">
-          <b style={{ fontSize: 13 }}>⚖ {compare.length}/3 selected</b>
+          <b style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon name="scale" size={15} /> {compare.length}/3 selected</b>
           <span style={{ flex: 1 }} />
           <button className="btn btn-ghost btn-sm" style={{ color: 'var(--bg)', borderColor: 'var(--muted)' }} onClick={() => setCompare([])}>Clear</button>
           <button className="btn btn-primary btn-sm" disabled={compare.length < 2} onClick={() => setCompareOpen(true)}>Compare</button>
@@ -207,24 +209,24 @@ export default function Browse({
       )}
 
       {compareOpen && (
-        <Modal title="⚖ Side by side" onClose={() => setCompareOpen(false)}>
+        <Modal title="Side by side" onClose={() => setCompareOpen(false)}>
           <table className="cmp-table">
             <tbody>
-              <tr><th></th>{compare.map((id) => <td key={id}><b>{getItem(id).emoji} {getItem(id).name}</b></td>)}</tr>
+              <tr><th></th>{compare.map((id) => <td key={id}><b className="cmp-name"><Icon name={getItem(id).icon} size={16} /> {getItem(id).name}</b></td>)}</tr>
               <tr><th>Price/day</th>{compare.map((id) => <td key={id}><b>{money(getItem(id).pricePerDay)}</b></td>)}</tr>
-              <tr><th>Rating</th>{compare.map((id) => <td key={id}>★ {getItem(id).rating} ({getItem(id).ratingCount})</td>)}</tr>
+              <tr><th>Rating</th>{compare.map((id) => <td key={id}><span className="cmp-cell"><RatingCompact rating={getItem(id).rating} count={getItem(id).ratingCount} /></span></td>)}</tr>
               <tr><th>Rented</th>{compare.map((id) => <td key={id}>{getItem(id).timesRented}×</td>)}</tr>
               <tr><th>Deposit</th>{compare.map((id) => <td key={id}>{money(getItem(id).deposit)}</td>)}</tr>
-              <tr><th>Instant</th>{compare.map((id) => <td key={id}>{getItem(id).instantBook ? '⚡ Yes' : 'Approval'}</td>)}</tr>
-              <tr><th>Offers</th>{compare.map((id) => <td key={id}>{getItem(id).offersAccepted ? '🤝 Yes' : 'Fixed'}</td>)}</tr>
+              <tr><th>Instant</th>{compare.map((id) => <td key={id}>{getItem(id).instantBook ? 'Yes' : 'Approval'}</td>)}</tr>
+              <tr><th>Offers</th>{compare.map((id) => <td key={id}>{getItem(id).offersAccepted ? 'Yes' : 'Fixed'}</td>)}</tr>
               <tr><th>Distance</th>{compare.map((id) => <td key={id}>{getOwner(getItem(id).ownerId).distanceKm} km</td>)}</tr>
               <tr><th>Top spec</th>{compare.map((id) => <td key={id} className="muted">{getItem(id).specs[0]}</td>)}</tr>
             </tbody>
           </table>
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             {compare.map((id) => (
-              <button key={id} className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => { setCompareOpen(false); go({ name: 'item', id }) }}>
-                View {getItem(id).emoji}
+              <button key={id} className="btn btn-outline btn-sm" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={() => { setCompareOpen(false); go({ name: 'item', id }) }}>
+                View <Icon name={getItem(id).icon} size={15} />
               </button>
             ))}
           </div>

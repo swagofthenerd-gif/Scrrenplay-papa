@@ -6,6 +6,7 @@ import { forYou, similarItems } from '../recs'
 import { useStore } from '../store'
 import { buzz, dealActive, money, todayISO } from '../utils'
 import { Badge, ItemArt, ItemCard } from '../components/ui'
+import { Icon } from '../components/icons'
 
 export default function Home() {
   const { go, toast } = useNav()
@@ -29,7 +30,7 @@ export default function Home() {
       setRefreshing(true)
       setTimeout(() => {
         setRefreshing(false)
-        toast('You’re up to date ✓')
+        toast('You’re up to date')
       }, 700)
     } else {
       setPulling(false)
@@ -60,7 +61,7 @@ export default function Home() {
   return (
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <div className={`ptr ${pulling || refreshing ? 'active' : ''}`} aria-hidden="true">
-        <span className="spin">↻</span> {refreshing ? 'Refreshing…' : 'Release to refresh'}
+        <span className="spin"><Icon name="refresh" size={15} /></span> {refreshing ? 'Refreshing…' : 'Release to refresh'}
       </div>
       <div className="hero">
         <img
@@ -79,10 +80,10 @@ export default function Home() {
           </h1>
           <p>Cameras, glass, lights, grip trucks and crew vans — delivered to set like a food order, priced like a negotiation.</p>
           <div className="hero-badges">
-            <span>⚡ Instant booking</span>
-            <span>🤝 Offer your price</span>
-            <span>🚐 Delivery to set</span>
-            <span>🛡️ Damage protection</span>
+            <span><Icon name="bolt" size={13} /> Instant booking</span>
+            <span><Icon name="handshake" size={13} /> Offer your price</span>
+            <span><Icon name="van" size={13} /> Delivery to set</span>
+            <span><Icon name="shield" size={13} /> Damage protection</span>
           </div>
         </div>
       </div>
@@ -90,12 +91,12 @@ export default function Home() {
       <div className="section">
         <div className="section-head">
           <h2>Departments</h2>
-          <button className="link-btn" onClick={() => go({ name: 'browse' })}>Browse all →</button>
+          <button className="link-btn" onClick={() => go({ name: 'browse' })}>Browse all <Icon name="arrow-right" size={13} /></button>
         </div>
         <div className="cat-row">
           {CATEGORIES.map((c) => (
             <button key={c.id} className="cat-chip" onClick={() => go({ name: 'browse', category: c.id })}>
-              <span className="cat-ico" style={{ background: c.gradient }}>{c.emoji}</span>
+              <span className="cat-ico" style={{ background: c.gradient }}><Icon name={c.icon} size={24} /></span>
               {c.name}
             </button>
           ))}
@@ -106,7 +107,7 @@ export default function Home() {
         <div className="section">
           <div className="section-head">
             <div>
-              <h2>✨ For you</h2>
+              <h2><Icon name="sparkles" className="h-ico" /> For you</h2>
               <div className="section-sub">Picked from what you've been browsing</div>
             </div>
           </div>
@@ -118,14 +119,14 @@ export default function Home() {
 
       <div className="section">
         <div className="section-head">
-          <h2>📍 Spaces to shoot at</h2>
-          <button className="link-btn" onClick={() => go({ name: 'browse', category: 'studios' })}>All spaces →</button>
+          <h2><Icon name="pin" className="h-ico" /> Spaces to shoot at</h2>
+          <button className="link-btn" onClick={() => go({ name: 'browse', category: 'studios' })}>All spaces <Icon name="arrow-right" size={13} /></button>
         </div>
         <div className="h-scroll">
           {spaces.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
         </div>
-        <div className="kit-card" style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <span style={{ fontSize: 34 }}>🏡</span>
+        <div className="kit-card promo-card">
+          <span className="promo-ico"><Icon name="home" size={26} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <b style={{ fontSize: 14 }}>Own a studio, rooftop or haveli?</b>
             <div className="muted small">List it in 2 minutes — you keep 90% of every booking.</div>
@@ -136,7 +137,7 @@ export default function Home() {
 
       {recentlyViewed.length > 0 && (
         <div className="section">
-          <div className="section-head"><h2>👀 Recently viewed</h2></div>
+          <div className="section-head"><h2><Icon name="eye" className="h-ico" /> Recently viewed</h2></div>
           <div className="h-scroll">
             {recentlyViewed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
           </div>
@@ -147,7 +148,7 @@ export default function Home() {
         <div className="section">
           <div className="section-head">
             <div>
-              <h2>🎯 Because you viewed</h2>
+              <h2><Icon name="target" className="h-ico" /> Because you viewed</h2>
               <div className="section-sub">{lastViewed.name}</div>
             </div>
           </div>
@@ -160,8 +161,8 @@ export default function Home() {
       {deals.length > 0 && (
         <div className="section">
           <div className="section-head">
-            <h2>⚡ Flash deals</h2>
-            <button className="link-btn" onClick={() => go({ name: 'browse', dealsOnly: true })}>See all →</button>
+            <h2><Icon name="bolt" className="h-ico" /> Flash deals</h2>
+            <button className="link-btn" onClick={() => go({ name: 'browse', dealsOnly: true })}>See all <Icon name="arrow-right" size={13} /></button>
           </div>
           <div className="grid">
             {deals.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
@@ -171,7 +172,7 @@ export default function Home() {
 
       <div className="section">
         <div className="section-head">
-          <h2>🎒 Production kits</h2>
+          <h2><Icon name="backpack" className="h-ico" /> Production kits</h2>
         </div>
         <div className="kit-grid">
           {KITS.map((kit) => {
@@ -181,7 +182,7 @@ export default function Home() {
             return (
               <div className="kit-card" key={kit.id}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontSize: 16 }}>{kit.emoji} {kit.name}</h3>
+                  <h3 style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 6 }}><Icon name={kit.icon} size={18} /> {kit.name}</h3>
                   <Badge tone="purple">Save {kit.percentOff}%</Badge>
                 </div>
                 <div className="kit-thumbs">
@@ -214,7 +215,7 @@ export default function Home() {
                         },
                       })
                     )
-                    toast(`${kit.name} added to cart — adjust dates in cart 🎒`)
+                    toast(`${kit.name} added to cart — adjust dates in cart`)
                   }}
                 >
                   Add kit to cart
@@ -227,7 +228,7 @@ export default function Home() {
 
       <div className="section">
         <div className="section-head">
-          <h2>🔥 Trending on set</h2>
+          <h2><Icon name="flame" className="h-ico" /> Trending on set</h2>
         </div>
         <div className="grid">
           {trending.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
