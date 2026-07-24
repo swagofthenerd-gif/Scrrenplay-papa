@@ -3,10 +3,12 @@ import { CATEGORIES, ITEMS, KITS, getItem } from '../data/catalog'
 import { HERO_IMAGE } from '../data/images'
 import { useNav } from '../nav'
 import { forYou, similarItems } from '../recs'
+import { vendors } from '../vendors'
 import { useStore } from '../store'
 import { buzz, dealActive, money, todayISO } from '../utils'
 import { Badge, ItemArt, ItemCard } from '../components/ui'
 import { Icon } from '../components/icons'
+import { VendorCard } from '../components/VendorCard'
 
 export default function Home() {
   const { go, toast } = useNav()
@@ -44,6 +46,7 @@ export default function Home() {
   const trending = [...visible].sort((a, b) => b.timesRented - a.timesRented).slice(0, 8)
   const recentlyViewed = state.recentlyViewed.map(getItem).filter((i) => !state.blockedOwners.includes(i.ownerId))
   const picks = useMemo(() => forYou(state, 8), [state])
+  const vendorList = useMemo(() => vendors(state, 'top'), [state])
   const lastViewed = recentlyViewed[0]
   const becauseViewed = useMemo(
     () => (lastViewed ? similarItems(lastViewed.id, state, 6) : []),
@@ -103,68 +106,17 @@ export default function Home() {
         </div>
       </div>
 
-      {picks.length > 0 && (
-        <div className="section">
-          <div className="section-head">
-            <div>
-              <h2><Icon name="sparkles" className="h-ico" /> For you</h2>
-              <div className="section-sub">Picked from what you've been browsing</div>
-            </div>
-          </div>
-          <div className="h-scroll">
-            {picks.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-          </div>
-        </div>
-      )}
-
-      <div className="section">
-        <div className="section-head">
-          <h2><Icon name="pin" className="h-ico" /> Spaces to shoot at</h2>
-          <button className="link-btn" onClick={() => go({ name: 'browse', category: 'studios' })}>All spaces <Icon name="arrow-right" size={13} /></button>
-        </div>
-        <div className="h-scroll">
-          {spaces.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-        </div>
-        <div className="kit-card promo-card">
-          <span className="promo-ico"><Icon name="home" size={26} /></span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <b style={{ fontSize: 14 }}>Own a studio, rooftop or haveli?</b>
-            <div className="muted small">List it in 2 minutes — you keep 90% of every booking.</div>
-          </div>
-          <button className="btn btn-primary btn-sm" onClick={() => go({ name: 'post' })}>List your space</button>
-        </div>
-      </div>
-
-      {recentlyViewed.length > 0 && (
-        <div className="section">
-          <div className="section-head"><h2><Icon name="eye" className="h-ico" /> Recently viewed</h2></div>
-          <div className="h-scroll">
-            {recentlyViewed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-          </div>
-        </div>
-      )}
-
-      {lastViewed && becauseViewed.length > 0 && (
-        <div className="section">
-          <div className="section-head">
-            <div>
-              <h2><Icon name="target" className="h-ico" /> Because you viewed</h2>
-              <div className="section-sub">{lastViewed.name}</div>
-            </div>
-          </div>
-          <div className="h-scroll">
-            {becauseViewed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-          </div>
-        </div>
-      )}
-
+      {/* ---- Promoted offers & packages come first ---- */}
       {deals.length > 0 && (
         <div className="section">
           <div className="section-head">
-            <h2><Icon name="bolt" className="h-ico" /> Flash deals</h2>
+            <div>
+              <h2><Icon name="bolt" className="h-ico" /> Flash deals</h2>
+              <div className="section-sub">Limited-time offers from vendors</div>
+            </div>
             <button className="link-btn" onClick={() => go({ name: 'browse', dealsOnly: true })}>See all <Icon name="arrow-right" size={13} /></button>
           </div>
-          <div className="grid">
+          <div className="h-scroll">
             {deals.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
           </div>
         </div>
@@ -172,7 +124,10 @@ export default function Home() {
 
       <div className="section">
         <div className="section-head">
-          <h2><Icon name="backpack" className="h-ico" /> Production kits</h2>
+          <div>
+            <h2><Icon name="backpack" className="h-ico" /> Production kits</h2>
+            <div className="section-sub">Bundled packages at a package price</div>
+          </div>
         </div>
         <div className="kit-grid">
           {KITS.map((kit) => {
@@ -223,6 +178,66 @@ export default function Home() {
               </div>
             )
           })}
+        </div>
+      </div>
+
+      {/* ---- Then the vendors, foodpanda-style storefront cards ---- */}
+      <div className="section">
+        <div className="section-head">
+          <div>
+            <h2><Icon name="store" className="h-ico" /> Vendors near you</h2>
+            <div className="section-sub">{vendorList.length} rental houses · tap a vendor to explore their storefront</div>
+          </div>
+        </div>
+        <div className="vendor-list">
+          {vendorList.map((v, idx) => <VendorCard key={v.owner.id} vendor={v} index={idx} />)}
+        </div>
+        <div className="kit-card promo-card">
+          <span className="promo-ico"><Icon name="home" size={26} /></span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <b style={{ fontSize: 14 }}>Own a studio, camera kit or grip truck?</b>
+            <div className="muted small">Become a vendor in 2 minutes — you keep 90% of every booking.</div>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={() => go({ name: 'post' })}>Start listing</button>
+        </div>
+      </div>
+
+      {/* ---- Hybrid discovery tail ---- */}
+      {picks.length > 0 && (
+        <div className="section">
+          <div className="section-head">
+            <div>
+              <h2><Icon name="sparkles" className="h-ico" /> For you</h2>
+              <div className="section-sub">Picked from what you've been browsing</div>
+            </div>
+          </div>
+          <div className="h-scroll">
+            {picks.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </div>
+        </div>
+      )}
+
+      {lastViewed && becauseViewed.length > 0 && (
+        <div className="section">
+          <div className="section-head">
+            <div>
+              <h2><Icon name="target" className="h-ico" /> Because you viewed</h2>
+              <div className="section-sub">{lastViewed.name}</div>
+            </div>
+          </div>
+          <div className="h-scroll">
+            {becauseViewed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </div>
+        </div>
+      )}
+
+      <div className="section">
+        <div className="section-head">
+          <h2><Icon name="pin" className="h-ico" /> Spaces to shoot at</h2>
+          <button className="link-btn" onClick={() => go({ name: 'browse', category: 'studios' })}>All spaces <Icon name="arrow-right" size={13} /></button>
+        </div>
+        <div className="h-scroll">
+          {spaces.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
         </div>
       </div>
 

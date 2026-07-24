@@ -786,3 +786,88 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .city-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .onboard-strip { display: flex; gap: 8px; border-radius: var(--r-lg); overflow: hidden; margin-bottom: 14px; }
 .onboard-strip .item-art { flex: 1; border-radius: var(--r-sm); }
+
+/* ---------- Vendors (foodpanda-style storefront cards) ---------- */
+.vendor-list { display: flex; flex-direction: column; gap: 16px; }
+.vendor-card {
+  background: var(--card); border-radius: var(--r-lg); box-shadow: var(--shadow-sm);
+  padding: 14px 14px 8px; border: 1px solid var(--line);
+}
+.vendor-head {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left;
+  background: none; border: none; cursor: pointer; padding: 0; color: var(--ink);
+}
+.vendor-head-main { flex: 1; min-width: 0; }
+.vendor-name-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.vendor-name { font-size: 15.5px; letter-spacing: -0.2px; }
+.vendor-badge {
+  display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700;
+  border-radius: var(--r-pill); padding: 2px 8px;
+}
+.vendor-badge.super { background: var(--accent-soft); color: var(--accent-dark); }
+.vendor-badge.verified { background: var(--green-soft); color: var(--green); }
+.vendor-meta { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin-top: 3px; flex-wrap: wrap; }
+.vendor-meta .icon { vertical-align: -0.2em; }
+.dot-sep { color: var(--line-strong); }
+.vendor-cats { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.vendor-cat-tag {
+  font-size: 11px; font-weight: 600; color: var(--muted); background: var(--card-2);
+  border-radius: var(--r-pill); padding: 3px 9px;
+}
+.vendor-chev { color: var(--muted); flex: none; align-self: center; }
+.vendor-ribbons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.v-ribbon {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700;
+  border-radius: var(--r-pill); padding: 4px 10px;
+}
+.v-ribbon.deal { background: var(--accent-soft); color: var(--accent-dark); }
+.v-ribbon.instant { background: var(--green-soft); color: var(--green); }
+.v-ribbon.offer { background: var(--purple-soft); color: var(--purple); }
+.vendor-rail { margin-top: 12px; }
+.vendor-rail .item-card { min-width: 168px; max-width: 180px; }
+.vendor-seeall {
+  flex: none; align-self: stretch; min-width: 116px; border: 1.5px dashed var(--line-strong);
+  background: var(--card-2); border-radius: var(--r-lg); cursor: pointer; color: var(--accent-dark);
+  font-weight: 700; font-size: 13px; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 6px; line-height: 1.3; transition: transform var(--dur-fast) var(--ease-out);
+}
+.vendor-seeall:active { transform: scale(0.97); }
+.vendor-seeall-ico {
+  width: 40px; height: 40px; border-radius: var(--r-pill); background: var(--accent-soft);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* clickable owner row on item detail */
+.owner-row-link {
+  width: 100%; text-align: left; background: none; border: none; cursor: pointer; color: var(--ink);
+  padding: 0; display: flex; align-items: center; gap: 12px;
+}
+.owner-row-link:active { opacity: 0.85; }
+
+/* ---------- Vendor storefront ---------- */
+.vendor-hero { padding: 18px; }
+.vendor-hero-top { display: flex; align-items: center; gap: 14px; }
+.vendor-stat-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 16px;
+}
+.vendor-stat {
+  background: var(--card-2); border-radius: var(--r-md); padding: 10px 6px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--ink);
+}
+.vendor-stat .icon { color: var(--muted); margin-bottom: 2px; }
+.vendor-stat b { font-size: 14px; }
+.vendor-search { margin: 14px 0 4px; }
+.vendor-tabs {
+  position: sticky; top: calc(env(safe-area-inset-top) + 58px); z-index: 30;
+  display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+  padding: 10px 0; margin-bottom: 4px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.vendor-tabs::-webkit-scrollbar { display: none; }
+.vendor-tab {
+  flex: none; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  border-radius: var(--r-pill); padding: 8px 15px; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+.vendor-tab.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.vendor-section { scroll-margin-top: calc(env(safe-area-inset-top) + 108px); margin-top: 18px; }
