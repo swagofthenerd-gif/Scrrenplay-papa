@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { AMENITY_OPTIONS, RULE_OPTIONS, SPACE_TYPES } from '../data/catalog'
+import { CATEGORY_IMAGE, img } from '../data/images'
+import { Icon } from '../components/icons'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import { buzz, money, uid } from '../utils'
@@ -37,7 +39,7 @@ export default function ListSpace() {
       id,
       name: name.trim(),
       category: 'studios',
-      emoji: type.emoji,
+      icon: type.icon,
       pricePerDay: price,
       deposit,
       rating: 5,
@@ -55,21 +57,23 @@ export default function ListSpace() {
       offersAccepted,
       hourly,
       space: { type: type.type, sqft, capacity, amenities, rules, minHours: hourly ? minHours : undefined },
+      image: img(CATEGORY_IMAGE.studios),
+      images: [img(CATEGORY_IMAGE.studios, 1200)],
       reviews: [],
       mine: true,
       pendingVerifyAt: Date.now() + 8000,
       inquiryAt: Date.now() + 20000,
     }
     dispatch({ type: 'ADD_LISTING', item })
-    toast('Space submitted — verification usually takes minutes 📤')
+    toast('Space submitted — verification usually takes minutes')
     go({ name: 'item', id })
   }
 
   return (
     <div>
-      <button className="back-btn" onClick={back}>← Back</button>
+      <button className="back-btn" onClick={back}><Icon name="chevron-left" size={16} /> Back</button>
       <div className="section" style={{ marginTop: 4 }}>
-        <div className="section-head"><h2>🏢 List your space</h2></div>
+        <div className="section-head"><h2><Icon name="building" className="h-ico" /> List your space</h2></div>
         <p className="muted" style={{ fontSize: 14, marginTop: 0 }}>
           Studios, rooftops, havelis, warehouses, apartments — if crews want to shoot there, it earns.
           You keep 90%; Papa handles bookings, deposits and insurance.
@@ -86,7 +90,7 @@ export default function ListSpace() {
             <div className="slot-row">
               {SPACE_TYPES.map((t) => (
                 <button key={t.type} className={`slot-chip ${type.type === t.type ? 'active' : ''}`} onClick={() => setType(t)}>
-                  {t.emoji} {t.type}
+                  <Icon name={t.icon} size={15} /> {t.type}
                 </button>
               ))}
             </div>
@@ -121,7 +125,7 @@ export default function ListSpace() {
 
           <label className="toggle-row">
             <input type="checkbox" checked={hourly} onChange={(e) => setHourly(e.target.checked)} />
-            <span><b>⏱️ Allow hourly bookings</b> — {money(Math.round(price / 6))}/hr auto-calculated{hourly && <>, minimum <b>{minHours}h</b></>}</span>
+            <span><b><Icon name="clock" size={14} /> Allow hourly bookings</b> — {money(Math.round(price / 6))}/hr auto-calculated{hourly && <>, minimum <b>{minHours}h</b></>}</span>
           </label>
           {hourly && (
             <div className="slot-row" style={{ marginLeft: 30 }}>
@@ -132,11 +136,11 @@ export default function ListSpace() {
           )}
           <label className="toggle-row">
             <input type="checkbox" checked={instantBook} onChange={(e) => setInstantBook(e.target.checked)} />
-            <span><b>⚡ Instant book</b> — renters book without waiting for your approval. Boosts ranking.</span>
+            <span><b><Icon name="bolt" size={14} /> Instant book</b> — renters book without waiting for your approval. Boosts ranking.</span>
           </label>
           <label className="toggle-row">
             <input type="checkbox" checked={offersAccepted} onChange={(e) => setOffersAccepted(e.target.checked)} />
-            <span><b>🤝 Accept price offers</b> — renters can bid below your rate; you accept, counter or decline.</span>
+            <span><b><Icon name="handshake" size={14} /> Accept price offers</b> — renters can bid below your rate; you accept, counter or decline.</span>
           </label>
         </div>
 

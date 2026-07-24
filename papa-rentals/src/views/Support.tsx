@@ -3,12 +3,13 @@ import { useNav } from '../nav'
 import { useStore } from '../store'
 import { buzz, money, uid } from '../utils'
 import { Badge } from '../components/ui'
+import { Icon } from '../components/icons'
 
 const FAQS: [string, string][] = [
   ['How do deposits work?', 'Deposits are authorization holds, never charges. They release automatically within 24 hours of a damage-free return — you can watch the release status on each order card.'],
   ['What if I need to cancel?', 'Free cancellation up to 48 hours before your start date. Inside 48 hours a 10% fee applies. Refunds land in your Papa Wallet instantly.'],
   ['What does Papa Damage Protection cover?', 'Accidental damage up to the item’s full value, for 8% of the rental. File a claim from the order — most claims resolve within a day, credited to your wallet.'],
-  ['How does “Offer your price” work?', 'On any listing with 💰 Offers OK, slide to your price. Offers at 92%+ of the recommended fare are usually accepted instantly. Accepted deals stay locked for 24 hours, even if you change dates.'],
+  ['How does “Offer your price” work?', 'On any listing with Offers OK, slide to your price. Offers at 92%+ of the recommended fare are usually accepted instantly. Accepted deals stay locked for 24 hours, even if you change dates.'],
   ['How do host payouts work?', 'You keep 90% of every booking. Payouts land in your wallet within 24 hours of a completed booking — track them in your Host dashboard.'],
   ['My delivery is late — what now?', 'The courier card on your order has a call button and your handover PIN. If the courier is 15+ minutes late, your delivery fee is auto-credited.'],
 ]
@@ -45,14 +46,14 @@ export default function Support() {
 
   return (
     <div className="section">
-      <button className="back-btn" onClick={back}>← Back</button>
+      <button className="back-btn" onClick={back}><Icon name="chevron-left" size={16} /> Back</button>
       <div className="section-head" style={{ marginTop: 4 }}>
-        <h2>🎧 Help Center</h2>
+        <h2><Icon name="headset" className="h-ico" /> Help Center</h2>
         <span className="muted small">24/7 · avg reply 1 min</span>
       </div>
 
       <div className="panel">
-        <h3 style={{ fontSize: 15 }}>💬 Chat with Papa Support</h3>
+        <h3 style={{ fontSize: 15 }}><Icon name="chat" className="h-ico" size={15} /> Chat with Papa Support</h3>
         <div className="chat-box" ref={boxRef} style={{ maxHeight: '38dvh' }}>
           {msgs.length === 0 && (
             <div className="muted small" style={{ textAlign: 'center', padding: 16 }}>
@@ -84,31 +85,31 @@ export default function Support() {
 
       {state.claims.length > 0 && (
         <div className="panel">
-          <h3 style={{ fontSize: 15 }}>🛡️ Your claims</h3>
+          <h3 style={{ fontSize: 15 }}><Icon name="shield" className="h-ico" size={15} /> Your claims</h3>
           {state.claims.map((c) => (
             <div key={c.id} className="review" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
               <div style={{ minWidth: 0 }}>
                 <b style={{ fontSize: 14 }}>{c.itemName}</b> <span className="muted small">· {c.orderId}</span>
                 <div className="muted small">{c.reason} · {money(c.amount)}</div>
               </div>
-              {c.status === 'filed' && <Badge tone="orange">📨 Filed</Badge>}
-              {c.status === 'reviewing' && <Badge tone="purple">🔍 Reviewing</Badge>}
-              {c.status === 'approved' && <Badge tone="green">✅ Paid to wallet</Badge>}
+              {c.status === 'filed' && <Badge tone="orange"><Icon name="mail" size={12} /> Filed</Badge>}
+              {c.status === 'reviewing' && <Badge tone="purple"><Icon name="search" size={12} /> Reviewing</Badge>}
+              {c.status === 'approved' && <Badge tone="green"><Icon name="check-circle" size={12} /> Paid to wallet</Badge>}
             </div>
           ))}
         </div>
       )}
 
       <div className="panel">
-        <h3 style={{ fontSize: 15 }}>❓ Frequently asked</h3>
+        <h3 style={{ fontSize: 15 }}><Icon name="question" className="h-ico" size={15} /> Frequently asked</h3>
         {FAQS.map(([q, a], i) => (
           <div key={q} style={{ borderTop: i > 0 ? '1px solid var(--line)' : 'none' }}>
             <button
-              className="faq-q"
+              className={`faq-q ${open === i ? 'open' : ''}`}
               onClick={() => setOpen(open === i ? null : i)}
               aria-expanded={open === i}
             >
-              {q} <span style={{ marginLeft: 'auto' }}>{open === i ? '−' : '+'}</span>
+              {q} <span className="faq-chev" aria-hidden="true"><Icon name="chevron-down" size={16} /></span>
             </button>
             {open === i && <p className="muted" style={{ fontSize: 14, margin: '0 0 12px' }}>{a}</p>}
           </div>
@@ -116,8 +117,8 @@ export default function Support() {
       </div>
 
       <div className="list-row">
-        <span>🚨 On-set emergency line</span>
-        <a href="tel:+924211122333" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>📞 Call now</a>
+        <span className="row-ico"><Icon name="siren" size={16} /> On-set emergency line</span>
+        <a href="tel:+924211122333" className="row-ico" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}><Icon name="phone" size={15} /> Call now</a>
       </div>
     </div>
   )

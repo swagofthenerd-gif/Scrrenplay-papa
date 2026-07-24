@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ALSO_RENTED, ITEMS, TRANSPORT_OPTIONS, getItem, getOwner } from '../data/catalog'
+import { ITEMS, TRANSPORT_OPTIONS, getItem, getOwner } from '../data/catalog'
+import { similarItems } from '../recs'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import type { Offer, RentalUnit, TransportId } from '../types'
@@ -8,7 +9,8 @@ import {
   findConflict, fmtCountdown, fmtDate, hourlyRate, money, nextAvailable, ratingHistogram,
   recommendedRate, todayISO, toISO, uid, unavailableRanges, rangesOverlap,
 } from '../utils'
-import { Badge, DealCountdown, ItemArt, ItemCard, Modal, Stars } from '../components/ui'
+import { Badge, DealCountdown, ItemArt, ItemCard, Modal, RatingCompact, Stars } from '../components/ui'
+import { Avatar, Icon } from '../components/icons'
 
 const TIME_SLOTS = ['06:00', '09:00', '12:00', '15:00', '18:00']
 
@@ -59,12 +61,8 @@ export default function ItemDetail({ id }: { id: string }) {
   const thread = state.chats[owner.id]
   const chatUnread = thread?.unread ?? 0
 
-  const alsoRented = useMemo(() => {
-    const cats = ALSO_RENTED[item.category] ?? []
-    return ITEMS.filter((i) => i.id !== id && cats.includes(i.category) && !state.blockedOwners.includes(i.ownerId))
-      .sort((a, b) => b.timesRented - a.timesRented)
-      .slice(0, 6)
-  }, [id, item.category, state.blockedOwners])
+  // similarity-ranked: tags + category adjacency + price band + quality
+  const alsoRented = useMemo(() => similarItems(id, state, 6), [id, state])
 
   const histo = ratingHistogram(item.rating, item.ratingCount)
   const myReviews = state.myReviews[id] ?? []
@@ -86,16 +84,19 @@ export default function ItemDetail({ id }: { id: string }) {
         insurance: item.insuranceRequired ? true : insurance, operator, transport, rate, negotiated,
       },
     })
-    toast(`${item.name} added to cart 🛒`)
+    toast(`${item.name} added to cart`)
   }
 
   return (
     <div>
-      <button className="back-btn" onClick={back}>← Back</button>
+      <button className="back-btn detail-back" onClick={back}><Icon name="chevron-left" size={14} /> Back</button>
 
       <div className="detail-grid">
         <div>
-          <ItemArt item={item} size="hero" />
+          <div style={{ position: 'relative' }}>
+            <ItemArt item={item} size="hero" />
+            <button className="float-back" onClick={back} aria-label="Back"><Icon name="chevron-left" size={18} /></button>
+          </div>
           <div className="panel" style={{ marginTop: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
               <div>
@@ -103,8 +104,8 @@ export default function ItemDetail({ id }: { id: string }) {
                 <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <Stars value={item.rating} />
                   <span className="muted small">{item.rating} · {item.ratingCount} ratings · rented {item.timesRented}×</span>
-                  {item.instantBook ? <Badge tone="green">⚡ Instant book</Badge> : <Badge tone="purple">🤝 Owner approval</Badge>}
-                  {item.offersAccepted && <Badge tone="purple">💰 Offers OK</Badge>}
+                  {item.instantBook ? <Badge tone="green"><Icon name="bolt" size={14} /> Instant book</Badge> : <Badge tone="purple"><Icon name="handshake" size={14} /> Owner approval</Badge>}
+                  {item.offersAccepted && <Badge tone="purple"><Icon name="coins" size={14} /> Offers OK</Badge>}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
@@ -114,12 +115,12 @@ export default function ItemDetail({ id }: { id: string }) {
                     const url = location.href
                     try {
                       if (navigator.share) await navigator.share({ title: item.name, text: `${item.name} on Papa Rentals`, url })
-                      else { await navigator.clipboard?.writeText(url); toast('Link copied — send it to your producer 🔗') }
+                      else { await navigator.clipboard?.writeText(url); toast('Link copied — send it to your producer') }
                     } catch { /* user dismissed share sheet */ }
                   }}
                   aria-label="Share listing"
                 >
-                  ↗
+                  <Icon name="arrow-up-right" size={16} />
                 </button>
                 <button
                   className="icon-btn"
@@ -127,7 +128,7 @@ export default function ItemDetail({ id }: { id: string }) {
                   onClick={() => { buzz(); dispatch({ type: 'TOGGLE_WISHLIST', itemId: id }) }}
                   aria-label="Toggle wishlist"
                 >
-                  {wishlisted ? '♥' : '♡'}
+                  {wishlisted ? <Icon name="heart-filled" size={16} /> : <Icon name="heart" size={16} />}
                 </button>
               </div>
             </div>
@@ -140,10 +141,10 @@ export default function ItemDetail({ id }: { id: string }) {
 
           {item.space && (
             <div className="panel">
-              <h3 style={{ fontSize: 16 }}>🏢 About this space</h3>
+              <h3 style={{ fontSize: 16 }}><Icon name="building" className="h-ico" size={16} /> About this space</h3>
               <div className="stat-row" style={{ marginTop: 10 }}>
                 <div className="stat-tile"><div className="stat-num">{item.space.sqft.toLocaleString()}</div><div className="muted small">sqft</div></div>
-                <div className="stat-tile"><div className="stat-num">👥 {item.space.capacity}</div><div className="muted small">max crew</div></div>
+                <div className="stat-tile"><div className="stat-num"><Icon name="users" size={14} /> {item.space.capacity}</div><div className="muted small">max crew</div></div>
                 <div className="stat-tile"><div className="stat-num">{item.space.minHours ? `${item.space.minHours}h` : '1d'}</div><div className="muted small">minimum</div></div>
               </div>
               <div className="field" style={{ marginTop: 12 }}>
@@ -161,23 +162,23 @@ export default function ItemDetail({ id }: { id: string }) {
 
           <div className="panel">
             <div className="owner-row">
-              <div className="owner-avatar">{owner.avatar}</div>
+              <Avatar name={owner.name} id={owner.id} size={46} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ fontSize: 14 }}>
-                  {owner.name} {owner.verified && <Badge tone="green">✔︎ Verified</Badge>}
-                  {owner.superOwner && <Badge tone="orange">👑 Super Owner</Badge>}
+                  {owner.name} {owner.verified && <Badge tone="green"><Icon name="check" size={14} /> Verified</Badge>}
+                  {owner.superOwner && <Badge tone="orange"><Icon name="crown" size={14} /> Super Owner</Badge>}
                 </b>
                 <div className="muted small">
-                  ★ {owner.rating} ({owner.ratingCount}) · replies in ~{owner.responseMins} min · {owner.area} · {owner.distanceKm} km · since {owner.memberSince}
+                  <RatingCompact rating={owner.rating} count={owner.ratingCount} /> · replies in ~{owner.responseMins} min · {owner.area} · {owner.distanceKm} km · since {owner.memberSince}
                 </div>
               </div>
             </div>
             {!item.mine && (
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button className="btn btn-outline btn-sm" style={{ position: 'relative' }} onClick={() => setChatOpen(true)}>
-                💬 Chat with owner{chatUnread > 0 && <span className="dot" style={{ position: 'absolute', top: -5, right: -5, background: 'var(--accent)', color: '#fff', borderRadius: 999, minWidth: 17, height: 17, lineHeight: '17px', fontSize: 10, fontWeight: 700 }}>{chatUnread}</span>}
+                <Icon name="chat" size={14} /> Chat with owner{chatUnread > 0 && <span className="dot" style={{ position: 'absolute', top: -5, right: -5, background: 'var(--accent)', color: '#fff', borderRadius: 999, minWidth: 17, height: 17, lineHeight: '17px', fontSize: 10, fontWeight: 700 }}>{chatUnread}</span>}
               </button>
-              <button className="btn btn-ghost btn-sm" onClick={() => setReportOpen(true)}>🚩 Report</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setReportOpen(true)}><Icon name="flag" size={14} /> Report</button>
             </div>
             )}
           </div>
@@ -212,7 +213,7 @@ export default function ItemDetail({ id }: { id: string }) {
                 <p style={{ margin: '6px 0 0' }}>{rv.text}</p>
                 {rv.ownerReply && (
                   <div className="owner-reply">
-                    <b style={{ fontSize: 12 }}>{owner.avatar} {owner.name} replied:</b>
+                    <b style={{ fontSize: 12 }}><Avatar name={owner.name} id={owner.id} size={22} /> {owner.name} replied:</b>
                     <div>{rv.ownerReply}</div>
                   </div>
                 )}
@@ -222,12 +223,12 @@ export default function ItemDetail({ id }: { id: string }) {
         </div>
 
         {/* ---------------- Booking panel (or manage panel for your own listing) ---------------- */}
-        <div>
+        <div className="booking-panel-sticky">
           {item.mine ? (
             <ManagePanel itemId={item.id} />
           ) : (
           <div className="panel">
-            <h3 style={{ fontSize: 16 }}>📅 Book your dates</h3>
+            <h3 style={{ fontSize: 16 }}><Icon name="calendar" className="h-ico" size={16} /> Book your dates</h3>
 
             {item.hourly && (
               <div className="unit-toggle" role="tablist">
@@ -292,7 +293,7 @@ export default function ItemDetail({ id }: { id: string }) {
 
             {conflict ? (
               <div className="conflict-note">
-                ⛔ Booked {fmtDate(conflict.start)}–{fmtDate(conflict.end)}.
+                <Icon name="ban" size={14} /> Booked {fmtDate(conflict.start)}–{fmtDate(conflict.end)}.
                 {nextFree && <> Next free: <button onClick={() => {
                   setStartDate(nextFree)
                   if (unit === 'day') {
@@ -304,13 +305,13 @@ export default function ItemDetail({ id }: { id: string }) {
                 {' · '}
                 <button onClick={() => {
                   dispatch({ type: 'ADD_AVAIL_ALERT', itemId: id })
-                  toast('We’ll notify you the moment it frees up 🔔')
-                }}>🔔 Notify me</button>
+                  toast('We’ll notify you the moment it frees up')
+                }}><Icon name="bell" size={14} /> Notify me</button>
               </div>
             ) : (
               <p className="muted small" style={{ margin: '10px 0 0' }}>
-                ✅ Available · {unit === 'hour' ? `${hours}h on ${fmtDate(startDate)}` : `${days} day${days > 1 ? 's' : ''} · ${fmtDate(startDate)} → ${fmtDate(effEnd)}`} at {pickupTime}
-                {unit === 'day' && (days >= 7 ? ' · 🎉 weekly rate (20% off)' : days >= 3 ? ' · 🎉 3+ day rate (10% off)' : '')}
+                <Icon name="check-circle" size={14} /> Available · {unit === 'hour' ? `${hours}h on ${fmtDate(startDate)}` : `${days} day${days > 1 ? 's' : ''} · ${fmtDate(startDate)} to ${fmtDate(effEnd)}`} at {pickupTime}
+                {unit === 'day' && (days >= 7 ? ' · weekly rate (20% off)' : days >= 3 ? ' · 3+ day rate (10% off)' : '')}
               </p>
             )}
 
@@ -322,21 +323,21 @@ export default function ItemDetail({ id }: { id: string }) {
                 onChange={(e) => setInsurance(e.target.checked)}
               />
               <span>
-                <b>🛡️ Papa Damage Protection</b> — {Math.round(INSURANCE_RATE * 100)}% of rental. Covers accidental damage up to full value.
+                <b><Icon name="shield" size={14} /> Papa Damage Protection</b> — {Math.round(INSURANCE_RATE * 100)}% of rental. Covers accidental damage up to full value.
                 {item.insuranceRequired && <b style={{ color: 'var(--accent-dark)' }}> Required for this item.</b>}
               </span>
             </label>
             <label className="toggle-row">
               <input type="checkbox" checked={operator} onChange={(e) => setOperator(e.target.checked)} />
               <span>
-                <b>🧑‍🔧 Certified tech/operator</b> — {money(OPERATOR_FEE_PER_DAY)}/day. A pro who knows this gear, on set with you.
+                <b><Icon name="wrench" size={14} /> Certified tech/operator</b> — {money(OPERATOR_FEE_PER_DAY)}/day. A pro who knows this gear, on set with you.
               </span>
             </label>
 
-            <h4 style={{ fontSize: 14, marginTop: 14 }}>🚐 Transport to set</h4>
+            <h4 style={{ fontSize: 14, marginTop: 14 }}><Icon name="van" className="h-ico" size={14} /> Transport to set</h4>
             {TRANSPORT_OPTIONS.map((t) => (
               <div key={t.id} className={`transport-opt ${transport === t.id ? 'active' : ''}`} onClick={() => setTransport(t.id)}>
-                <span className="t-emoji">{t.emoji}</span>
+                <span className="t-emoji"><Icon name={t.icon} size={14} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontSize: 14 }}>{t.name}</b> <span className="muted small">· {t.eta}</span>
                   <div className="muted small">{t.detail}</div>
@@ -348,7 +349,7 @@ export default function ItemDetail({ id }: { id: string }) {
             <div className="fare-box">
               <div className="muted small">
                 Recommended fare
-                {negotiated && deal && <> · 🤝 your deal, expires in {fmtCountdown(deal.expiresAt - Date.now())}</>}
+                {negotiated && deal && <> · <Icon name="handshake" size={14} /> your deal, expires in {fmtCountdown(deal.expiresAt - Date.now())}</>}
                 {dealActive(id) && <> · <DealCountdown itemId={id} /></>}
               </div>
               <div className="fare-amount">
@@ -357,7 +358,7 @@ export default function ItemDetail({ id }: { id: string }) {
               </div>
               {item.offersAccepted ? (
                 <button className="btn btn-outline btn-sm btn-block" style={{ marginTop: 10 }} onClick={() => setOfferOpen(true)}>
-                  🤝 Offer your price
+                  <Icon name="handshake" size={14} /> Offer your price
                 </button>
               ) : (
                 <div className="muted small" style={{ marginTop: 8 }}>Owner has fixed pricing on this item.</div>
@@ -374,16 +375,28 @@ export default function ItemDetail({ id }: { id: string }) {
             </div>
 
             <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={addToCart} disabled={Boolean(conflict) || invalidRange}>
-              {conflict ? '⛔ Unavailable for these dates' : item.instantBook ? '⚡ Add to cart — instant book' : 'Add to cart — request booking'}
+              {conflict ? <><Icon name="ban" size={14} /> Unavailable for these dates</> : item.instantBook ? <><Icon name="bolt" size={14} /> Add to cart — instant book</> : 'Add to cart — request booking'}
             </button>
           </div>
           )}
         </div>
       </div>
 
+      {!item.mine && (
+        <div className="cta-bar">
+          <div className="cta-price">
+            {negotiated && <div className="small" style={{ color: 'var(--green)', fontWeight: 700 }}><Icon name="handshake" size={14} /> Your deal locked in</div>}
+            <b>{money(rate)}</b><span className="muted small"> /{unit}</span>
+          </div>
+          <button className="btn btn-primary" disabled={Boolean(conflict) || invalidRange} onClick={addToCart}>
+            {conflict ? 'Unavailable' : <><Icon name="cart" size={14} /> Add to cart</>}
+          </button>
+        </div>
+      )}
+
       {alsoRented.length > 0 && (
         <div className="section">
-          <div className="section-head"><h2>🎒 People also rented</h2></div>
+          <div className="section-head"><h2><Icon name="backpack" className="h-ico" size={18} /> People also rented</h2></div>
           <div className="h-scroll">
             {alsoRented.map((i) => (
               <ItemCard
@@ -416,14 +429,14 @@ function ManagePanel({ itemId }: { itemId: string }) {
 
   return (
     <div className="panel">
-      <h3 style={{ fontSize: 16 }}>🎛️ Your listing</h3>
+      <h3 style={{ fontSize: 16 }}><Icon name="sliders" className="h-ico" size={16} /> Your listing</h3>
       <div className="status-banner" style={{ marginTop: 10 }}>
         {pending ? (
-          <span className="status-banner waiting" style={{ display: 'block', margin: 0 }}>⏳ Pending verification — our team is checking the details. You'll get a notification when it goes live.</span>
+          <span className="status-banner waiting" style={{ display: 'block', margin: 0 }}><Icon name="hourglass" size={14} /> Pending verification — our team is checking the details. You'll get a notification when it goes live.</span>
         ) : listing.paused ? (
-          <span className="status-banner cancelled" style={{ display: 'block', margin: 0 }}>⏸️ Paused — hidden from renters until you resume.</span>
+          <span className="status-banner cancelled" style={{ display: 'block', margin: 0 }}><Icon name="pause" size={14} /> Paused — hidden from renters until you resume.</span>
         ) : (
-          <span className="status-banner" style={{ display: 'block', margin: 0, background: 'var(--green-soft)', color: 'var(--green)' }}>🟢 Live & verified — visible to every filmmaker on Papa Rentals.</span>
+          <span className="status-banner" style={{ display: 'block', margin: 0, background: 'var(--green-soft)', color: 'var(--green)' }}><Icon name="dot" size={14} className="ic-green" /> Live & verified — visible to every filmmaker on Papa Rentals.</span>
         )}
       </div>
       <div className="price-summary" style={{ borderTop: 'none' }}>
@@ -436,13 +449,13 @@ function ManagePanel({ itemId }: { itemId: string }) {
         {!pending && (
           <button
             className="btn btn-outline btn-sm"
-            onClick={() => { dispatch({ type: 'TOGGLE_LISTING_PAUSE', itemId }); toast(listing.paused ? 'Listing resumed 🟢' : 'Listing paused ⏸️') }}
+            onClick={() => { dispatch({ type: 'TOGGLE_LISTING_PAUSE', itemId }); toast(listing.paused ? 'Listing resumed' : 'Listing paused') }}
           >
-            {listing.paused ? '▶️ Resume listing' : '⏸️ Pause listing'}
+            {listing.paused ? <><Icon name="play" size={14} /> Resume listing</> : <><Icon name="pause" size={14} /> Pause listing</>}
           </button>
         )}
         {!confirmDelete ? (
-          <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(true)}>🗑️ Delete</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(true)}><Icon name="trash" size={14} /> Delete</button>
         ) : (
           <button
             className="btn btn-sm" style={{ background: 'var(--red)', color: '#fff' }}
@@ -464,10 +477,16 @@ function ManagePanel({ itemId }: { itemId: string }) {
 }
 
 function FragmentRow({ stars, count, pct }: { stars: number; count: number; pct: number }) {
+  // start at 0 and grow on mount so the CSS width transition plays
+  const [width, setWidth] = useState(0)
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setWidth(pct))
+    return () => cancelAnimationFrame(raf)
+  }, [pct])
   return (
     <>
-      <span>{stars}★</span>
-      <div className="bar"><i style={{ width: `${pct}%` }} /></div>
+      <span>{stars}<Icon name="star" size={12} /></span>
+      <div className="bar"><i style={{ width: `${width}%` }} /></div>
       <span className="muted">{count}</span>
     </>
   )
@@ -539,12 +558,12 @@ function OfferModal({ itemId, unit, recommended, onClose }: { itemId: string; un
     if (!sent) return
     buzz()
     dispatch({ type: 'ACCEPT_COUNTER', offerId: sent.id })
-    toast('Counter accepted — price locked for 24h 🤝')
+    toast('Counter accepted — price locked for 24h')
     onClose()
   }
 
   return (
-    <Modal title="🤝 Offer your price" onClose={onClose}>
+    <Modal title="Offer your price" onClose={onClose}>
       {!sent ? (
         <>
           <p className="muted" style={{ fontSize: 14, marginTop: 0 }}>
@@ -553,7 +572,7 @@ function OfferModal({ itemId, unit, recommended, onClose }: { itemId: string; un
           </p>
           <div className="fare-box">
             <div className="fare-amount">{money(amount)} /{unit}</div>
-            <div className="muted small">{pct}% of recommended {pct >= 92 ? '· 🟢 very likely accepted' : pct >= 72 ? '· 🟡 may get countered' : '· 🔴 likely declined'}</div>
+            <div className="muted small">{pct}% of recommended {pct >= 92 ? <>· <Icon name="dot" size={12} className="ic-green" /> very likely accepted</> : pct >= 72 ? <>· <Icon name="dot" size={12} className="ic-amber" /> may get countered</> : <>· <Icon name="dot" size={12} className="ic-red" /> likely declined</>}</div>
             <input
               className="offer-slider" type="range" min={min} max={max} step={50}
               value={amount} onChange={(e) => setAmount(Number(e.target.value))}
@@ -572,19 +591,19 @@ function OfferModal({ itemId, unit, recommended, onClose }: { itemId: string; un
         </>
       ) : sent.status === 'pending' ? (
         <div className="empty-state" style={{ padding: '30px 10px' }}>
-          <div className="big">⏳</div>
+          <div className="big"><Icon name="hourglass" size={56} /></div>
           <p>Offer of <b>{money(sent.offeredRate)}/{unit}</b> sent.<br />The owner is looking at it…</p>
           <button className="btn btn-ghost btn-sm" onClick={onClose}>Close — notify me</button>
         </div>
       ) : sent.status === 'accepted' ? (
         <>
-          <div className="offer-status accepted">✅ Accepted! Locked at {money(sent.offeredRate)}/{unit} (was {money(recommended)}) for 24h.</div>
+          <div className="offer-status accepted"><Icon name="check-circle" size={14} /> Accepted! Locked at {money(sent.offeredRate)}/{unit} (was {money(recommended)}) for 24h.</div>
           <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={onClose}>Book at this price</button>
         </>
       ) : sent.status === 'countered' ? (
         <>
           <div className="offer-status countered">
-            ↩️ Owner countered with <b>{money(sent.counterRate!)}/{unit}</b> (you offered {money(sent.offeredRate)}).
+            <Icon name="undo" size={14} /> Owner countered with <b>{money(sent.counterRate!)}/{unit}</b> (you offered {money(sent.offeredRate)}).
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button className="btn btn-primary" style={{ flex: 1 }} onClick={acceptCounter}>Accept counter</button>
@@ -593,7 +612,7 @@ function OfferModal({ itemId, unit, recommended, onClose }: { itemId: string; un
         </>
       ) : (
         <>
-          <div className="offer-status declined">❌ Declined — too low. Try something closer to the recommended fare.</div>
+          <div className="offer-status declined"><Icon name="x-circle" size={14} /> Declined — too low. Try something closer to the recommended fare.</div>
           <button className="btn btn-outline btn-block" style={{ marginTop: 12 }} onClick={() => setSentId(null)}>Make a new offer</button>
         </>
       )}
@@ -630,7 +649,7 @@ function ChatModal({ ownerId, ownerName, itemName, onClose }: { ownerId: string;
   }
 
   return (
-    <Modal title={`💬 ${ownerName}`} onClose={onClose}>
+    <Modal title={ownerName} onClose={onClose}>
       <p className="muted small" style={{ marginTop: 0 }}>Asking about: {itemName}</p>
       <div className="chat-box" ref={boxRef}>
         {msgs.length === 0 && <div className="muted small" style={{ textAlign: 'center', padding: 20 }}>Say salaam — owners reply in minutes. Replies arrive even if you close this.</div>}
@@ -639,7 +658,7 @@ function ChatModal({ ownerId, ownerName, itemName, onClose }: { ownerId: string;
           return (
             <div key={m.id} className={`chat-msg ${m.from}`}>
               {m.text}
-              {m.from === 'me' && <span className="ticks">{delivered ? '✓✓' : '✓'}</span>}
+              {m.from === 'me' && <span className="ticks">{delivered ? <><Icon name="check" size={12} /><Icon name="check" size={12} /></> : <Icon name="check" size={12} />}</span>}
             </div>
           )
         })}
@@ -671,7 +690,7 @@ export function ReportModal({ targetName, ownerId, orderId, onClose }: { targetN
   const [block, setBlock] = useState(false)
 
   return (
-    <Modal title={`🚩 Report ${targetName}`} onClose={onClose}>
+    <Modal title={`Report ${targetName}`} onClose={onClose}>
       <p className="muted" style={{ fontSize: 14, marginTop: 0 }}>
         Reports go to Trust & Safety and get a case number you can track in your profile. Serious reports freeze payouts and suspend accounts.
       </p>
@@ -700,7 +719,7 @@ export function ReportModal({ targetName, ownerId, orderId, onClose }: { targetN
             type: 'REPORT', orderId, block: block ? ownerId : undefined,
             report: { id: uid(), caseNo, targetName, reason, note, date: todayISO(), status: 'under_review' },
           })
-          toast(`Report filed — case ${caseNo} 🚩`)
+          toast(`Report filed — case ${caseNo}`)
           onClose()
         }}
       >

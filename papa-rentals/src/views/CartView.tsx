@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { ALSO_RENTED, ITEMS, PAYMENT_METHODS, PROMO_CODES, TRANSPORT_OPTIONS, getItem } from '../data/catalog'
+import { PAYMENT_METHODS, PROMO_CODES, TRANSPORT_OPTIONS, getItem } from '../data/catalog'
+import { similarItems } from '../recs'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import { buzz, cartTotals, fmtDate, lineDuration, lineSubtotal, money, uid } from '../utils'
 import { Badge, ItemArt, ItemCard, Modal } from '../components/ui'
+import { Icon } from '../components/icons'
 
 export default function CartView() {
   const { go, toast } = useNav()
@@ -29,10 +31,10 @@ export default function CartView() {
   const needsDelivery = state.cart.some((b) => b.transport !== 'pickup')
   const needsApproval = state.cart.some((b) => !getItem(b.itemId).instantBook)
   const inCart = new Set(state.cart.map((b) => b.itemId))
-  const crossSell = ITEMS.filter(
-    (i) => !inCart.has(i.id) && !state.blockedOwners.includes(i.ownerId) &&
-      state.cart.some((b) => (ALSO_RENTED[getItem(b.itemId).category] ?? []).includes(i.category))
-  ).sort((a, b) => b.timesRented - a.timesRented).slice(0, 6)
+  // similarity-ranked around the most recent cart line
+  const crossSell = state.cart.length === 0
+    ? []
+    : similarItems(state.cart[state.cart.length - 1].itemId, state, 8).filter((i) => !inCart.has(i.id)).slice(0, 6)
 
   function applyPromo() {
     const code = promoInput.trim().toUpperCase()
@@ -40,7 +42,7 @@ export default function CartView() {
     setPromoCode(code)
     const check = cartTotals(state.cart, { ...opts, promoCode: code })
     if (check.promoError) toast(check.promoError)
-    else toast(`Promo applied: ${PROMO_CODES[code].label} 🎟️`)
+    else toast(`Promo applied: ${PROMO_CODES[code].label}`)
   }
 
   function placeOrder() {
@@ -53,14 +55,14 @@ export default function CartView() {
       type: 'PLACE_ORDER',
       opts: { ...opts, paymentMethod: PAYMENT_METHODS.find((p) => p.id === payMethod)?.name ?? 'Card', address: address ? `${address.label} — ${address.detail}` : 'Self pickup' },
     })
-    toast(needsApproval ? 'Booking requested — owner usually approves in minutes ⏳' : 'Order confirmed! Track it in Orders 🎉')
+    toast(needsApproval ? 'Booking requested — owner usually approves in minutes' : 'Order confirmed! Track it in Orders')
     go({ name: 'orders' })
   }
 
   if (state.cart.length === 0) {
     return (
       <div className="empty-state">
-        <div className="big">🛒</div>
+        <div className="big"><Icon name="cart" size={56} /></div>
         <h3>Your cart is empty</h3>
         <p>Gear up for your next shoot — deals are waiting.</p>
         <button className="btn btn-primary" onClick={() => go({ name: 'browse' })}>Browse gear</button>
@@ -71,7 +73,7 @@ export default function CartView() {
   return (
     <div className="section">
       <div className="section-head">
-        <h2>🛒 Your cart</h2>
+        <h2><Icon name="cart" className="h-ico" size={18} /> Your cart</h2>
         <button className="link-btn" onClick={() => dispatch({ type: 'CLEAR_CART' })}>Clear all</button>
       </div>
 
@@ -87,16 +89,16 @@ export default function CartView() {
                   <ItemArt item={item} size="thumb" />
                   <div className="cart-line-info">
                     <b style={{ fontSize: 14 }}>{item.name}</b>
-                    {b.negotiated && <Badge tone="purple">🤝 Negotiated</Badge>}
-                    {!item.instantBook && <Badge tone="orange">⏳ Needs approval</Badge>}
+                    {b.negotiated && <Badge tone="purple"><Icon name="handshake" size={14} /> Negotiated</Badge>}
+                    {!item.instantBook && <Badge tone="orange"><Icon name="hourglass" size={14} /> Needs approval</Badge>}
                     <div className="muted small">
                       {b.unit === 'hour'
                         ? `${fmtDate(b.startDate)} · ${b.hours}h from ${b.pickupTime}`
-                        : `${fmtDate(b.startDate)} → ${fmtDate(b.endDate)} at ${b.pickupTime}`} · ×{b.qty} · {transport.emoji} {transport.name}
+                        : `${fmtDate(b.startDate)} to ${fmtDate(b.endDate)} at ${b.pickupTime}`} · ×{b.qty} · <Icon name={transport.icon} size={14} /> {transport.name}
                     </div>
                     <div className="muted small">
-                      {b.insurance && '🛡️ Protection · '}
-                      {b.operator && '🧑‍🔧 Operator · '}
+                      {b.insurance && <><Icon name="shield" size={14} /> Protection · </>}
+                      {b.operator && <><Icon name="wrench" size={14} /> Operator · </>}
                       {money(b.rate)}/{b.unit} × {dur}
                     </div>
                   </div>
@@ -121,27 +123,27 @@ export default function CartView() {
               />
               <button className="btn btn-outline btn-sm" onClick={applyPromo}>Apply</button>
             </div>
-            {promoCode && t.promoError && <p className="promo-error">⚠️ {t.promoError} <button className="link-btn" onClick={() => setPromoCode(undefined)}>remove</button></p>}
+            {promoCode && t.promoError && <p className="promo-error"><Icon name="warning" size={14} /> {t.promoError} <button className="link-btn" onClick={() => setPromoCode(undefined)}>remove</button></p>}
             {promoCode && !t.promoError && t.promoDiscount > 0 && (
               <p className="small" style={{ color: 'var(--green)', fontWeight: 700 }}>
-                🎟️ {promoCode}: {PROMO_CODES[promoCode].label}{' '}
+                <Icon name="ticket" size={14} /> {promoCode}: {PROMO_CODES[promoCode].label}{' '}
                 <button className="link-btn" onClick={() => setPromoCode(undefined)}>remove</button>
               </p>
             )}
 
             <label className="toggle-row">
               <input type="checkbox" checked={useWallet} onChange={(e) => setUseWallet(e.target.checked)} />
-              <span><b>👛 Use wallet balance</b> — {money(state.walletBalance)} available</span>
+              <span><b><Icon name="wallet" size={14} /> Use wallet balance</b> — {money(state.walletBalance)} available</span>
             </label>
             <label className="toggle-row">
               <input type="checkbox" checked={redeemPoints} onChange={(e) => setRedeemPoints(e.target.checked)} />
-              <span><b>🏆 Redeem PapaPoints</b> — {state.points} pts = {money(state.points)}</span>
+              <span><b><Icon name="trophy" size={14} /> Redeem PapaPoints</b> — {state.points} pts = {money(state.points)}</span>
             </label>
           </div>
 
           {needsDelivery && (
             <div className="panel">
-              <h3 style={{ fontSize: 15 }}>📍 Deliver to</h3>
+              <h3 style={{ fontSize: 15 }}><Icon name="pin" className="h-ico" size={15} /> Deliver to</h3>
               {state.addresses.map((a) => (
                 <div key={a.id} className={`addr-row ${a.id === state.selectedAddressId ? 'active' : ''}`} onClick={() => dispatch({ type: 'SELECT_ADDRESS', id: a.id })}>
                   <b style={{ flex: 'none' }}>{a.label}</b>
@@ -153,10 +155,10 @@ export default function CartView() {
           )}
 
           <div className="panel">
-            <h3 style={{ fontSize: 15 }}>💳 Pay with</h3>
+            <h3 style={{ fontSize: 15 }}><Icon name="card" className="h-ico" size={15} /> Pay with</h3>
             {PAYMENT_METHODS.map((p) => (
               <div key={p.id} className={`pay-method ${payMethod === p.id ? 'active' : ''}`} onClick={() => setPayMethod(p.id)}>
-                <span style={{ fontSize: 20 }}>{p.emoji}</span>
+                <span style={{ fontSize: 20 }}><Icon name={p.icon} size={14} /></span>
                 <b>{p.name}</b>
                 {p.id === 'cod' && <span className="muted small" style={{ marginLeft: 'auto' }}>deposit still held on card</span>}
               </div>
@@ -174,8 +176,8 @@ export default function CartView() {
               {t.operatorFee > 0 && <div className="price-line"><span>Operators</span><b>{money(t.operatorFee)}</b></div>}
               <div className="price-line"><span>Service fee (5%)</span><b>{money(t.serviceFee)}</b></div>
               {t.promoDiscount > 0 && <div className="price-line"><span>Promo discount</span><b className="credit">−{money(t.promoDiscount)}</b></div>}
-              {t.tierDiscount > 0 && <div className="price-line"><span>🥇 Gold perk (5% off)</span><b className="credit">−{money(t.tierDiscount)}</b></div>}
-              {t.vanPerk > 0 && <div className="price-line"><span>🥈 Free van delivery perk</span><b className="credit">−{money(t.vanPerk)}</b></div>}
+              {t.tierDiscount > 0 && <div className="price-line"><span><Icon name="medal" size={14} /> Gold perk (5% off)</span><b className="credit">−{money(t.tierDiscount)}</b></div>}
+              {t.vanPerk > 0 && <div className="price-line"><span><Icon name="medal" size={14} /> Free van delivery perk</span><b className="credit">−{money(t.vanPerk)}</b></div>}
               {t.pointsUsed > 0 && <div className="price-line"><span>PapaPoints</span><b className="credit">−{money(t.pointsUsed)}</b></div>}
               {t.walletUsed > 0 && <div className="price-line"><span>Wallet credit</span><b className="credit">−{money(t.walletUsed)}</b></div>}
               <div className="price-line total"><span>Charged now</span><span>{money(t.total)}</span></div>
@@ -189,7 +191,7 @@ export default function CartView() {
               {needsApproval ? `Request booking · ${money(t.total)}` : `Confirm & pay ${money(t.total)}`}
             </button>
             <p className="muted small" style={{ textAlign: 'center' }}>
-              You'll earn <b>+{Math.floor(t.total / 100)}</b> PapaPoints 🏆
+              You'll earn <b>+{Math.floor(t.total / 100)}</b> PapaPoints <Icon name="trophy" size={14} />
             </p>
           </div>
         </div>
@@ -197,7 +199,7 @@ export default function CartView() {
 
       {crossSell.length > 0 && (
         <div className="section">
-          <div className="section-head"><h2>🧩 Complete your setup</h2></div>
+          <div className="section-head"><h2><Icon name="puzzle" className="h-ico" size={18} /> Complete your setup</h2></div>
           <div className="h-scroll">
             {crossSell.map((i) => (
               <ItemCard
@@ -224,10 +226,10 @@ function AddAddressModal({ onClose }: { onClose: () => void }) {
   const [detail, setDetail] = useState('')
 
   return (
-    <Modal title="📍 New address" onClose={onClose}>
+    <Modal title="New address" onClose={onClose}>
       <label className="field">
         Label
-        <input value={label} placeholder="e.g. 📽️ Location shoot" onChange={(e) => setLabel(e.target.value)} />
+        <input value={label} placeholder="e.g. Location shoot" onChange={(e) => setLabel(e.target.value)} />
       </label>
       <label className="field" style={{ marginTop: 10 }}>
         Full address
@@ -239,7 +241,7 @@ function AddAddressModal({ onClose }: { onClose: () => void }) {
         disabled={!label.trim() || !detail.trim()}
         onClick={() => {
           dispatch({ type: 'ADD_ADDRESS', address: { id: uid(), label: label.trim(), detail: detail.trim() } })
-          toast('Address saved 📍')
+          toast('Address saved')
           onClose()
         }}
       >

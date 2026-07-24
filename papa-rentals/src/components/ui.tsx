@@ -1,15 +1,29 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { getCategory, getOwner } from '../data/catalog'
 import type { Item } from '../types'
 import { buzz, dealActive, dealEndsAt, fmtCountdown, money } from '../utils'
+import { PhotoGallery, SmartImage } from './SmartImage'
+import { Icon, STAR_PATH } from './icons'
 
-/* ---------------- stars with true half-star rendering ---------------- */
-export function Stars({ value, size = 14, onChange }: { value: number; size?: number; onChange?: (v: number) => void }) {
+/* ---------------- stars: SVG with fractional fill ---------------- */
+function Star({ frac, size }: { frac: number; size: number }) {
+  const id = useId() // unique clip per star — dupes would silently break the fill
   return (
-    <span className="stars" style={{ fontSize: onChange ? size + 10 : size }} aria-label={`${value.toFixed(1)} out of 5 stars`}>
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="star-svg">
+      <defs><clipPath id={id}><rect width={24 * frac} height="24" /></clipPath></defs>
+      <path d={STAR_PATH} fill="var(--star-off)" />
+      <path d={STAR_PATH} fill="var(--star)" clipPath={`url(#${id})`} />
+    </svg>
+  )
+}
+
+export function Stars({ value, size = 14, onChange }: { value: number; size?: number; onChange?: (v: number) => void }) {
+  const px = onChange ? size + 10 : size
+  return (
+    <span className="stars" aria-label={`${value.toFixed(1)} out of 5 stars`}>
       {[1, 2, 3, 4, 5].map((s) => {
-        const fill = Math.max(0, Math.min(1, value - (s - 1)))
+        const frac = Math.max(0, Math.min(1, value - (s - 1)))
         return (
           <span
             key={s}
@@ -17,8 +31,7 @@ export function Stars({ value, size = 14, onChange }: { value: number; size?: nu
             onClick={onChange ? () => { buzz(); onChange(s) } : undefined}
             style={onChange ? { cursor: 'pointer', padding: '0 2px' } : undefined}
           >
-            <span className="star off">★</span>
-            <span className="star on" style={{ width: `${fill * 100}%` }}>★</span>
+            <Star frac={frac} size={px} />
           </span>
         )
       })}
@@ -31,7 +44,7 @@ export function Badge({ children, tone = 'default' }: { children: ReactNode; ton
 }
 
 /* ---------------- live flash-deal countdown ---------------- */
-export function DealCountdown({ itemId, prefix = '⚡' }: { itemId: string; prefix?: string }) {
+export function DealCountdown({ itemId, prefix }: { itemId: string; prefix?: ReactNode }) {
   const [, force] = useState(0)
   useEffect(() => {
     const t = setInterval(() => force((x) => x + 1), 1000)
@@ -112,7 +125,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
         <div className="sheet-grip" aria-hidden="true" />
         <div className="modal-head">
           <h3>{title}</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="x" size={18} /></button>
         </div>
         <div className="modal-body">{children}</div>
       </div>
@@ -120,18 +133,78 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   )
 }
 
-/* ---------------- item art ---------------- */
+/* ---------------- item art: photo-first, gradient+icon fallback ---------------- */
+const ART_GLYPH_SIZE = { card: 60, hero: 104, thumb: 26 } as const
+
 export function ItemArt({ item, size = 'card' }: { item: Item; size?: 'card' | 'hero' | 'thumb' }) {
   const cat = getCategory(item.category)
+  const ribbon = item.flashDeal && dealActive(item.id) && size !== 'thumb' && (
+    <div className="deal-ribbon">
+      <Icon name="bolt" size={11} /> {item.flashDeal.percentOff}% OFF · <DealCountdown itemId={item.id} />
+    </div>
+  )
+  const glyph = <Icon name={item.icon} className="art-glyph" size={ART_GLYPH_SIZE[size]} />
+
+  // hero with a multi-photo gallery: swipeable, dots, ribbon overlaid on the whole thing
+  if (size === 'hero' && item.images && item.images.length > 0) {
+    return (
+      <PhotoGallery
+        images={item.images}
+        alt={item.name}
+        overlay={ribbon || undefined}
+        fallback={
+          <div className="grad-fill" style={{ background: cat.gradient }} aria-hidden="true">
+            {glyph}
+          </div>
+        }
+      />
+    )
+  }
+
+  // card/thumb (and photo-less hero): gradient+icon base, photo fades in on top
   return (
     <div className={`item-art art-${size}`} style={{ background: cat.gradient }} role="img" aria-label={item.name}>
-      <span>{item.emoji}</span>
-      {item.flashDeal && dealActive(item.id) && size !== 'thumb' && (
-        <div className="deal-ribbon">
-          ⚡ {item.flashDeal.percentOff}% OFF · <DealCountdown itemId={item.id} prefix="" />
-        </div>
-      )}
+      {glyph}
+      {item.image && <SmartImage src={item.image} alt="" fallback={null} />}
+      {ribbon}
     </div>
+  )
+}
+
+/* ---------------- count-up number (respects reduced motion) ---------------- */
+export function useCountUp(value: number, ms = 600): number {
+  const [shown, setShown] = useState(value)
+  const prev = useRef(value)
+  useEffect(() => {
+    const from = prev.current
+    prev.current = value
+    if (from === value) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setShown(value)
+      return
+    }
+    let raf = 0
+    const t0 = performance.now()
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / ms)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setShown(Math.round(from + (value - from) * eased))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [value, ms])
+  return shown
+}
+
+/* ---------------- compact rating (single star, Airbnb-style) ---------------- */
+export function RatingCompact({ rating, count }: { rating: number; count?: number }) {
+  return (
+    <span className="rating-compact" aria-label={`${rating.toFixed(1)} out of 5 stars${count ? `, ${count} reviews` : ''}`}>
+      <svg className="rc-star" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d={STAR_PATH} fill="var(--star)" /></svg>
+      {rating.toFixed(1)}
+      {count != null && <span className="rc-count">({count})</span>}
+    </span>
   )
 }
 
@@ -141,18 +214,22 @@ export function ItemCard({
   onOpen,
   wishlisted,
   onToggleWish,
+  index,
 }: {
   item: Item
   onOpen: () => void
   wishlisted: boolean
   onToggleWish: () => void
+  index?: number
 }) {
   const owner = getOwner(item.ownerId)
   const hasDeal = dealActive(item.id)
   const dealPrice = hasDeal ? Math.round(item.pricePerDay * (1 - item.flashDeal!.percentOff / 100)) : null
+  const stagger = index != null ? { className: 'item-card stagger', style: { ['--i' as string]: Math.min(index, 8) } } : { className: 'item-card' }
   return (
-    <div className="item-card" onClick={onOpen}>
+    <div {...stagger} onClick={onOpen}>
       <ItemArt item={item} />
+      {item.instantBook && <div className="photo-badge"><Icon name="bolt" size={11} /> Instant</div>}
       <button
         className={`wish-btn ${wishlisted ? 'on' : ''}`}
         onClick={(e) => {
@@ -162,16 +239,15 @@ export function ItemCard({
         }}
         aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
       >
-        {wishlisted ? '♥' : '♡'}
+        <Icon name={wishlisted ? 'heart-filled' : 'heart'} size={18} />
       </button>
       <div className="item-card-body">
         <div className="item-card-title">{item.name}</div>
         <div className="item-card-meta">
-          <Stars value={item.rating} />
-          <span className="muted">{item.rating} ({item.ratingCount})</span>
-        </div>
-        <div className="item-card-meta muted small">
-          {owner.verified && '✔︎ '} {owner.name} · {owner.distanceKm} km
+          <RatingCompact rating={item.rating} count={item.ratingCount} />
+          <span className="muted small owner-inline">
+            · {owner.verified && <Icon name="check" size={11} className="ic-verified" />}{owner.name}
+          </span>
         </div>
         <div className="item-card-price">
           {dealPrice ? (
@@ -182,7 +258,7 @@ export function ItemCard({
             <b>{money(item.pricePerDay)}</b>
           )}
           <span className="muted"> /day</span>
-          {item.instantBook && <Badge tone="green">⚡ Instant</Badge>}
+          <span className="muted small"> · {owner.distanceKm} km</span>
         </div>
       </div>
     </div>

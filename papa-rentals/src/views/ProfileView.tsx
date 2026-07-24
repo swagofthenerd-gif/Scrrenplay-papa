@@ -3,7 +3,8 @@ import { getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import { GOLD_POINTS, SILVER_POINTS, buzz, money } from '../utils'
-import { Badge, ItemArt, Stars } from '../components/ui'
+import { Badge, ItemArt, Stars, useCountUp } from '../components/ui'
+import { Icon, Avatar } from '../components/icons'
 
 export default function ProfileView() {
   const { go, toast } = useNav()
@@ -12,27 +13,29 @@ export default function ProfileView() {
   const completed = state.orders.filter((o) => o.status === 'completed')
   const ownerRatings = completed.map((o) => o.ownerRatingOfMe).filter((r): r is number => r != null)
   const myRating = ownerRatings.length ? ownerRatings.reduce((a, b) => a + b, 0) / ownerRatings.length : 5
-  const tier = state.points >= GOLD_POINTS ? '🥇 Gold Papa' : state.points >= SILVER_POINTS ? '🥈 Silver Papa' : '🥉 Bronze Papa'
+  const tier = state.points >= GOLD_POINTS ? 'Gold Papa' : state.points >= SILVER_POINTS ? 'Silver Papa' : 'Bronze Papa'
   const nextTier = state.points >= GOLD_POINTS ? null : state.points >= SILVER_POINTS
-    ? { name: '🥇 Gold', at: GOLD_POINTS }
-    : { name: '🥈 Silver', at: SILVER_POINTS }
+    ? { name: 'Gold', at: GOLD_POINTS }
+    : { name: 'Silver', at: SILVER_POINTS }
   const acceptedOffers = state.offers.filter((o) => o.status === 'accepted').length
   const [refCode, setRefCode] = useState('')
   const pendingRequests = state.ownerBookings.filter((b) => b.status === 'pending').length
   const chatThreads = Object.entries(state.chats).filter(([, t]) => t.messages.length > 0)
   const unreadTotal = chatThreads.reduce((s, [, t]) => s + t.unread, 0)
+  const shownBalance = useCountUp(state.walletBalance)
+  const shownPoints = useCountUp(state.points)
 
   return (
     <div className="section">
-      <div className="section-head"><h2>👤 Your profile</h2></div>
+      <div className="section-head"><h2><Icon name="user" className="h-ico" size={18} /> Your profile</h2></div>
 
       <div className="panel">
         <div className="owner-row">
-          <div className="owner-avatar">🎬</div>
+          <Avatar name={state.profile.name || 'You'} id="me" size={46} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <b>{state.profile.name || 'Filmmaker'} <Badge tone="green">✔︎ ID Verified</Badge> <Badge tone="purple">{tier}</Badge></b>
+            <b>{state.profile.name || 'Filmmaker'} <Badge tone="green"><Icon name="check" size={14} /> ID Verified</Badge> <Badge tone="purple">{tier}</Badge></b>
             <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              📍 {state.profile.city} · renter rating <Stars value={myRating} size={12} /> {myRating.toFixed(1)} · {completed.length} completed
+              <Icon name="pin" size={14} /> {state.profile.city} · renter rating <Stars value={myRating} size={12} /> {myRating.toFixed(1)} · {completed.length} completed
             </div>
           </div>
         </div>
@@ -42,19 +45,19 @@ export default function ProfileView() {
       </div>
 
       <div className="wallet-card">
-        <div style={{ color: '#d6d3d1', fontSize: 13 }}>👛 Papa Wallet</div>
-        <div className="balance">{money(state.walletBalance)}</div>
+        <div style={{ color: '#d6d3d1', fontSize: 13 }}><Icon name="wallet" size={14} /> Papa Wallet</div>
+        <div className="balance">{money(shownBalance)}</div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button className="btn btn-primary btn-sm" onClick={() => { buzz(); dispatch({ type: 'ADD_WALLET', amount: 10000 }); toast('Rs 10,000 added to wallet 👛') }}>
+          <button className="btn btn-primary btn-sm" onClick={() => { buzz(); dispatch({ type: 'ADD_WALLET', amount: 10000 }); toast('Rs 10,000 added to wallet') }}>
             + Top up Rs 10,000
           </button>
         </div>
       </div>
 
       <div className="stat-row">
-        <div className="stat-tile"><div className="stat-num">🏆 {state.points}</div><div className="muted small">PapaPoints</div></div>
-        <div className="stat-tile"><div className="stat-num">📦 {state.orders.length}</div><div className="muted small">Orders</div></div>
-        <div className="stat-tile"><div className="stat-num">♥ {state.wishlist.length}</div><div className="muted small">Wishlist</div></div>
+        <div className="stat-tile"><div className="stat-num"><Icon name="trophy" size={16} /> {shownPoints}</div><div className="muted small">PapaPoints</div></div>
+        <div className="stat-tile"><div className="stat-num"><Icon name="box" size={16} /> {state.orders.length}</div><div className="muted small">Orders</div></div>
+        <div className="stat-tile"><div className="stat-num"><Icon name="heart-filled" size={16} /> {state.wishlist.length}</div><div className="muted small">Wishlist</div></div>
       </div>
 
       {nextTier && (
@@ -72,22 +75,22 @@ export default function ProfileView() {
       )}
 
       <div className="list-row" style={{ cursor: 'pointer' }} onClick={() => go({ name: 'dashboard' })}>
-        <span>📊 Host dashboard</span>
-        <span className="muted">{pendingRequests > 0 ? `${pendingRequests} request${pendingRequests > 1 ? 's' : ''} waiting →` : 'Earnings & requests →'}</span>
+        <span><Icon name="chart" size={16} /> Host dashboard</span>
+        <span className="muted">{pendingRequests > 0 ? <>{pendingRequests} request{pendingRequests > 1 ? 's' : ''} waiting <Icon name="arrow-right" size={14} /></> : <>Earnings &amp; requests <Icon name="arrow-right" size={14} /></>}</span>
       </div>
       <div className="list-row" style={{ cursor: 'pointer' }} onClick={() => go({ name: 'support' })}>
-        <span>🎧 Help Center</span><span className="muted">24/7 support →</span>
+        <span><Icon name="headset" size={16} /> Help Center</span><span className="muted">24/7 support <Icon name="arrow-right" size={14} /></span>
       </div>
 
       <div className="list-row" style={{ cursor: 'pointer' }} onClick={() => go({ name: 'browse', wishlistOnly: true })}>
-        <span>♥ Your wishlist</span><span className="muted">{state.wishlist.length} items →</span>
+        <span><Icon name="heart-filled" size={16} /> Your wishlist</span><span className="muted">{state.wishlist.length} items <Icon name="arrow-right" size={14} /></span>
       </div>
       <div
         className="list-row"
         style={{ cursor: 'pointer' }}
-        onClick={() => { navigator.clipboard?.writeText('PAPA-FRIEND-500').catch(() => {}); toast('Your code copied: PAPA-FRIEND-500 🎁') }}
+        onClick={() => { navigator.clipboard?.writeText('PAPA-FRIEND-500').catch(() => {}); toast('Your code copied: PAPA-FRIEND-500') }}
       >
-        <span>🎁 Refer a filmmaker</span><span className="muted">You both get Rs 500 →</span>
+        <span><Icon name="gift" size={16} /> Refer a filmmaker</span><span className="muted">You both get Rs 500 <Icon name="arrow-right" size={14} /></span>
       </div>
       {!state.referralRedeemed && (
         <div className="panel" style={{ marginTop: 10 }}>
@@ -99,7 +102,7 @@ export default function ProfileView() {
               onClick={() => {
                 if (/^PAPA-/i.test(refCode.trim())) {
                   dispatch({ type: 'REDEEM_REFERRAL', code: refCode.trim() })
-                  toast('Rs 500 added to your wallet 🎁')
+                  toast('Rs 500 added to your wallet')
                 } else {
                   toast('Codes look like PAPA-XXXX')
                 }
@@ -111,13 +114,13 @@ export default function ProfileView() {
         </div>
       )}
       <div className="list-row">
-        <span>🤝 Offers you've made</span>
+        <span><Icon name="handshake" size={16} /> Offers you've made</span>
         <span className="muted">
           {state.offers.length === 0 ? 'None yet' : `${acceptedOffers}/${state.offers.length} accepted`}
         </span>
       </div>
       <div className="list-row">
-        <span>💬 Chats</span>
+        <span><Icon name="chat" size={16} /> Chats</span>
         <span className="muted">
           {chatThreads.length === 0 ? 'None yet' : `${chatThreads.length} thread${chatThreads.length > 1 ? 's' : ''}${unreadTotal > 0 ? ` · ${unreadTotal} unread` : ''}`}
         </span>
@@ -125,7 +128,7 @@ export default function ProfileView() {
 
       <div className="panel" style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: 15 }}>🏡 Your listings</h3>
+          <h3 style={{ fontSize: 15 }}><Icon name="home" size={16} /> Your listings</h3>
           <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'post' })}>+ List a space</button>
         </div>
         {state.myListings.length === 0 ? (
@@ -144,7 +147,7 @@ export default function ProfileView() {
                 <b style={{ fontSize: 14 }}>{l.name}</b>
                 <div className="muted small">{money(l.pricePerDay)}/day · {l.space?.type}</div>
               </div>
-              {l.pendingVerifyAt ? <Badge tone="orange">⏳ Verifying</Badge> : l.paused ? <Badge tone="red">⏸️ Paused</Badge> : <Badge tone="green">🟢 Live</Badge>}
+              {l.pendingVerifyAt ? <Badge tone="orange"><Icon name="hourglass" size={14} /> Verifying</Badge> : l.paused ? <Badge tone="red"><Icon name="pause" size={14} /> Paused</Badge> : <Badge tone="green"><Icon name="dot" size={14} className="ic-green" /> Live</Badge>}
             </div>
           ))
         )}
@@ -152,7 +155,7 @@ export default function ProfileView() {
 
       {state.reports.length > 0 && (
         <div className="panel" style={{ marginTop: 14 }}>
-          <h3 style={{ fontSize: 15 }}>🚩 Your reports</h3>
+          <h3 style={{ fontSize: 15 }}><Icon name="flag" size={16} /> Your reports</h3>
           {state.reports.map((r) => (
             <div key={r.id} className="review">
               <div className="review-head">
@@ -167,10 +170,10 @@ export default function ProfileView() {
 
       {state.blockedOwners.length > 0 && (
         <div className="panel" style={{ marginTop: 14 }}>
-          <h3 style={{ fontSize: 15 }}>🚫 Blocked</h3>
+          <h3 style={{ fontSize: 15 }}><Icon name="ban" size={16} /> Blocked</h3>
           {state.blockedOwners.map((id) => (
             <div key={id} className="review" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>{getOwner(id).avatar} {getOwner(id).name}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Avatar name={getOwner(id).name} id={id} size={40} /> {getOwner(id).name}</span>
               <span className="muted small">listings hidden</span>
             </div>
           ))}
@@ -178,7 +181,7 @@ export default function ProfileView() {
       )}
 
       <div className="panel" style={{ marginTop: 14 }}>
-        <h3 style={{ fontSize: 15 }}>🏆 PapaPoints perks</h3>
+        <h3 style={{ fontSize: 15 }}><Icon name="trophy" size={16} /> PapaPoints perks</h3>
         <p className="muted small" style={{ marginBottom: 0 }}>
           Earn 1 point per Rs 100 spent, redeem anytime at checkout. <b>Silver (500)</b>: one free van delivery every month — applied automatically.
           <b> Gold (2000)</b>: 5% off everything, automatically, plus priority support and early access to hero gear.
