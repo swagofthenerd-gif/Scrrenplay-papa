@@ -4,7 +4,7 @@ import { StoreProvider, useStore } from './store'
 import { buzz, fmtTimeAgo } from './utils'
 import { getItem } from './data/catalog'
 import { ItemArt, Modal } from './components/ui'
-import { Icon, LogoMark } from './components/icons'
+import { Icon, IconSketchFilter, LogoMark } from './components/icons'
 import SearchOverlay from './components/SearchOverlay'
 import ListSpace from './views/ListSpace'
 import HostDashboard from './views/HostDashboard'
@@ -12,6 +12,7 @@ import Support from './views/Support'
 import Home from './views/Home'
 import Browse from './views/Browse'
 import ItemDetail from './views/ItemDetail'
+import VendorView from './views/VendorView'
 import CartView from './views/CartView'
 import OrdersView from './views/OrdersView'
 import ProfileView from './views/ProfileView'
@@ -131,10 +132,11 @@ function Shell() {
 
   const activeOrders = state.orders.filter((o) => !['completed', 'cancelled'].includes(o.status)).length
   const unreadNotifs = state.notifications.filter((n) => !n.read).length
-  const viewKey = view.name === 'item' ? `item-${view.id}` : view.name
+  const viewKey = view.name === 'item' ? `item-${view.id}` : view.name === 'vendor' ? `vendor-${view.id}` : view.name
 
   return (
     <NavContext.Provider value={{ view, go, back, toast }}>
+      <IconSketchFilter />
       <div className="app-shell">
         <header className="topbar">
           <div className="logo" onClick={() => go({ name: 'home' })}>
@@ -157,6 +159,7 @@ function Shell() {
             <Browse category={view.category} query={view.query} dealsOnly={view.dealsOnly} wishlistOnly={view.wishlistOnly} />
           )}
           {view.name === 'item' && <ItemDetail id={view.id} />}
+          {view.name === 'vendor' && <VendorView id={view.id} />}
           {view.name === 'cart' && <CartView />}
           {view.name === 'orders' && <OrdersView />}
           {view.name === 'profile' && <ProfileView />}

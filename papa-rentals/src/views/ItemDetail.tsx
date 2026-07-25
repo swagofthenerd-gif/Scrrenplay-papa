@@ -161,7 +161,7 @@ export default function ItemDetail({ id }: { id: string }) {
           )}
 
           <div className="panel">
-            <div className="owner-row">
+            <button className="owner-row owner-row-link" onClick={() => go({ name: 'vendor', id: owner.id })} aria-label={`View ${owner.name}'s storefront`}>
               <Avatar name={owner.name} id={owner.id} size={46} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ fontSize: 14 }}>
@@ -172,11 +172,13 @@ export default function ItemDetail({ id }: { id: string }) {
                   <RatingCompact rating={owner.rating} count={owner.ratingCount} /> · replies in ~{owner.responseMins} min · {owner.area} · {owner.distanceKm} km · since {owner.memberSince}
                 </div>
               </div>
-            </div>
+              <span className="vendor-chev"><Icon name="chevron-right" size={18} /></span>
+            </button>
             {!item.mine && (
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'vendor', id: owner.id })}><Icon name="store" size={14} /> Storefront</button>
               <button className="btn btn-outline btn-sm" style={{ position: 'relative' }} onClick={() => setChatOpen(true)}>
-                <Icon name="chat" size={14} /> Chat with owner{chatUnread > 0 && <span className="dot" style={{ position: 'absolute', top: -5, right: -5, background: 'var(--accent)', color: '#fff', borderRadius: 999, minWidth: 17, height: 17, lineHeight: '17px', fontSize: 10, fontWeight: 700 }}>{chatUnread}</span>}
+                <Icon name="chat" size={14} /> Chat{chatUnread > 0 && <span className="dot" style={{ position: 'absolute', top: -5, right: -5, background: 'var(--accent)', color: '#fff', borderRadius: 999, minWidth: 17, height: 17, lineHeight: '17px', fontSize: 10, fontWeight: 700 }}>{chatUnread}</span>}
               </button>
               <button className="btn btn-ghost btn-sm" onClick={() => setReportOpen(true)}><Icon name="flag" size={14} /> Report</button>
             </div>

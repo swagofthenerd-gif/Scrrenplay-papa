@@ -5,6 +5,7 @@ export type View =
   | { name: 'home' }
   | { name: 'browse'; category?: CategoryId; query?: string; dealsOnly?: boolean; wishlistOnly?: boolean }
   | { name: 'item'; id: string }
+  | { name: 'vendor'; id: string }
   | { name: 'cart' }
   | { name: 'orders' }
   | { name: 'profile' }
@@ -16,6 +17,7 @@ export function viewToHash(v: View): string {
   switch (v.name) {
     case 'home': return '#/'
     case 'item': return `#/item/${v.id}`
+    case 'vendor': return `#/vendor/${v.id}`
     case 'cart': return '#/cart'
     case 'orders': return '#/orders'
     case 'profile': return '#/profile'
@@ -39,6 +41,7 @@ export function parseHash(hash: string): View {
   const [path, qs] = h.split('?')
   const seg = path.split('/').filter(Boolean)
   if (seg[0] === 'item' && seg[1]) return { name: 'item', id: seg[1] }
+  if (seg[0] === 'vendor' && seg[1]) return { name: 'vendor', id: seg[1] }
   if (seg[0] === 'cart') return { name: 'cart' }
   if (seg[0] === 'orders') return { name: 'orders' }
   if (seg[0] === 'profile') return { name: 'profile' }
