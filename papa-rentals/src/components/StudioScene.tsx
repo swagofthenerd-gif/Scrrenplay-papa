@@ -108,6 +108,93 @@ function Sandbag({ x, y }: { x: number; y: number }) {
   )
 }
 
+/** iris: blade edges sweeping from the barrel wall to the opening */
+const IRIS = Array.from({ length: 9 }, (_, i) => {
+  const a = (i * 2 * Math.PI) / 9
+  const b = a + 0.78
+  const R = 46
+  const r = 20
+  return `M${(R * Math.cos(a)).toFixed(1)} ${(R * Math.sin(a)).toFixed(1)} L${(r * Math.cos(b)).toFixed(1)} ${(r * Math.sin(b)).toFixed(1)}`
+})
+const IRIS_OPENING = Array.from({ length: 9 }, (_, i) => {
+  const b = (i * 2 * Math.PI) / 9 + 0.78
+  const r = 20
+  return `${i === 0 ? 'M' : 'L'}${(r * Math.cos(b)).toFixed(1)} ${(r * Math.sin(b)).toFixed(1)}`
+}).join(' ') + ' Z'
+
+/* ---------------- technical-drawing toolkit ---------------- */
+
+/** dense parallel-line shading clipped to a shape — the workhorse of the style */
+function Shade({
+  id, d, x, y, w, h, gap = 5, o = 0.5, sw = 1, dir = 1,
+}: { id: string; d: string; x: number; y: number; w: number; h: number; gap?: number; o?: number; sw?: number; dir?: 1 | -1 }) {
+  const n = Math.ceil((w + h) / gap) + 2
+  return (
+    <>
+      <clipPath id={id}>
+        <path d={d} />
+      </clipPath>
+      <g clipPath={`url(#${id})`} strokeWidth={sw} opacity={o}>
+        {Array.from({ length: n }, (_, i) => {
+          const off = x - h + i * gap
+          return dir === 1
+            ? <path key={i} d={`M${off} ${y + h} L${off + h} ${y}`} />
+            : <path key={i} d={`M${off} ${y} L${off + h} ${y + h}`} />
+        })}
+      </g>
+    </>
+  )
+}
+
+/** knurled grip band: many short ticks, the way a focus ring is drawn */
+function Knurl({ x, y, w, h, gap = 4.5, o = 0.7 }: { x: number; y: number; w: number; h: number; gap?: number; o?: number }) {
+  return (
+    <g strokeWidth="1.2" opacity={o}>
+      {Array.from({ length: Math.max(1, Math.floor(w / gap)) }, (_, i) => (
+        <path key={i} d={`M${x + i * gap} ${y} V ${y + h}`} />
+      ))}
+    </g>
+  )
+}
+
+/** engineering dimension line with end ticks and a pencilled figure */
+function Dim({ x1, y1, x2, y2, label, up = true }: { x1: number; y1: number; x2: number; y2: number; label: string; up?: boolean }) {
+  const mx = (x1 + x2) / 2
+  const my = (y1 + y2) / 2
+  return (
+    <g strokeWidth="1.2" opacity="0.5">
+      <path d={`M${x1} ${y1} L ${x2} ${y2}`} />
+      <path d={`M${x1} ${y1 - 6} V ${y1 + 6} M${x2} ${y2 - 6} V ${y2 + 6}`} />
+      <text x={mx} y={up ? my - 6 : my + 14} fill={INK_SOFT} fontSize="12" fontWeight="600" letterSpacing="1" textAnchor="middle" stroke="none">
+        {label}
+      </text>
+    </g>
+  )
+}
+
+/** leader line pointing at a part, with its callout */
+function Callout({ x, y, tx, ty, label }: { x: number; y: number; tx: number; ty: number; label: string }) {
+  return (
+    <g strokeWidth="1.2" opacity="0.5">
+      <path d={`M${x} ${y} L ${tx} ${ty}`} />
+      <circle cx={x} cy={y} r="2.4" fill={INK_SOFT} stroke="none" />
+      <path d={`M${tx} ${ty} h ${tx > x ? 26 : -26}`} />
+      <text
+        x={tx > x ? tx + 30 : tx - 30}
+        y={ty + 4}
+        fill={INK_SOFT}
+        fontSize="12.5"
+        fontWeight="700"
+        letterSpacing="1.2"
+        textAnchor={tx > x ? 'start' : 'end'}
+        stroke="none"
+      >
+        {label}
+      </text>
+    </g>
+  )
+}
+
 /* ---------------- defs ---------------- */
 
 export function SceneDefs() {
@@ -115,7 +202,7 @@ export function SceneDefs() {
     <defs>
       <filter id="sb-pencil" x="-3%" y="-6%" width="106%" height="112%">
         <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" seed="11" result="n" />
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="3.6" />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="2.1" />
       </filter>
       <filter id="sb-pencil2" x="-3%" y="-6%" width="106%" height="112%">
         <feTurbulence type="fractalNoise" baseFrequency="0.026" numOctaves="2" seed="29" result="n" />
@@ -271,85 +358,154 @@ export function SceneStations() {
       <PanArrow x={2826} y={102} label="PAN" />
 
       {/* ── 1 · CAMERAS ────────────────────────────────── */}
-      <g transform="translate(540 0)">
-        <Shadow x={0} y={378} w={250} />
-        {/* tripod, sketched with overshoot */}
-        <R d="M0 252 L -66 378 M0 252 L 66 378 M2 252 L 2 372" w={2.4} />
-        <path d="M-30 318 L 30 318 M-16 344 L 0 300 M16 344 L 0 300" opacity="0.5" strokeWidth="1.8" />
-        <path d="M-70 382 l -8 4 M70 382 l 8 4 M2 376 l 0 8" opacity="0.7" />
-        {/* fluid head */}
-        <R d="M-16 240 h 34 v 14 h -34 z" w={2.2} />
-        <path d="M18 246 q 22 4 30 22" strokeWidth="2" />
-        {/* body */}
-        <rect x="-54" y="192" width="90" height="50" rx="9" fill="url(#sb-cross)" stroke="none" />
-        <R d="M-54 192 h 90 q 8 0 8 8 v 34 q 0 8 -8 8 h -90 q -8 0 -8 -8 v -34 q 0 -8 8 -8 z" w={2.7} />
-        {/* lens + matte box + french flag */}
-        <R d="M36 202 h 22 v 32 h -22 z" w={2.3} />
-        <R d="M58 196 h 30 v 44 h -30 z" w={2.5} />
-        <path d="M58 208 h 30 M58 226 h 30" opacity="0.45" />
-        <R d="M60 194 l 4 -20 h 26 l -4 20" w={2} o={0.8} />
-        {/* top handle, EVF, media */}
-        <R d="M-38 192 v -10 h 46 v 10" w={2.2} />
-        <R d="M-46 176 h 26 v 16 h -26 z" w={2.1} />
-        <path d="M-20 184 h 10" strokeWidth="2" opacity="0.6" />
-        <R d="M-62 200 h -16 v 26 h 16" w={2} o={0.85} />
-        {/* follow focus knob */}
-        <circle cx="30" cy="248" r="11" strokeWidth="2.3" />
-        <path d="M30 237 v 6 M30 259 v -6 M19 248 h 6 M41 248 h -6" opacity="0.5" strokeWidth="1.6" />
-        {/* director's monitor on a stand, with hood */}
-        <R d="M-166 246 h 70 v 50 h -70 z" w={2.4} />
-        <path d="M-166 246 l -10 -12 h 70 l 10 12 M-96 246 l 10 -12" opacity="0.55" strokeWidth="1.8" />
-        <rect x="-160" y="252" width="58" height="38" fill="url(#sb-hatch2)" stroke="none" />
-        <R d="M-131 296 V 372 M-152 376 h 42" w={2.2} />
-        <path d="M-131 330 l -14 8 M-131 330 l 14 8" opacity="0.4" strokeWidth="1.6" />
-        {/* clapper leaning on the leg */}
-        <g transform="rotate(-14 96 350)">
-          <R d="M72 326 h 52 v 40 h -52 z" w={2.2} />
-          <path d="M70 334 l 56 -2" strokeWidth="6" opacity="0.75" />
-          <path d="M80 348 h 36 M80 358 h 24" opacity="0.45" strokeWidth="1.6" />
-        </g>
-        <Cable x={-120} y={388} w={110} />
-        <AppleBox x={130} y={352} w={54} h={26} />
-        {/* grease-pencil ring: this is the shot */}
-        <path
-          d="M-6 132 q 96 -10 108 82 q 8 88 -104 96 q -110 6 -114 -92 q -2 -88 110 -86"
-          stroke={MARKER}
-          strokeWidth="3.2"
-          opacity="0.6"
-          strokeDasharray="5 11"
-        />
-        <Note x={-186} y={212} r={-4}>A-CAM</Note>
+      <g transform="translate(540 53) scale(0.86)">
+        <Shadow x={-30} y={378} w={300} />
+
+        {/* ---- tripod ---- */}
+        <R d="M14 292 L -70 378 M14 292 L 96 378 M16 292 L 22 372" w={2.4} />
+        <path d="M-38 344 L 16 322 M62 342 L 16 322" strokeWidth="1.8" opacity="0.5" />
+        <path d="M-74 380 l -10 5 M100 380 l 10 5 M22 374 l 0 8" opacity="0.65" />
+        <R d="M-6 276 h 44 v 18 h -44 z" w={2.2} />
+        <path d="M38 282 q 26 6 34 26" strokeWidth="2.2" />
+        <path d="M70 306 q 6 8 2 14" strokeWidth="1.8" opacity="0.7" />
+
+        {/* ---- lens barrel ---- */}
+        <R d="M-178 178 L -46 188" w={2.6} />
+        <R d="M-178 288 L -46 280" w={2.6} />
+        {/* ring bands, each a curved face with knurling */}
+        {[
+          { x: -158, w: 22 }, { x: -128, w: 26 }, { x: -94, w: 20 }, { x: -68, w: 16 },
+        ].map((b, i) => (
+          <g key={b.x}>
+            <path d={`M${b.x} ${180 + i * 2} q -9 54 0 108`} strokeWidth="2.1" opacity="0.85" />
+            <path d={`M${b.x + b.w} ${181 + i * 2} q -9 53 0 106`} strokeWidth="2.1" opacity="0.85" />
+            <Knurl x={b.x + 3} y={196 + i * 3} w={b.w - 6} h={76} gap={4} o={0.5} />
+          </g>
+        ))}
+        {/* focus scale marks on the widest band */}
+        <path d="M-126 196 h 22 M-126 206 h 14 M-126 216 h 20 M-126 226 h 12" strokeWidth="1.3" opacity="0.55" />
+        {/* front element: concentric rings + glass */}
+        <ellipse cx="-178" cy="233" rx="18" ry="57" strokeWidth="2.8" />
+        <ellipse cx="-176" cy="233" rx="14" ry="47" strokeWidth="2" opacity="0.85" />
+        <ellipse cx="-174" cy="233" rx="10" ry="37" strokeWidth="1.8" opacity="0.7" />
+        <ellipse cx="-172" cy="233" rx="6" ry="25" strokeWidth="1.6" opacity="0.55" />
+        {/* glass reflection arcs */}
+        <path d="M-178 208 q 8 24 0 48" strokeWidth="1.4" opacity="0.4" />
+        <path d="M-183 214 q 6 19 0 38" strokeWidth="1.2" opacity="0.3" />
+        {/* barrel underside shading */}
+        <Shade id="sh-cam-barrel" d="M-178 262 L -46 258 L -46 280 L -178 288 z" x={-186} y={252} w={148} h={40} gap={4.5} o={0.45} />
+        {/* mount ring */}
+        <path d="M-46 188 q -9 46 0 92" strokeWidth="2.6" />
+        <path d="M-40 192 q -8 42 0 84" strokeWidth="1.6" opacity="0.5" />
+
+        {/* ---- body ---- */}
+        <R d="M-46 184 h 128 q 12 0 12 12 v 82 q 0 12 -12 12 h -128 q -6 0 -6 -8 v -90 q 0 -8 6 -8 z" w={2.9} />
+        <Shade id="sh-cam-body" d="M40 184 h 42 q 12 0 12 12 v 82 q 0 12 -12 12 h -42 z" x={34} y={180} w={66} h={112} gap={5} o={0.4} />
+        {/* pentaprism hump + hot shoe */}
+        <R d="M-14 184 L 12 140 h 44 l 22 44" w={2.7} />
+        <Shade id="sh-cam-hump" d="M40 152 L 56 140 L 78 184 L 44 184 z" x={36} y={136} w={48} h={52} gap={4.5} o={0.4} />
+        <R d="M16 132 h 34 v 10 h -34 z" w={2.2} />
+        <path d="M20 132 v -5 M46 132 v -5" strokeWidth="1.6" opacity="0.6" />
+        {/* mode dial, knurled rim */}
+        <ellipse cx="96" cy="164" rx="24" ry="11" strokeWidth="2.5" />
+        <path d="M72 164 v 14 q 24 12 48 0 v -14" strokeWidth="2.4" />
+        <Knurl x={74} y={166} w={44} h={16} gap={4} o={0.55} />
+        <ellipse cx="96" cy="162" rx="15" ry="6.5" strokeWidth="1.6" opacity="0.6" />
+        <path d="M96 156 v 4" strokeWidth="2" opacity="0.8" />
+        {/* shutter button + top buttons */}
+        <ellipse cx="-16" cy="176" rx="11" ry="5.5" strokeWidth="2.2" />
+        <ellipse cx="-16" cy="174" rx="6" ry="3" strokeWidth="1.5" opacity="0.6" />
+        <ellipse cx="-38" cy="180" rx="7" ry="3.5" strokeWidth="1.7" opacity="0.7" />
+        {/* grip */}
+        <R d="M94 196 q 34 10 32 48 q -2 36 -32 44" w={2.7} />
+        <Shade id="sh-cam-grip" d="M94 196 q 34 10 32 48 q -2 36 -32 44 z" x={90} y={192} w={44} h={100} gap={4} o={0.5} />
+        {/* rear detail: screen edge, buttons, strap lugs */}
+        <path d="M82 200 v 74" strokeWidth="1.8" opacity="0.5" />
+        <circle cx="70" cy="214" r="4.5" strokeWidth="1.7" opacity="0.7" />
+        <circle cx="70" cy="232" r="4.5" strokeWidth="1.7" opacity="0.7" />
+        <path d="M-46 196 l -12 -8 q -8 -6 0 -12" strokeWidth="2" opacity="0.75" />
+        <path d="M88 190 l 10 -8 q 8 -6 0 -12" strokeWidth="2" opacity="0.75" />
+        {/* media door seam */}
+        <path d="M-30 226 h 60" strokeWidth="1.5" opacity="0.4" />
+        <path d="M-30 226 v 46" strokeWidth="1.5" opacity="0.35" />
+
+        {/* ---- engineering annotation ---- */}
+        <Dim x1={-196} y1={318} x2={128} y2={318} label="A-CAM · 4.5K LF" />
+        <Dim x1={-214} y1={176} x2={-214} y2={290} label="Ø114" up={false} />
+        <Callout x={-172} y={233} tx={-206} ty={150} label="GLASS" />
+        <Callout x={96} y={158} tx={142} ty={130} label="MODE" />
+        <Callout x={33} y={136} tx={74} ty={104} label="SHOE" />
+        <G d="M-236 233 H -196" />
+        <G d="M-178 96 V 168" />
       </g>
 
       {/* ── 2 · LENSES ─────────────────────────────────── */}
-      <g transform="translate(900 0)">
-        <Shadow x={0} y={378} w={230} />
-        {/* trestle table */}
-        <R d="M-96 302 h 192 v 12 h -192 z" w={2.4} />
-        <R d="M-84 314 L -74 378 M84 314 L 74 378 M-70 348 H 70" w={2.2} />
-        {/* open flight case with foam cutouts */}
-        <R d="M-92 250 h 130 v 52 h -130 z" w={2.5} />
-        <path d="M-92 250 l -14 -30 h 130 l 14 30" strokeWidth="2.2" opacity="0.7" />
-        <path d="M-92 274 h 130" opacity="0.45" />
-        {[-70, -34, 2, 24].map((cx, i) => (
+      <g transform="translate(900 60) scale(0.84)">
+        <Shadow x={0} y={372} w={300} />
+
+        {/* trestle table the set is laid out on */}
+        <R d="M-190 322 h 380 v 14 h -380 z" w={2.4} />
+        <R d="M-172 336 L -160 380 M172 336 L 160 380" w={2.2} />
+        <path d="M-160 358 H 160" strokeWidth="1.8" opacity="0.45" />
+
+        {/* ---- hero prime, 3/4, iris open ---- */}
+        {/* barrel walls */}
+        <R d="M-96 176 L 62 194" w={2.8} />
+        <R d="M-96 322 L 62 306" w={2.8} />
+        {/* knurled focus ring */}
+        <path d="M-52 184 q -11 68 0 134" strokeWidth="2.3" />
+        <path d="M-8 189 q -11 66 0 128" strokeWidth="2.3" />
+        <Knurl x={-48} y={200} w={38} h={100} gap={3.6} o={0.55} />
+        {/* aperture ring with f-stops */}
+        <path d="M16 192 q -10 60 0 118" strokeWidth="2.2" />
+        <path d="M46 194 q -10 58 0 114" strokeWidth="2.2" />
+        <path d="M20 214 h 22 M20 232 h 14 M20 250 h 22 M20 268 h 14 M20 286 h 20" strokeWidth="1.3" opacity="0.6" />
+        <text x={24} y={206} fill={INK_SOFT} fontSize="11" fontWeight="700" stroke="none" letterSpacing="1">2 4 8 16</text>
+        {/* barrel shading underneath */}
+        <Shade id="sh-len-barrel" d="M-96 288 L 62 280 L 62 306 L -96 322 z" x={-104} y={276} w={174} h={52} gap={4.5} o={0.45} />
+        {/* rear mount + contacts */}
+        <path d="M62 194 q -10 56 0 112" strokeWidth="2.6" />
+        <path d="M70 200 q -8 50 0 100" strokeWidth="1.7" opacity="0.55" />
+        {[214, 228, 242, 256].map((y) => <path key={y} d={`M64 ${y} h 8`} strokeWidth="1.6" opacity="0.6" />)}
+
+        {/* front element: rings then the iris */}
+        <ellipse cx="-96" cy="249" rx="26" ry="73" strokeWidth="2.9" />
+        <ellipse cx="-94" cy="249" rx="21" ry="62" strokeWidth="2.1" opacity="0.85" />
+        <ellipse cx="-92" cy="249" rx="17" ry="52" strokeWidth="1.8" opacity="0.7" />
+        <g transform="translate(-92 249) scale(0.36 1)" strokeWidth="4.4" opacity="0.75">
+          {IRIS.map((d, i) => <path key={i} d={d} />)}
+        </g>
+        <g transform="translate(-92 249) scale(0.36 1)">
+          <path d={IRIS_OPENING} strokeWidth="4" opacity="0.9" />
+        </g>
+        {/* glass highlight */}
+        <path d="M-104 214 q 9 34 0 68" strokeWidth="1.5" opacity="0.35" />
+
+        {/* ---- the rest of the set, standing in the open case ---- */}
+        <R d="M96 214 h 150 v 108 h -150 z" w={2.5} />
+        <path d="M96 214 l -16 -34 h 150 l 16 34" strokeWidth="2.2" opacity="0.7" />
+        <path d="M96 250 h 150" strokeWidth="1.7" opacity="0.45" />
+        <Shade id="sh-len-case" d="M96 250 h 150 v 72 h -150 z" x={92} y={246} w={158} h={80} gap={5.5} o={0.3} />
+        {[124, 162, 200, 238].map((cx, i) => (
           <g key={cx}>
-            <R d={`M${cx} 262 a 13 13 0 1 0 0.1 0`} w={2} o={0.85} />
-            <circle cx={cx + 6} cy="275" r="6" opacity="0.5" strokeWidth="1.6" />
-            {i < 3 && <path d={`M${cx + 6} 288 v 6`} opacity="0.4" strokeWidth="1.4" />}
+            <R d={`M${cx - 15} ${236 + i} h 30 v 78 h -30 z`} w={2.1} o={0.9} />
+            <ellipse cx={cx} cy={236 + i} rx="15" ry="6" strokeWidth="2" />
+            <ellipse cx={cx} cy={236 + i} rx="9" ry="3.6" strokeWidth="1.5" opacity="0.6" />
+            <Knurl x={cx - 12} y={258 + i} w={24} h={22} gap={3.4} o={0.45} />
+            <path d={`M${cx - 15} ${290 + i} h 30`} strokeWidth="1.5" opacity="0.5" />
           </g>
         ))}
-        {/* a prime standing up, glass catching light */}
-        <R d="M52 238 h 34 v 64 h -34 z" w={2.6} />
-        <path d="M52 252 h 34 M52 266 h 34 M52 282 h 34" opacity="0.5" strokeWidth="1.7" />
-        <R d="M50 232 h 38 v 8 h -38 z" w={2.2} />
-        <ellipse cx="69" cy="236" rx="15" ry="5" opacity="0.6" strokeWidth="1.8" />
-        <path d="M60 234 l 8 -3 M74 234 l 6 -2" opacity="0.5" strokeWidth="1.5" />
-        {/* lens caps + cloth */}
-        <circle cx="-108" cy="296" r="10" strokeWidth="2" opacity="0.8" />
-        <circle cx="-90" cy="298" r="8" strokeWidth="2" opacity="0.6" />
-        <path d="M100 296 q 18 -10 34 -2 q -6 12 -20 12 q -12 0 -14 -10 z" strokeWidth="2" opacity="0.7" />
-        <Note x={-104} y={214} r={-3}>THE GLASS</Note>
-        <G d="M-96 226 H 96" />
+        {/* caps + cloth on the bench */}
+        <ellipse cx="-176" cy="316" rx="20" ry="8" strokeWidth="2.1" opacity="0.8" />
+        <ellipse cx="-176" cy="312" rx="20" ry="8" strokeWidth="2.1" />
+        <ellipse cx="-140" cy="318" rx="15" ry="6" strokeWidth="1.9" opacity="0.65" />
+        <path d="M266 306 q 26 -14 48 -2 q -8 16 -28 16 q -18 0 -20 -14 z" strokeWidth="2" opacity="0.65" />
+
+        {/* ---- annotation ---- */}
+        <Dim x1={-122} y1={352} x2={78} y2={352} label="PL · T2.0" />
+        <Callout x={-92} y={249} tx={-150} ty={150} label="IRIS" />
+        <Callout x={-30} y={196} tx={20} ty={140} label="FOCUS" />
+        <G d="M-96 122 V 168" />
       </g>
 
       {/* ── 3 · LIGHTING ───────────────────────────────── */}

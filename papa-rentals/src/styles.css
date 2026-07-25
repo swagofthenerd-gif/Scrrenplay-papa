@@ -913,7 +913,7 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;
 }
 .studio-track::-webkit-scrollbar { display: none; }
-.studio-slide { flex: none; width: 100%; height: 100%; scroll-snap-align: center; }
+.studio-slide { flex: none; width: 100%; height: 100%; scroll-snap-align: center; overflow: hidden; }
 .studio-tap { width: 100%; height: 100%; background: none; border: none; cursor: pointer; padding: 0; display: block; text-align: left; }
 
 /* wide-shot title block */
