@@ -19,8 +19,8 @@ export const SCENE_H = 420
 /** camera targets; [0] is the wide-shot centre, [1..10] are the stations */
 export const STATION_X = [1440, 540, 900, 1260, 1620, 1980, 2340, 2700, 3060, 3420, 3780]
 
-const INK = '#413b33'
-const INK_SOFT = '#8a8378'
+const INK = '#2b2721'
+const INK_SOFT = '#7d766a'
 const MARKER = '#ff6b2c'
 
 /* ---------------- sketch primitives ---------------- */
@@ -157,42 +157,9 @@ function Knurl({ x, y, w, h, gap = 4.5, o = 0.7 }: { x: number; y: number; w: nu
   )
 }
 
-/** engineering dimension line with end ticks and a pencilled figure */
-function Dim({ x1, y1, x2, y2, label, up = true }: { x1: number; y1: number; x2: number; y2: number; label: string; up?: boolean }) {
-  const mx = (x1 + x2) / 2
-  const my = (y1 + y2) / 2
-  return (
-    <g strokeWidth="1.2" opacity="0.5">
-      <path d={`M${x1} ${y1} L ${x2} ${y2}`} />
-      <path d={`M${x1} ${y1 - 6} V ${y1 + 6} M${x2} ${y2 - 6} V ${y2 + 6}`} />
-      <text x={mx} y={up ? my - 6 : my + 14} fill={INK_SOFT} fontSize="12" fontWeight="600" letterSpacing="1" textAnchor="middle" stroke="none">
-        {label}
-      </text>
-    </g>
-  )
-}
-
-/** leader line pointing at a part, with its callout */
-function Callout({ x, y, tx, ty, label }: { x: number; y: number; tx: number; ty: number; label: string }) {
-  return (
-    <g strokeWidth="1.2" opacity="0.5">
-      <path d={`M${x} ${y} L ${tx} ${ty}`} />
-      <circle cx={x} cy={y} r="2.4" fill={INK_SOFT} stroke="none" />
-      <path d={`M${tx} ${ty} h ${tx > x ? 26 : -26}`} />
-      <text
-        x={tx > x ? tx + 30 : tx - 30}
-        y={ty + 4}
-        fill={INK_SOFT}
-        fontSize="12.5"
-        fontWeight="700"
-        letterSpacing="1.2"
-        textAnchor={tx > x ? 'start' : 'end'}
-        stroke="none"
-      >
-        {label}
-      </text>
-    </g>
-  )
+/** solid ink mass — barrel interiors, reel centres, shadow sides */
+function Solid({ d, o = 1 }: { d: string; o?: number }) {
+  return <path d={d} fill={INK} stroke="none" opacity={o} />
 }
 
 /* ---------------- defs ---------------- */
@@ -344,442 +311,307 @@ export function SceneBackground() {
 
 export function SceneStations() {
   return (
-    <g filter="url(#sb-pencil)" stroke={INK} strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round">
-      {/* floor, with tape marks and a long stinger running the length of the set */}
-      <R d={`M-240 386 Q 1200 380 2400 386 T ${SCENE_W + 240} 384`} w={2} o={0.7} />
-      <g opacity="0.35" strokeWidth="2.4">
-        {[430, 1150, 2160, 2960, 3660].map((x) => (
-          <path key={x} d={`M${x} 392 l 26 -7 M${x + 8} 400 l 26 -7`} />
-        ))}
-      </g>
+    <g filter="url(#sb-pencil)" stroke={INK} strokeWidth="3.2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      {/* floor */}
+      <R d={`M-240 386 Q 1200 380 2400 386 T ${SCENE_W + 240} 384`} w={2.2} o={0.7} />
 
-      <PanArrow x={666} y={104} label="PAN" />
-      <PanArrow x={1746} y={108} label="DOLLY IN" />
-      <PanArrow x={2826} y={102} label="PAN" />
-
-      {/* ── 1 · CAMERAS ────────────────────────────────── */}
-      <g transform="translate(540 53) scale(0.86)">
-        <Shadow x={-30} y={378} w={300} />
-
-        {/* ---- tripod ---- */}
-        <R d="M14 292 L -70 378 M14 292 L 96 378 M16 292 L 22 372" w={2.4} />
-        <path d="M-38 344 L 16 322 M62 342 L 16 322" strokeWidth="1.8" opacity="0.5" />
-        <path d="M-74 380 l -10 5 M100 380 l 10 5 M22 374 l 0 8" opacity="0.65" />
-        <R d="M-6 276 h 44 v 18 h -44 z" w={2.2} />
-        <path d="M38 282 q 26 6 34 26" strokeWidth="2.2" />
-        <path d="M70 306 q 6 8 2 14" strokeWidth="1.8" opacity="0.7" />
-
-        {/* ---- lens barrel ---- */}
-        <R d="M-178 178 L -46 188" w={2.6} />
-        <R d="M-178 288 L -46 280" w={2.6} />
-        {/* ring bands, each a curved face with knurling */}
-        {[
-          { x: -158, w: 22 }, { x: -128, w: 26 }, { x: -94, w: 20 }, { x: -68, w: 16 },
-        ].map((b, i) => (
-          <g key={b.x}>
-            <path d={`M${b.x} ${180 + i * 2} q -9 54 0 108`} strokeWidth="2.1" opacity="0.85" />
-            <path d={`M${b.x + b.w} ${181 + i * 2} q -9 53 0 106`} strokeWidth="2.1" opacity="0.85" />
-            <Knurl x={b.x + 3} y={196 + i * 3} w={b.w - 6} h={76} gap={4} o={0.5} />
+      {/* ── 1 · CAMERAS — the classic twin-reel movie camera on sticks ── */}
+      <g transform="translate(540 0)">
+        <Shadow x={0} y={380} w={280} />
+        {/* wooden tripod */}
+        <R d="M-6 296 L -78 380 M6 296 L 82 380 M0 300 L 4 374" w={3} />
+        <path d="M-46 344 L 0 328 L 50 344" strokeWidth="2.4" opacity="0.7" />
+        <path d="M-84 382 l -12 6 M88 382 l 12 6" strokeWidth="2.4" opacity="0.7" />
+        {/* pan head */}
+        <R d="M-22 286 h 44 v 14 h -44 z" w={2.8} />
+        <path d="M22 292 q 30 6 40 30" strokeWidth="2.6" />
+        {/* body */}
+        <R d="M-58 200 h 116 v 86 h -116 z" w={3.4} />
+        <Shade id="sh-cam-b" d="M14 200 h 44 v 86 h -44 z" x={10} y={196} w={52} h={94} gap={5} o={0.55} />
+        <path d="M-58 244 h 116" strokeWidth="2.2" opacity="0.5" />
+        {/* twin magazines */}
+        {[{ cx: -26, cy: 148, r: 48 }, { cx: 40, cy: 158, r: 40 }].map((m, i) => (
+          <g key={m.cx}>
+            <circle cx={m.cx} cy={m.cy} r={m.r} strokeWidth="3.4" />
+            <circle cx={m.cx} cy={m.cy} r={m.r - 11} strokeWidth="2.2" opacity="0.8" />
+            <Solid d={`M${m.cx} ${m.cy - 9} a 9 9 0 1 0 0.1 0 z`} />
+            {/* spokes */}
+            {[0, 60, 120, 180, 240, 300].map((a) => {
+              const rad = (a * Math.PI) / 180
+              const r0 = 12
+              const r1 = m.r - 13
+              return (
+                <path
+                  key={a}
+                  d={`M${(m.cx + r0 * Math.cos(rad)).toFixed(1)} ${(m.cy + r0 * Math.sin(rad)).toFixed(1)} L${(m.cx + r1 * Math.cos(rad)).toFixed(1)} ${(m.cy + r1 * Math.sin(rad)).toFixed(1)}`}
+                  strokeWidth="2.2"
+                  opacity="0.7"
+                />
+              )
+            })}
+            <path d={`M${m.cx - m.r} ${m.cy + m.r - 6} q ${m.r} 22 ${m.r * 2} 0`} strokeWidth="2" opacity={i ? 0.4 : 0.6} />
           </g>
         ))}
-        {/* focus scale marks on the widest band */}
-        <path d="M-126 196 h 22 M-126 206 h 14 M-126 216 h 20 M-126 226 h 12" strokeWidth="1.3" opacity="0.55" />
-        {/* front element: concentric rings + glass */}
-        <ellipse cx="-178" cy="233" rx="18" ry="57" strokeWidth="2.8" />
-        <ellipse cx="-176" cy="233" rx="14" ry="47" strokeWidth="2" opacity="0.85" />
-        <ellipse cx="-174" cy="233" rx="10" ry="37" strokeWidth="1.8" opacity="0.7" />
-        <ellipse cx="-172" cy="233" rx="6" ry="25" strokeWidth="1.6" opacity="0.55" />
-        {/* glass reflection arcs */}
-        <path d="M-178 208 q 8 24 0 48" strokeWidth="1.4" opacity="0.4" />
-        <path d="M-183 214 q 6 19 0 38" strokeWidth="1.2" opacity="0.3" />
-        {/* barrel underside shading */}
-        <Shade id="sh-cam-barrel" d="M-178 262 L -46 258 L -46 280 L -178 288 z" x={-186} y={252} w={148} h={40} gap={4.5} o={0.45} />
-        {/* mount ring */}
-        <path d="M-46 188 q -9 46 0 92" strokeWidth="2.6" />
-        <path d="M-40 192 q -8 42 0 84" strokeWidth="1.6" opacity="0.5" />
-
-        {/* ---- body ---- */}
-        <R d="M-46 184 h 128 q 12 0 12 12 v 82 q 0 12 -12 12 h -128 q -6 0 -6 -8 v -90 q 0 -8 6 -8 z" w={2.9} />
-        <Shade id="sh-cam-body" d="M40 184 h 42 q 12 0 12 12 v 82 q 0 12 -12 12 h -42 z" x={34} y={180} w={66} h={112} gap={5} o={0.4} />
-        {/* pentaprism hump + hot shoe */}
-        <R d="M-14 184 L 12 140 h 44 l 22 44" w={2.7} />
-        <Shade id="sh-cam-hump" d="M40 152 L 56 140 L 78 184 L 44 184 z" x={36} y={136} w={48} h={52} gap={4.5} o={0.4} />
-        <R d="M16 132 h 34 v 10 h -34 z" w={2.2} />
-        <path d="M20 132 v -5 M46 132 v -5" strokeWidth="1.6" opacity="0.6" />
-        {/* mode dial, knurled rim */}
-        <ellipse cx="96" cy="164" rx="24" ry="11" strokeWidth="2.5" />
-        <path d="M72 164 v 14 q 24 12 48 0 v -14" strokeWidth="2.4" />
-        <Knurl x={74} y={166} w={44} h={16} gap={4} o={0.55} />
-        <ellipse cx="96" cy="162" rx="15" ry="6.5" strokeWidth="1.6" opacity="0.6" />
-        <path d="M96 156 v 4" strokeWidth="2" opacity="0.8" />
-        {/* shutter button + top buttons */}
-        <ellipse cx="-16" cy="176" rx="11" ry="5.5" strokeWidth="2.2" />
-        <ellipse cx="-16" cy="174" rx="6" ry="3" strokeWidth="1.5" opacity="0.6" />
-        <ellipse cx="-38" cy="180" rx="7" ry="3.5" strokeWidth="1.7" opacity="0.7" />
-        {/* grip */}
-        <R d="M94 196 q 34 10 32 48 q -2 36 -32 44" w={2.7} />
-        <Shade id="sh-cam-grip" d="M94 196 q 34 10 32 48 q -2 36 -32 44 z" x={90} y={192} w={44} h={100} gap={4} o={0.5} />
-        {/* rear detail: screen edge, buttons, strap lugs */}
-        <path d="M82 200 v 74" strokeWidth="1.8" opacity="0.5" />
-        <circle cx="70" cy="214" r="4.5" strokeWidth="1.7" opacity="0.7" />
-        <circle cx="70" cy="232" r="4.5" strokeWidth="1.7" opacity="0.7" />
-        <path d="M-46 196 l -12 -8 q -8 -6 0 -12" strokeWidth="2" opacity="0.75" />
-        <path d="M88 190 l 10 -8 q 8 -6 0 -12" strokeWidth="2" opacity="0.75" />
-        {/* media door seam */}
-        <path d="M-30 226 h 60" strokeWidth="1.5" opacity="0.4" />
-        <path d="M-30 226 v 46" strokeWidth="1.5" opacity="0.35" />
-
-        {/* ---- engineering annotation ---- */}
-        <Dim x1={-196} y1={318} x2={128} y2={318} label="A-CAM · 4.5K LF" />
-        <Dim x1={-214} y1={176} x2={-214} y2={290} label="Ø114" up={false} />
-        <Callout x={-172} y={233} tx={-206} ty={150} label="GLASS" />
-        <Callout x={96} y={158} tx={142} ty={130} label="MODE" />
-        <Callout x={33} y={136} tx={74} ty={104} label="SHOE" />
-        <G d="M-236 233 H -196" />
-        <G d="M-178 96 V 168" />
+        {/* lens */}
+        <R d="M-58 226 h -46 v 34 h 46" w={3.2} />
+        <ellipse cx="-104" cy="243" rx="12" ry="21" strokeWidth="3.2" />
+        <Solid d="M-104 230 a 7 13 0 1 0 0.1 0 z" o={0.85} />
+        <Knurl x={-96} y={228} w={32} h={30} gap={5} o={0.45} />
+        {/* crank + viewfinder */}
+        <path d="M58 250 h 20 l 10 18" strokeWidth="2.8" />
+        <circle cx="90" cy="272" r="6" strokeWidth="2.4" />
+        <R d="M-40 186 h 34 v 14 h -34 z" w={2.6} />
       </g>
 
-      {/* ── 2 · LENSES ─────────────────────────────────── */}
-      <g transform="translate(900 60) scale(0.84)">
-        <Shadow x={0} y={372} w={300} />
-
-        {/* trestle table the set is laid out on */}
-        <R d="M-190 322 h 380 v 14 h -380 z" w={2.4} />
-        <R d="M-172 336 L -160 380 M172 336 L 160 380" w={2.2} />
-        <path d="M-160 358 H 160" strokeWidth="1.8" opacity="0.45" />
-
-        {/* ---- hero prime, 3/4, iris open ---- */}
-        {/* barrel walls */}
-        <R d="M-96 176 L 62 194" w={2.8} />
-        <R d="M-96 322 L 62 306" w={2.8} />
-        {/* knurled focus ring */}
-        <path d="M-52 184 q -11 68 0 134" strokeWidth="2.3" />
-        <path d="M-8 189 q -11 66 0 128" strokeWidth="2.3" />
-        <Knurl x={-48} y={200} w={38} h={100} gap={3.6} o={0.55} />
-        {/* aperture ring with f-stops */}
-        <path d="M16 192 q -10 60 0 118" strokeWidth="2.2" />
-        <path d="M46 194 q -10 58 0 114" strokeWidth="2.2" />
-        <path d="M20 214 h 22 M20 232 h 14 M20 250 h 22 M20 268 h 14 M20 286 h 20" strokeWidth="1.3" opacity="0.6" />
-        <text x={24} y={206} fill={INK_SOFT} fontSize="11" fontWeight="700" stroke="none" letterSpacing="1">2 4 8 16</text>
-        {/* barrel shading underneath */}
-        <Shade id="sh-len-barrel" d="M-96 288 L 62 280 L 62 306 L -96 322 z" x={-104} y={276} w={174} h={52} gap={4.5} o={0.45} />
-        {/* rear mount + contacts */}
-        <path d="M62 194 q -10 56 0 112" strokeWidth="2.6" />
-        <path d="M70 200 q -8 50 0 100" strokeWidth="1.7" opacity="0.55" />
-        {[214, 228, 242, 256].map((y) => <path key={y} d={`M64 ${y} h 8`} strokeWidth="1.6" opacity="0.6" />)}
-
-        {/* front element: rings then the iris */}
-        <ellipse cx="-96" cy="249" rx="26" ry="73" strokeWidth="2.9" />
-        <ellipse cx="-94" cy="249" rx="21" ry="62" strokeWidth="2.1" opacity="0.85" />
-        <ellipse cx="-92" cy="249" rx="17" ry="52" strokeWidth="1.8" opacity="0.7" />
-        <g transform="translate(-92 249) scale(0.36 1)" strokeWidth="4.4" opacity="0.75">
+      {/* ── 2 · LENSES — prime with the iris open ── */}
+      <g transform="translate(900 40) scale(0.9)">
+        <Shadow x={0} y={368} w={280} />
+        {/* bench */}
+        <R d="M-170 320 h 340 v 14 h -340 z" w={2.8} />
+        <R d="M-150 334 L -140 380 M150 334 L 140 380" w={2.6} />
+        {/* hero lens */}
+        <R d="M-86 188 L 60 202" w={3.4} />
+        <R d="M-86 312 L 60 298" w={3.4} />
+        <Shade id="sh-len-b" d="M-86 278 L 60 272 L 60 298 L -86 312 z" x={-94} y={266} w={162} h={54} gap={5} o={0.5} />
+        {/* rings */}
+        <path d="M-44 195 q -10 56 0 112" strokeWidth="2.8" />
+        <path d="M-4 199 q -10 54 0 106" strokeWidth="2.8" />
+        <Knurl x={-40} y={210} w={34} h={86} gap={4} o={0.55} />
+        <path d="M22 202 q -9 50 0 98" strokeWidth="2.6" />
+        <path d="M22 224 h 20 M22 244 h 13 M22 264 h 20" strokeWidth="1.6" opacity="0.6" />
+        {/* mount */}
+        <path d="M60 202 q -9 48 0 96" strokeWidth="3" />
+        {[216, 230, 244, 258].map((y) => <path key={y} d={`M62 ${y} h 9`} strokeWidth="1.8" opacity="0.6" />)}
+        {/* front element + iris */}
+        <ellipse cx="-86" cy="250" rx="24" ry="63" strokeWidth="3.4" />
+        <ellipse cx="-84" cy="250" rx="19" ry="52" strokeWidth="2.4" opacity="0.85" />
+        <Solid d="M-83 250 m -15 0 a 15 42 0 1 0 30 0 a 15 42 0 1 0 -30 0 z" o={0.9} />
+        <g transform="translate(-83 250) scale(0.34 1)" stroke="#f6f0e4" strokeWidth="8" opacity="0.85">
           {IRIS.map((d, i) => <path key={i} d={d} />)}
         </g>
-        <g transform="translate(-92 249) scale(0.36 1)">
-          <path d={IRIS_OPENING} strokeWidth="4" opacity="0.9" />
+        <g transform="translate(-83 250) scale(0.34 1)" stroke="#f6f0e4" strokeWidth="7">
+          <path d={IRIS_OPENING} />
         </g>
-        {/* glass highlight */}
-        <path d="M-104 214 q 9 34 0 68" strokeWidth="1.5" opacity="0.35" />
-
-        {/* ---- the rest of the set, standing in the open case ---- */}
-        <R d="M96 214 h 150 v 108 h -150 z" w={2.5} />
-        <path d="M96 214 l -16 -34 h 150 l 16 34" strokeWidth="2.2" opacity="0.7" />
-        <path d="M96 250 h 150" strokeWidth="1.7" opacity="0.45" />
-        <Shade id="sh-len-case" d="M96 250 h 150 v 72 h -150 z" x={92} y={246} w={158} h={80} gap={5.5} o={0.3} />
-        {[124, 162, 200, 238].map((cx, i) => (
+        {/* the rest of the set standing behind */}
+        {[110, 156, 202, 248].map((cx, i) => (
           <g key={cx}>
-            <R d={`M${cx - 15} ${236 + i} h 30 v 78 h -30 z`} w={2.1} o={0.9} />
-            <ellipse cx={cx} cy={236 + i} rx="15" ry="6" strokeWidth="2" />
-            <ellipse cx={cx} cy={236 + i} rx="9" ry="3.6" strokeWidth="1.5" opacity="0.6" />
-            <Knurl x={cx - 12} y={258 + i} w={24} h={22} gap={3.4} o={0.45} />
-            <path d={`M${cx - 15} ${290 + i} h 30`} strokeWidth="1.5" opacity="0.5" />
+            <R d={`M${cx - 16} ${232 + i * 2} h 32 v 88 h -32 z`} w={2.8} />
+            <ellipse cx={cx} cy={232 + i * 2} rx="16" ry="6.5" strokeWidth="2.6" />
+            <Solid d={`M${cx} ${232 + i * 2} m -9 0 a 9 3.6 0 1 0 18 0 a 9 3.6 0 1 0 -18 0 z`} o={0.8} />
+            <Knurl x={cx - 13} y={256 + i * 2} w={26} h={26} gap={3.6} o={0.5} />
           </g>
         ))}
-        {/* caps + cloth on the bench */}
-        <ellipse cx="-176" cy="316" rx="20" ry="8" strokeWidth="2.1" opacity="0.8" />
-        <ellipse cx="-176" cy="312" rx="20" ry="8" strokeWidth="2.1" />
-        <ellipse cx="-140" cy="318" rx="15" ry="6" strokeWidth="1.9" opacity="0.65" />
-        <path d="M266 306 q 26 -14 48 -2 q -8 16 -28 16 q -18 0 -20 -14 z" strokeWidth="2" opacity="0.65" />
-
-        {/* ---- annotation ---- */}
-        <Dim x1={-122} y1={352} x2={78} y2={352} label="PL · T2.0" />
-        <Callout x={-92} y={249} tx={-150} ty={150} label="IRIS" />
-        <Callout x={-30} y={196} tx={20} ty={140} label="FOCUS" />
-        <G d="M-96 122 V 168" />
       </g>
 
-      {/* ── 3 · LIGHTING ───────────────────────────────── */}
+      {/* ── 3 · LIGHTING — fresnel with barn doors on a stand ── */}
       <g transform="translate(1260 0)">
-        <Shadow x={-10} y={380} w={280} />
-        {/* beam cone, hatched */}
-        <path d="M-28 176 L -168 380 L 84 380 L 20 192 z" fill="url(#sb-cross)" stroke="none" opacity="0.55" />
-        <path d="M-28 176 L -168 380 M20 192 L 84 380" opacity="0.34" strokeWidth="1.8" />
-        {/* c-stand: riser, knuckles, legs at different heights */}
-        <R d="M26 376 V 164" w={2.6} />
-        <path d="M26 300 h 16 M26 250 h -14" opacity="0.5" strokeWidth="1.8" />
-        <R d="M26 352 L -18 380 M26 352 L 24 380 M26 352 L 66 378" w={2.3} />
-        <circle cx="26" cy="352" r="7" strokeWidth="2" />
-        <circle cx="26" cy="238" r="6" strokeWidth="2" opacity="0.8" />
-        {/* light head + softbox */}
-        <R d="M8 146 h 40 v 30 h -40 z" w={2.6} />
-        <path d="M14 152 h 28 M14 164 h 20" opacity="0.45" strokeWidth="1.6" />
-        <R d="M8 158 L -52 130 L -52 214 L 8 186 z" w={2.7} />
-        <path d="M-52 130 l -16 12 v 60 l 16 12" strokeWidth="2.2" opacity="0.8" />
-        <path d="M-40 140 v 62 M-26 148 v 46" opacity="0.32" strokeWidth="1.5" />
-        {/* sandbag on the leg */}
-        <Sandbag x={4} y={378} />
-        {/* tube lights leaning, marker-highlighted */}
-        <path d="M104 378 L 138 226 M120 378 L 154 232 M136 378 L 168 240" strokeWidth="5.5" opacity="0.9" />
-        <path d="M104 378 L 138 226 M120 378 L 154 232" stroke={MARKER} strokeWidth="1.8" opacity="0.5" />
-        {/* gel frame + stinger */}
-        <R d="M-150 292 h 54 v 66 h -54 z" w={2.1} o={0.8} />
-        <rect x="-146" y="296" width="46" height="58" fill="url(#sb-hatch2)" stroke="none" />
-        <Cable x={-140} y={388} w={120} />
-        <Note x={-120} y={116} r={-3}>KEY LIGHT</Note>
+        <Shadow x={0} y={380} w={260} />
+        {/* stand */}
+        <R d="M0 372 V 214" w={3.2} />
+        <R d="M-58 380 L 0 346 L 58 380" w={3} />
+        <path d="M0 346 v 26" strokeWidth="2.6" />
+        <circle cx="0" cy="252" r="7" strokeWidth="2.4" />
+        <Sandbag x={-40} y={378} />
+        {/* head */}
+        <R d="M-34 156 h 68 v 62 h -68 z" w={3.4} />
+        <Shade id="sh-lit-h" d="M6 156 h 28 v 62 h -28 z" x={2} y={152} w={36} h={70} gap={4.5} o={0.5} />
+        <path d="M-20 218 v 10 M20 218 v 10" strokeWidth="2.4" />
+        {/* barn doors, splayed */}
+        <R d="M-34 156 L -74 116 L -74 176 L -34 190" w={2.8} />
+        <R d="M34 156 L 74 116 L 74 176 L 34 190" w={2.8} />
+        <R d="M-34 156 L -20 108 h 42 l 12 48" w={2.8} />
+        <Shade id="sh-lit-d" d="M-34 156 L -74 116 L -74 176 L -34 190 z" x={-80} y={110} w={52} h={86} gap={5} o={0.4} />
+        {/* front lens with concentric fresnel rings */}
+        <ellipse cx="0" cy="187" rx="26" ry="26" strokeWidth="2.6" opacity="0.9" />
+        <ellipse cx="0" cy="187" rx="17" ry="17" strokeWidth="2" opacity="0.7" />
+        <ellipse cx="0" cy="187" rx="8" ry="8" strokeWidth="1.8" opacity="0.6" />
+        {/* beam */}
+        <path d="M-30 200 L -120 380 M30 200 L 116 380" strokeWidth="2" opacity="0.3" />
+        <path d="M-30 200 L -120 380 L 116 380 L 30 200 z" fill="url(#sb-cross)" stroke="none" opacity="0.4" />
+        {/* spare tubes leaning */}
+        <path d="M104 378 L 132 240 M120 378 L 148 246" strokeWidth="6" opacity="0.85" />
       </g>
 
-      {/* ── 4 · AUDIO ──────────────────────────────────── */}
+      {/* ── 4 · AUDIO — megaphone + boom ── */}
       <g transform="translate(1620 0)">
-        <Shadow x={-6} y={378} w={240} />
-        {/* sound cart */}
-        <R d="M-76 232 h 128 q 8 0 8 8 v 106 h -144 v -106 q 0 -8 8 -8 z" w={2.6} />
-        <path d="M-84 288 H 60 M-84 320 H 60" opacity="0.55" strokeWidth="1.9" />
-        <circle cx="-52" cy="362" r="15" strokeWidth="2.4" />
-        <circle cx="-52" cy="362" r="5" opacity="0.5" strokeWidth="1.6" />
-        <circle cx="30" cy="362" r="15" strokeWidth="2.4" />
-        <circle cx="30" cy="362" r="5" opacity="0.5" strokeWidth="1.6" />
-        {/* recorder + fader strip */}
-        <R d="M-66 240 h 76 v 40 h -76 z" w={2.3} />
-        <rect x="-62" y="244" width="30" height="18" fill="url(#sb-hatch2)" stroke="none" />
-        {[-24, -10, 4].map((cx) => (
-          <g key={cx}>
-            <path d={`M${cx} 250 v 22`} strokeWidth="1.8" opacity="0.6" />
-            <path d={`M${cx - 4} ${cx === -10 ? 258 : 264} h 8`} strokeWidth="3" />
-          </g>
-        ))}
-        {[-52, -38, -24].map((cx) => <circle key={cx} cx={cx} cy="272" r="3.6" opacity="0.7" strokeWidth="1.6" />)}
-        {/* headphones hanging off the handle */}
-        <path d="M64 232 v -14" strokeWidth="2.2" />
-        <R d="M52 208 q 24 -22 48 0" w={2.3} />
-        <R d="M50 206 v 20 q 0 6 6 6 q 6 0 6 -6 v -20" w={2.1} />
-        <R d="M100 206 v 20 q 0 6 -6 6 q -6 0 -6 -6 v -20" w={2.1} />
-        {/* boom pole + blimp + windjammer fur */}
-        <R d="M-116 380 L 40 172" w={2.8} />
-        <path d="M-96 356 h 14 M-60 308 h 14" opacity="0.45" strokeWidth="1.6" />
-        <g transform="rotate(-38 56 160)">
-          <R d="M26 148 h 62 q 12 0 12 12 t -12 12 h -62 q -12 0 -12 -12 t 12 -12 z" w={2.6} />
-          <path d="M26 152 v 20 M44 150 v 24 M62 150 v 24 M80 152 v 20" opacity="0.3" strokeWidth="1.5" />
-          {/* fur wisps */}
-          {[20, 34, 48, 62, 76, 90].map((x) => (
-            <path key={x} d={`M${x} 146 l -3 -8 M${x + 5} 174 l 3 8`} opacity="0.4" strokeWidth="1.4" />
-          ))}
+        <Shadow x={0} y={380} w={270} />
+        {/* megaphone cone */}
+        <R d="M-110 186 L -110 300 L 30 262 L 30 224 Z" w={3.4} />
+        <ellipse cx="-110" cy="243" rx="13" ry="57" strokeWidth="3.4" />
+        <Solid d="M-110 243 m -8 0 a 8 46 0 1 0 16 0 a 8 46 0 1 0 -16 0 z" o={0.55} />
+        <path d="M-92 206 L -92 288 M-70 214 L -70 280" strokeWidth="1.8" opacity="0.4" />
+        {/* body + mouthpiece */}
+        <R d="M30 224 h 44 v 38 h -44 z" w={3.2} />
+        <Shade id="sh-meg" d="M30 244 h 44 v 18 h -44 z" x={26} y={240} w={52} h={26} gap={4} o={0.5} />
+        <R d="M74 232 h 20 v 22 h -20 z" w={2.8} />
+        {/* handle */}
+        <R d="M40 262 q -6 34 22 34 q 26 0 20 -34" w={3} />
+        {/* stand + boom behind */}
+        <R d="M120 380 V 210" w={2.8} />
+        <R d="M92 380 L 120 352 L 148 380" w={2.6} />
+        <R d="M120 210 L 210 168" w={3} />
+        <g transform="rotate(-24 220 164)">
+          <R d="M196 150 h 54 q 11 0 11 12 t -11 12 h -54 q -11 0 -11 -12 t 11 -12 z" w={3} />
+          {[202, 216, 230, 244].map((x) => <path key={x} d={`M${x} 150 v 24`} strokeWidth="1.6" opacity="0.35" />)}
         </g>
-        <Cable x={64} y={388} w={100} />
-        <Note x={-118} y={202} r={-4}>ROLL SOUND</Note>
+        <Cable x={-70} y={388} w={110} />
       </g>
 
-      {/* ── 5 · GRIP ───────────────────────────────────── */}
+      {/* ── 5 · GRIP — dolly on track, flag on a stand ── */}
       <g transform="translate(1980 0)">
-        <Shadow x={0} y={382} w={320} />
-        {/* track with sleepers */}
-        <R d="M-168 356 H 168 M-168 370 H 168" w={2.4} />
-        {[-150, -100, -50, 0, 50, 100, 150].map((x) => (
-          <path key={x} d={`M${x} 354 V 372`} strokeWidth="2" opacity="0.65" />
-        ))}
-        {/* dolly body + wheels + seat */}
-        <rect x="-70" y="306" width="140" height="32" rx="7" fill="url(#sb-cross)" stroke="none" />
-        <R d="M-70 306 h 140 q 7 0 7 7 v 18 q 0 7 -7 7 h -140 q -7 0 -7 -7 v -18 q 0 -7 7 -7 z" w={2.7} />
-        <circle cx="-44" cy="350" r="12" strokeWidth="2.4" />
-        <circle cx="44" cy="350" r="12" strokeWidth="2.4" />
-        {/* column + camera plate */}
-        <R d="M52 306 V 226" w={2.6} />
-        <R d="M34 214 h 46 v 12 h -46 z" w={2.3} />
-        <path d="M52 306 q 0 -20 -10 -30" opacity="0.45" strokeWidth="1.7" />
-        {/* operator seat */}
-        <R d="M-88 300 h 44 v 10 h -44 z" w={2.2} />
-        <R d="M-70 300 v -26 h 26" w={2.1} o={0.8} />
-        {/* c-stand with a solid flag */}
-        <R d="M-124 376 V 218 M-146 378 L -124 356 L -102 378" w={2.4} />
-        <R d="M-186 190 h 76 v 52 h -76 z" w={2.5} />
-        <rect x="-182" y="194" width="68" height="44" fill="url(#sb-hatch)" stroke="none" />
-        <path d="M-110 214 h 14" strokeWidth="2" opacity="0.6" />
-        <Sandbag x={-128} y={378} />
-        {/* stacked apple boxes + grip clamps */}
-        <AppleBox x={106} y={328} w={62} h={26} />
-        <AppleBox x={112} y={302} w={50} h={26} />
-        <path d="M150 268 q 14 -10 24 2 q -10 12 -24 -2 z" strokeWidth="2" opacity="0.7" />
-        <Note x={-72} y={182} r={-2}>SMOOTH MOVE</Note>
+        <Shadow x={0} y={382} w={330} />
+        <R d="M-170 356 H 170 M-170 372 H 170" w={2.8} />
+        {[-140, -84, -28, 28, 84, 140].map((x) => <path key={x} d={`M${x} 354 V 374`} strokeWidth="2.4" opacity="0.75" />)}
+        {/* dolly */}
+        <R d="M-74 302 h 148 v 36 h -148 z" w={3.4} />
+        <Shade id="sh-gr-d" d="M-74 322 h 148 v 16 h -148 z" x={-78} y={318} w={156} h={24} gap={4.5} o={0.5} />
+        <circle cx="-46" cy="350" r="14" strokeWidth="3" />
+        <Solid d="M-46 350 m -5 0 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0 z" />
+        <circle cx="46" cy="350" r="14" strokeWidth="3" />
+        <Solid d="M46 350 m -5 0 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0 z" />
+        {/* column + seat */}
+        <R d="M54 302 V 224" w={3} />
+        <R d="M32 210 h 48 v 14 h -48 z" w={2.8} />
+        <R d="M-92 296 h 46 v 12 h -46 z" w={2.6} />
+        <R d="M-76 296 v -28 h 28" w={2.6} />
+        {/* c-stand + solid flag */}
+        <R d="M-128 376 V 214" w={3} />
+        <R d="M-158 380 L -128 350 L -98 380" w={2.8} />
+        <R d="M-196 182 h 82 v 58 h -82 z" w={3.2} />
+        <Shade id="sh-gr-f" d="M-196 182 h 82 v 58 h -82 z" x={-200} y={178} w={90} h={66} gap={4.5} o={0.55} />
+        <AppleBox x={106} y={326} w={64} h={28} />
+        <AppleBox x={112} y={298} w={52} h={28} />
       </g>
 
-      {/* ── 6 · DRONES ─────────────────────────────────── */}
+      {/* ── 6 · DRONES ── */}
       <g transform="translate(2340 0)">
-        <Shadow x={-16} y={378} w={210} />
-        {/* open pelican case with foam */}
-        <R d="M-96 306 h 148 v 66 h -148 z" w={2.6} />
-        <path d="M-96 306 l -12 -46 h 148 l 12 46" strokeWidth="2.3" opacity="0.7" />
-        <path d="M-96 334 h 148" opacity="0.5" strokeWidth="1.8" />
-        <rect x="-88" y="340" width="132" height="26" fill="url(#sb-cross)" stroke="none" />
-        <path d="M-70 372 h 22 M0 372 h 22" opacity="0.4" strokeWidth="1.6" />
-        {/* the drone, airborne a touch, with motion ticks */}
-        <g transform="translate(0 -16)">
-          <rect x="-26" y="262" width="52" height="24" rx="9" fill="url(#sb-hatch2)" stroke="none" />
-          <R d="M-26 262 h 52 q 9 0 9 9 v 6 q 0 9 -9 9 h -52 q -9 0 -9 -9 v -6 q 0 -9 9 -9 z" w={2.7} />
-          {/* arms */}
-          <R d="M-24 268 L -68 244 M24 268 L 68 244 M-24 282 L -64 296 M24 282 L 64 296" w={2.4} />
-          {/* motors + spinning props (dashed = motion) */}
-          {[[-68, 244], [68, 244], [-64, 296], [64, 296]].map(([x, y]) => (
+        <Shadow x={-10} y={378} w={210} />
+        {/* case */}
+        <R d="M-100 308 h 152 v 66 h -152 z" w={3.2} />
+        <path d="M-100 308 l -12 -44 h 152 l 12 44" strokeWidth="2.8" opacity="0.75" />
+        <Shade id="sh-dr-c" d="M-100 338 h 152 v 36 h -152 z" x={-104} y={334} w={160} h={44} gap={5} o={0.4} />
+        <path d="M-100 338 h 152" strokeWidth="2.2" opacity="0.55" />
+        {/* drone */}
+        <g transform="translate(0 -22)">
+          <R d="M-30 258 h 60 q 11 0 11 11 v 8 q 0 11 -11 11 h -60 q -11 0 -11 -11 v -8 q 0 -11 11 -11 z" w={3.2} />
+          <Shade id="sh-dr-b" d="M-30 276 h 71 v 12 h -71 z" x={-34} y={272} w={80} h={20} gap={4} o={0.5} />
+          <R d="M-28 264 L -74 240 M28 264 L 74 240 M-28 282 L -70 296 M28 282 L 70 296" w={2.8} />
+          {[[-74, 240], [74, 240], [-70, 296], [70, 296]].map(([x, y]) => (
             <g key={`${x}-${y}`}>
-              <R d={`M${x - 5} ${y - 6} h 10 v 10 h -10 z`} w={2} o={0.85} />
-              <ellipse cx={x} cy={y - 8} rx="24" ry="5" strokeWidth="1.8" opacity="0.55" strokeDasharray="7 6" />
-              <ellipse cx={x} cy={y - 8} rx="16" ry="3.4" strokeWidth="1.4" opacity="0.35" />
+              <R d={`M${x - 6} ${y - 7} h 12 v 12 h -12 z`} w={2.4} />
+              <ellipse cx={x} cy={y - 9} rx="27" ry="5" strokeWidth="2.2" opacity="0.6" strokeDasharray="8 7" />
             </g>
           ))}
-          {/* gimbal camera */}
-          <R d="M-9 286 h 18 v 12 h -18 z" w={2.2} />
-          <circle cx="0" cy="292" r="5" strokeWidth="1.9" />
-          <path d="M-14 286 q -4 8 0 14 M14 286 q 4 8 0 14" opacity="0.5" strokeWidth="1.6" />
+          <R d="M-11 288 h 22 v 14 h -22 z" w={2.6} />
+          <Solid d="M0 295 m -6 0 a 6 6 0 1 0 12 0 a 6 6 0 1 0 -12 0 z" o={0.9} />
         </g>
-        {/* controller with sticks */}
-        <R d="M84 320 h 62 v 40 h -62 z" w={2.4} />
-        <path d="M92 316 h 46 v -18 h -46 z" strokeWidth="2.1" opacity="0.75" />
-        <circle cx="98" cy="340" r="6" strokeWidth="2" />
-        <circle cx="132" cy="340" r="6" strokeWidth="2" />
-        <path d="M98 340 v -8 M132 340 v -8" opacity="0.6" strokeWidth="1.6" />
-        {/* landing pad ring */}
-        <ellipse cx="-16" cy="376" rx="52" ry="12" strokeWidth="1.9" opacity="0.4" strokeDasharray="9 8" />
-        <Note x={-88} y={214} r={-3}>EYES IN THE SKY</Note>
+        {/* controller */}
+        <R d="M86 318 h 68 v 44 h -68 z" w={3} />
+        <R d="M96 314 h 48 v -22 h -48 z" w={2.6} />
+        <circle cx="102" cy="340" r="7" strokeWidth="2.4" />
+        <circle cx="138" cy="340" r="7" strokeWidth="2.4" />
       </g>
 
-      {/* ── 7 · TRANSPORT ──────────────────────────────── */}
+      {/* ── 7 · TRANSPORT ── */}
       <g transform="translate(2700 0)">
-        <Shadow x={30} y={382} w={300} />
-        {/* roller dock door */}
-        <R d="M-186 156 h 156 v 196 h -156 z" w={2.3} o={0.8} />
+        <Shadow x={30} y={382} w={310} />
+        <R d="M-186 156 h 156 v 196 h -156 z" w={2.6} o={0.85} />
         {Array.from({ length: 8 }, (_, i) => 180 + i * 24).map((y) => (
-          <path key={y} d={`M-186 ${y} H -30`} opacity="0.4" strokeWidth="1.7" />
+          <path key={y} d={`M-186 ${y} H -30`} strokeWidth="1.8" opacity="0.42" />
         ))}
-        <path d="M-160 168 h 104" opacity="0.5" strokeWidth="2" />
-        {/* the van, 3/4 */}
-        <R d="M-24 346 v -84 q 0 -14 14 -14 h 104 q 18 0 27 14 l 28 38 q 7 9 7 20 v 26 z" w={2.9} />
-        <path d="M-24 262 h 118" opacity="0.5" strokeWidth="1.8" />
-        {/* cab windows */}
-        <R d="M96 264 l 24 32 h -38 v -32 z" w={2.3} />
-        <path d="M96 264 v 32" opacity="0.45" strokeWidth="1.6" />
-        {/* side panel + door seam + handle */}
-        <path d="M-24 318 h 168" opacity="0.4" strokeWidth="1.7" />
-        <path d="M40 248 V 346" opacity="0.35" strokeWidth="1.7" />
-        <path d="M28 300 h 14" strokeWidth="2.4" opacity="0.7" />
-        <rect x="-18" y="270" width="54" height="42" fill="url(#sb-hatch2)" stroke="none" />
-        {/* wheels with hubs */}
-        <circle cx="6" cy="354" r="18" strokeWidth="2.7" />
-        <circle cx="6" cy="354" r="7" strokeWidth="1.8" opacity="0.6" />
-        <circle cx="104" cy="354" r="18" strokeWidth="2.7" />
-        <circle cx="104" cy="354" r="7" strokeWidth="1.8" opacity="0.6" />
-        <path d="M-30 352 h 8 M158 348 h 8" opacity="0.5" strokeWidth="1.8" />
-        {/* loading cart with road cases */}
-        <R d="M186 320 h 66 v 42 h -66 z" w={2.3} />
-        <path d="M186 340 h 66" opacity="0.5" strokeWidth="1.7" />
-        <circle cx="200" cy="370" r="8" strokeWidth="2.1" />
-        <circle cx="238" cy="370" r="8" strokeWidth="2.1" />
-        <R d="M192 286 h 52 v 34 h -52 z" w={2.2} o={0.85} />
-        <Note x={-150} y={140} r={-2}>LOAD IN 6AM</Note>
+        <R d="M-24 346 v -86 q 0 -14 14 -14 h 106 q 18 0 27 15 l 28 38 q 7 9 7 20 v 27 z" w={3.6} />
+        <Shade id="sh-van" d="M-24 312 h 158 v 34 h -158 z" x={-28} y={308} w={166} h={42} gap={5} o={0.45} />
+        <R d="M98 264 l 25 33 h -39 v -33 z" w={2.8} />
+        <path d="M42 246 V 346" strokeWidth="2" opacity="0.4" />
+        <path d="M28 300 h 16" strokeWidth="3" opacity="0.75" />
+        <circle cx="6" cy="354" r="20" strokeWidth="3.4" />
+        <Solid d="M6 354 m -7 0 a 7 7 0 1 0 14 0 a 7 7 0 1 0 -14 0 z" />
+        <circle cx="106" cy="354" r="20" strokeWidth="3.4" />
+        <Solid d="M106 354 m -7 0 a 7 7 0 1 0 14 0 a 7 7 0 1 0 -14 0 z" />
+        <R d="M190 318 h 70 v 44 h -70 z" w={2.8} />
+        <circle cx="204" cy="370" r="9" strokeWidth="2.4" />
+        <circle cx="246" cy="370" r="9" strokeWidth="2.4" />
+        <R d="M196 282 h 56 v 36 h -56 z" w={2.6} />
       </g>
 
-      {/* ── 8 · STUDIOS & SPACES ───────────────────────── */}
+      {/* ── 8 · STUDIOS — cyc + seats ── */}
       <g transform="translate(3060 0)">
         <Shadow x={-30} y={380} w={250} />
-        {/* cyc sweep, drawn with a couple of searching curves */}
-        <R d="M-140 168 V 300 Q -140 380 -56 380 H 150" w={2.8} />
-        <path d="M-124 182 V 302 Q -124 364 -60 364 H 140" opacity="0.4" strokeWidth="1.8" />
-        <G d="M-140 300 H 150" />
-        {/* seamless paper rolls on a stand */}
-        <R d="M40 380 L 70 196 M58 380 L 88 202 M76 380 L 104 210" w={5.5} o={0.9} />
-        <circle cx="70" cy="194" r="8" strokeWidth="2.2" />
-        <circle cx="88" cy="200" r="8" strokeWidth="2.2" />
-        <circle cx="104" cy="208" r="8" strokeWidth="2.2" />
-        <path d="M62 210 q 10 6 20 2 M80 216 q 10 6 20 2" opacity="0.4" strokeWidth="1.5" />
-        {/* floor tape marks + a stand-in mark */}
-        <path d="M-70 366 l 24 -8 M-62 376 l 24 -8" strokeWidth="2.6" opacity="0.45" />
-        <ellipse cx="-40" cy="372" rx="30" ry="8" strokeWidth="1.7" opacity="0.35" strokeDasharray="8 7" />
-        {/* small ladder + light stand in the corner */}
-        <g opacity="0.85">
-          <R d="M150 378 V 250 M176 378 V 250" w={2.1} />
-          {[262, 290, 318, 346].map((y) => <path key={y} d={`M150 ${y} H 176`} strokeWidth="1.8" opacity="0.7" />)}
-        </g>
-        <Note x={-124} y={150} r={-3}>THE SPACE</Note>
-      </g>
-
-      {/* ── 9 · PROPS & SETS ───────────────────────────── */}
-      <g transform="translate(3420 0)">
-        <Shadow x={-10} y={376} w={280} />
-        {/* rug with fringe */}
-        <path d="M-150 366 h 250" strokeWidth="2.2" opacity="0.5" />
-        {Array.from({ length: 14 }, (_, i) => -146 + i * 18).map((x) => (
-          <path key={x} d={`M${x} 366 v 8`} strokeWidth="1.4" opacity="0.35" />
-        ))}
-        {/* tufted sofa */}
-        <R d="M-104 300 v -38 q 0 -14 14 -14 h 124 q 14 0 14 14 v 38" w={2.7} />
-        <path d="M-70 254 v 44 M-24 250 v 48 M22 254 v 44" opacity="0.32" strokeWidth="1.6" />
-        <rect x="-116" y="300" width="176" height="44" rx="12" fill="url(#sb-cross)" stroke="none" />
-        <R d="M-116 300 h 176 q 12 0 12 12 v 20 q 0 12 -12 12 h -176 q -12 0 -12 -12 v -20 q 0 -12 12 -12 z" w={2.8} />
-        {/* arms */}
-        <R d="M-116 300 q -18 -6 -18 16 v 28" w={2.4} />
-        <R d="M60 300 q 18 -6 18 16 v 28" w={2.4} />
-        <path d="M-104 344 v 18 M48 344 v 18" strokeWidth="2.3" />
-        {/* cushions */}
-        <path d="M-88 292 q 20 -14 42 0 M-38 292 q 20 -14 42 0" opacity="0.4" strokeWidth="1.8" />
-        {/* side table with vase + books */}
-        <R d="M96 306 h 64 v 8 h -64 z" w={2.3} />
-        <R d="M104 314 v 58 M152 314 v 58" w={2.1} />
-        <R d="M116 306 q -8 -22 6 -30 q -8 -14 8 -16 q 16 2 8 16 q 14 8 6 30 z" w={2.3} />
-        <path d="M124 262 q 6 -14 -2 -20 M130 262 q 10 -10 4 -18" opacity="0.55" strokeWidth="1.6" />
-        <R d="M132 300 h 26 v 6 h -26 z" w={1.9} o={0.8} />
-        {/* floor lamp with a hatched shade */}
-        <R d="M-166 372 V 226 M-186 376 h 40" w={2.5} />
-        <R d="M-192 226 h 52 l -10 -40 h -32 z" w={2.6} />
-        <rect x="-188" y="192" width="44" height="32" fill="url(#sb-hatch)" stroke="none" />
-        <path d="M-176 232 v 10 M-160 232 v 10" opacity="0.35" strokeWidth="1.5" />
-        {/* leaning picture frame */}
-        <g transform="rotate(-6 190 330)">
-          <R d="M170 288 h 44 v 58 h -44 z" w={2.2} />
-          <path d="M178 296 h 28 v 42 h -28 z" opacity="0.4" strokeWidth="1.6" />
-          <path d="M180 330 l 12 -18 8 12 6 -8" opacity="0.4" strokeWidth="1.5" />
-        </g>
-        <Note x={-126} y={168} r={-3}>SET DRESSING</Note>
-      </g>
-
-      {/* ── 10 · CREW GEAR ─────────────────────────────── */}
-      <g transform="translate(3780 0)">
-        <Shadow x={-10} y={378} w={280} />
-        {/* two director chairs, one angled */}
-        {[0, 96].map((ox, i) => (
-          <g key={ox} transform={`translate(${-96 + ox} 0) ${i ? 'rotate(4 0 330)' : ''}`}>
-            <R d="M0 372 L 52 300 M52 372 L 0 300 M0 300 v -20 M52 300 v -20" w={2.5} />
-            <path d="M-4 280 h 60" strokeWidth="5.5" />
-            <path d="M0 322 h 52" strokeWidth="4.5" opacity="0.85" />
-            <path d="M-2 372 h 12 M42 372 h 12" opacity="0.5" strokeWidth="1.8" />
-            <path d="M2 276 q 24 -6 48 0" opacity="0.4" strokeWidth="1.6" />
+        <R d="M-150 164 V 300 Q -150 380 -62 380 H 60" w={3.4} />
+        <path d="M-132 180 V 302 Q -132 364 -66 364 H 50" strokeWidth="2" opacity="0.4" />
+        {/* seat row, from the cinema reference */}
+        {[86, 148, 210].map((x, i) => (
+          <g key={x}>
+            <R d={`M${x} 300 q 0 -46 26 -46 q 26 0 26 46`} w={3} />
+            <R d={`M${x - 4} 300 h 60 v 22 h -60 z`} w={3} />
+            <Shade id={`sh-st-${i}`} d={`M${x} 258 q 4 -40 26 -40 q 22 0 26 40 z`} x={x - 4} y={214} w={60} h={52} gap={4.5} o={0.45} />
+            <path d={`M${x - 4} 322 v 46 M${x + 56} 322 v 46`} strokeWidth="2.6" />
           </g>
         ))}
-        {/* slate resting on the first chair */}
-        <g transform="rotate(-10 -60 300)">
-          <R d="M-92 268 h 66 v 44 h -66 z" w={2.3} />
-          <path d="M-94 276 l 70 -3" strokeWidth="6" opacity="0.8" />
-          <path d="M-86 290 h 50 M-86 302 h 32" opacity="0.45" strokeWidth="1.7" />
-          <path d="M-94 272 l 8 -10 h 62" opacity="0.5" strokeWidth="1.8" />
+        {/* paper rolls */}
+        <R d="M-96 380 L -66 208 M-78 380 L -48 214" w={6} o={0.9} />
+        <circle cx="-66" cy="206" r="9" strokeWidth="2.6" />
+        <circle cx="-48" cy="212" r="9" strokeWidth="2.6" />
+      </g>
+
+      {/* ── 9 · PROPS — director's chair, lamp, side table ── */}
+      <g transform="translate(3420 0)">
+        <Shadow x={0} y={378} w={280} />
+        {/* director's chair, the icon from the reference */}
+        <R d="M-64 374 L 26 292 M26 374 L -64 292 M-64 292 V 250 M26 292 V 250" w={3.4} />
+        <R d="M-72 236 h 106 v 20 h -106 z" w={3.2} />
+        <Shade id="sh-pr-b" d="M-72 236 h 106 v 20 h -106 z" x={-76} y={232} w={114} h={28} gap={4} o={0.5} />
+        <R d="M-64 288 h 90 v 16 h -90 z" w={3.2} />
+        <path d="M-70 374 h 16 M16 374 h 16" strokeWidth="2.6" opacity="0.7" />
+        <path d="M-64 264 h 90" strokeWidth="2.2" opacity="0.45" />
+        {/* floor lamp */}
+        <R d="M-166 372 V 224" w={3} />
+        <R d="M-192 378 h 52" w={2.8} />
+        <R d="M-196 224 h 60 l -12 -46 h -36 z" w={3.2} />
+        <Shade id="sh-pr-l" d="M-196 224 h 60 l -12 -46 h -36 z" x={-200} y={174} w={68} h={54} gap={4.5} o={0.5} />
+        {/* side table + vase */}
+        <R d="M62 300 h 78 v 12 h -78 z" w={3} />
+        <R d="M74 312 v 62 M128 312 v 62" w={2.6} />
+        <R d="M86 300 q -10 -26 8 -36 q -10 -16 10 -18 q 20 2 10 18 q 18 10 8 36 z" w={3} />
+        <Shade id="sh-pr-v" d="M86 300 q -10 -26 8 -36 q -10 -16 10 -18 q 20 2 10 18 q 18 10 8 36 z" x={80} y={242} w={48} h={62} gap={4} o={0.4} />
+      </g>
+
+      {/* ── 10 · CREW — clapperboard + reels + toolbox ── */}
+      <g transform="translate(3780 0)">
+        <Shadow x={0} y={378} w={300} />
+        {/* clapperboard, the reference icon */}
+        <g transform="rotate(-7 -60 280)">
+          <R d="M-136 236 h 150 v 104 h -150 z" w={3.4} />
+          <Solid d="M-140 200 l 152 -16 6 30 -152 16 z" o={0.9} />
+          {[-116, -80, -44, -8].map((x) => (
+            <path key={x} d={`M${x} 186 l 14 30`} stroke="#f6f0e4" strokeWidth="7" />
+          ))}
+          <path d="M-124 264 h 126 M-124 288 h 126 M-124 312 h 84" strokeWidth="2.2" opacity="0.5" />
         </g>
-        {/* toolbox cart with drawers */}
-        <R d="M104 286 h 88 v 76 h -88 z" w={2.6} />
-        {[308, 330].map((y) => <path key={y} d={`M104 ${y} H 192`} opacity="0.55" strokeWidth="1.9" />)}
-        {[297, 319, 341].map((y) => <path key={y} d={`M136 ${y} h 24`} strokeWidth="2.6" opacity="0.7" />)}
-        <circle cx="122" cy="372" r="10" strokeWidth="2.3" />
-        <circle cx="174" cy="372" r="10" strokeWidth="2.3" />
-        {/* walkie chargers + coffee on top */}
-        <R d="M112 262 h 20 v 24 h -20 z" w={2} o={0.85} />
-        <path d="M118 262 v -10 M126 262 v -14" opacity="0.6" strokeWidth="1.6" />
-        <R d="M148 266 h 18 l -3 20 h -12 z" w={2} o={0.85} />
-        <path d="M152 262 q 3 -8 8 -2" opacity="0.45" strokeWidth="1.5" />
-        <Note x={-92} y={224} r={-2}>VIDEO VILLAGE</Note>
+        {/* film reel */}
+        <circle cx="86" cy="280" r="54" strokeWidth="3.4" />
+        <circle cx="86" cy="280" r="14" strokeWidth="2.8" />
+        <Solid d="M86 280 m -6 0 a 6 6 0 1 0 12 0 a 6 6 0 1 0 -12 0 z" />
+        {[0, 72, 144, 216, 288].map((a) => {
+          const rad = (a * Math.PI) / 180
+          return (
+            <circle
+              key={a}
+              cx={(86 + 32 * Math.cos(rad)).toFixed(1)}
+              cy={(280 + 32 * Math.sin(rad)).toFixed(1)}
+              r="12"
+              strokeWidth="2.6"
+            />
+          )
+        })}
+        <path d="M140 280 q 34 6 40 40 q 4 30 -26 40" strokeWidth="3" />
+        <path d="M148 292 q 26 8 30 34" strokeWidth="2" opacity="0.5" />
+        {/* toolbox cart */}
+        <R d="M-236 292 h 84 v 76 h -84 z" w={3} />
+        <path d="M-236 316 H -152 M-236 340 H -152" strokeWidth="2.2" opacity="0.55" />
+        {[303, 327, 351].map((y) => <path key={y} d={`M-206 ${y} h 24`} strokeWidth="3" opacity="0.7" />)}
+        <circle cx="-218" cy="376" r="9" strokeWidth="2.6" />
+        <circle cx="-170" cy="376" r="9" strokeWidth="2.6" />
       </g>
     </g>
   )
