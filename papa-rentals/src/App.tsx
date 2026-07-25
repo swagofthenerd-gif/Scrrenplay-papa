@@ -4,7 +4,7 @@ import { StoreProvider, useStore } from './store'
 import { buzz, fmtTimeAgo } from './utils'
 import { getItem } from './data/catalog'
 import { ItemArt, Modal } from './components/ui'
-import { Icon, LogoMark } from './components/icons'
+import { Icon, IconSketchFilter, LogoMark } from './components/icons'
 import SearchOverlay from './components/SearchOverlay'
 import ListSpace from './views/ListSpace'
 import HostDashboard from './views/HostDashboard'
@@ -136,6 +136,7 @@ function Shell() {
 
   return (
     <NavContext.Provider value={{ view, go, back, toast }}>
+      <IconSketchFilter />
       <div className="app-shell">
         <header className="topbar">
           <div className="logo" onClick={() => go({ name: 'home' })}>

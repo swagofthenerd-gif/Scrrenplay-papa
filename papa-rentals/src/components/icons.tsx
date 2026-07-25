@@ -550,10 +550,17 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
   ),
   lens: (
     <>
-      <circle {...T} cx="12" cy="12" r="8.8" />
-      <circle cx="12" cy="12" r="8.8" />
-      <circle cx="12" cy="12" r="4.6" />
-      <path d="M14.6 8a4.8 4.8 0 0 1 1.6 1.8" />
+      {/* barrel behind */}
+      <path {...T} d="M11.4 6.2h6a2 2 0 0 1 2 2v7.6a2 2 0 0 1-2 2h-6z" />
+      <path d="M11.6 6.2h5.8a2 2 0 0 1 2 2v7.6a2 2 0 0 1-2 2h-5.8" />
+      {/* knurled focus ring */}
+      <path d="M14 6.4v11.2M16 6.4v11.2" opacity="0.55" />
+      {/* front element — the part that has to read at a glance */}
+      <circle {...T} cx="9.4" cy="12" r="6.6" />
+      <circle cx="9.4" cy="12" r="6.6" />
+      <circle cx="9.4" cy="12" r="3.8" opacity="0.85" />
+      {/* iris blades */}
+      <path d="M9.4 8.2 7.2 10.4M12.4 11 9.9 9.6M11.4 14.6l-1-2.7M7.1 14.2l2.6-.9" opacity="0.7" />
     </>
   ),
   bulb: (
@@ -664,6 +671,19 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
   ),
 }
 
+/* One rough-edged filter shared by every icon, so the whole set reads as
+   hand-sketched rather than vector-perfect. Rendered once, referenced by all. */
+export function IconSketchFilter() {
+  return (
+    <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+      <filter id="icon-sketch" x="-8%" y="-8%" width="116%" height="116%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.055" numOctaves="2" seed="5" result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="1" />
+      </filter>
+    </svg>
+  )
+}
+
 export function Icon({
   name,
   size = 20,
@@ -691,6 +711,7 @@ export function Icon({
       strokeLinejoin="round"
       role={title ? 'img' : undefined}
       aria-hidden={title ? undefined : true}
+      filter="url(#icon-sketch)"
     >
       {title ? <title>{title}</title> : null}
       {glyph}

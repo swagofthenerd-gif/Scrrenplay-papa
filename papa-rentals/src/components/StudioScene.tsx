@@ -19,7 +19,7 @@ export const SCENE_H = 420
 /** camera targets; [0] is the wide-shot centre, [1..10] are the stations */
 export const STATION_X = [1440, 540, 900, 1260, 1620, 1980, 2340, 2700, 3060, 3420, 3780]
 
-const INK = '#2b2721'
+const INK = '#3d382f'
 const INK_SOFT = '#7d766a'
 const MARKER = '#ff6b2c'
 
@@ -158,7 +158,7 @@ function Knurl({ x, y, w, h, gap = 4.5, o = 0.7 }: { x: number; y: number; w: nu
 }
 
 /** solid ink mass — barrel interiors, reel centres, shadow sides */
-function Solid({ d, o = 1 }: { d: string; o?: number }) {
+function Solid({ d, o = 0.72 }: { d: string; o?: number }) {
   return <path d={d} fill={INK} stroke="none" opacity={o} />
 }
 
@@ -311,7 +311,11 @@ export function SceneBackground() {
 
 export function SceneStations() {
   return (
-    <g filter="url(#sb-pencil)" stroke={INK} strokeWidth="3.2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+    <g filter="url(#sb-pencil)" stroke={INK} strokeWidth="2.7" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <PanArrow x={700} y={110} label="PAN" />
+      <PanArrow x={1780} y={112} label="DOLLY IN" />
+      <PanArrow x={2860} y={108} label="PAN" />
+
       {/* floor */}
       <R d={`M-240 386 Q 1200 380 2400 386 T ${SCENE_W + 240} 384`} w={2.2} o={0.7} />
 
@@ -350,7 +354,8 @@ export function SceneStations() {
               )
             })}
             <path d={`M${m.cx - m.r} ${m.cy + m.r - 6} q ${m.r} 22 ${m.r * 2} 0`} strokeWidth="2" opacity={i ? 0.4 : 0.6} />
-          </g>
+            <Note x={-150} y={92} r={-3}>A-CAM</Note>
+      </g>
         ))}
         {/* lens */}
         <R d="M-58 226 h -46 v 34 h 46" w={3.2} />
@@ -388,7 +393,8 @@ export function SceneStations() {
         <Solid d="M-83 250 m -15 0 a 15 42 0 1 0 30 0 a 15 42 0 1 0 -30 0 z" o={0.9} />
         <g transform="translate(-83 250) scale(0.34 1)" stroke="#f6f0e4" strokeWidth="8" opacity="0.85">
           {IRIS.map((d, i) => <path key={i} d={d} />)}
-        </g>
+          <Note x={-190} y={146} r={-3}>THE GLASS</Note>
+      </g>
         <g transform="translate(-83 250) scale(0.34 1)" stroke="#f6f0e4" strokeWidth="7">
           <path d={IRIS_OPENING} />
         </g>
@@ -430,6 +436,7 @@ export function SceneStations() {
         <path d="M-30 200 L -120 380 L 116 380 L 30 200 z" fill="url(#sb-cross)" stroke="none" opacity="0.4" />
         {/* spare tubes leaning */}
         <path d="M104 378 L 132 240 M120 378 L 148 246" strokeWidth="6" opacity="0.85" />
+        <Note x={-128} y={104} r={-3}>KEY LIGHT</Note>
       </g>
 
       {/* ── 4 · AUDIO — megaphone + boom ── */}
@@ -453,7 +460,8 @@ export function SceneStations() {
         <g transform="rotate(-24 220 164)">
           <R d="M196 150 h 54 q 11 0 11 12 t -11 12 h -54 q -11 0 -11 -12 t 11 -12 z" w={3} />
           {[202, 216, 230, 244].map((x) => <path key={x} d={`M${x} 150 v 24`} strokeWidth="1.6" opacity="0.35" />)}
-        </g>
+          <Note x={-128} y={140} r={-4}>ROLL SOUND</Note>
+      </g>
         <Cable x={-70} y={388} w={110} />
       </g>
 
@@ -481,6 +489,7 @@ export function SceneStations() {
         <Shade id="sh-gr-f" d="M-196 182 h 82 v 58 h -82 z" x={-200} y={178} w={90} h={66} gap={4.5} o={0.55} />
         <AppleBox x={106} y={326} w={64} h={28} />
         <AppleBox x={112} y={298} w={52} h={28} />
+        <Note x={-70} y={158} r={-2}>SMOOTH MOVE</Note>
       </g>
 
       {/* ── 6 · DRONES ── */}
@@ -500,7 +509,8 @@ export function SceneStations() {
             <g key={`${x}-${y}`}>
               <R d={`M${x - 6} ${y - 7} h 12 v 12 h -12 z`} w={2.4} />
               <ellipse cx={x} cy={y - 9} rx="27" ry="5" strokeWidth="2.2" opacity="0.6" strokeDasharray="8 7" />
-            </g>
+              <Note x={-96} y={186} r={-3}>EYES IN THE SKY</Note>
+      </g>
           ))}
           <R d="M-11 288 h 22 v 14 h -22 z" w={2.6} />
           <Solid d="M0 295 m -6 0 a 6 6 0 1 0 12 0 a 6 6 0 1 0 -12 0 z" o={0.9} />
@@ -532,6 +542,7 @@ export function SceneStations() {
         <circle cx="204" cy="370" r="9" strokeWidth="2.4" />
         <circle cx="246" cy="370" r="9" strokeWidth="2.4" />
         <R d="M196 282 h 56 v 36 h -56 z" w={2.6} />
+        <Note x={-150} y={132} r={-2}>LOAD IN 6AM</Note>
       </g>
 
       {/* ── 8 · STUDIOS — cyc + seats ── */}
@@ -546,7 +557,8 @@ export function SceneStations() {
             <R d={`M${x - 4} 300 h 60 v 22 h -60 z`} w={3} />
             <Shade id={`sh-st-${i}`} d={`M${x} 258 q 4 -40 26 -40 q 22 0 26 40 z`} x={x - 4} y={214} w={60} h={52} gap={4.5} o={0.45} />
             <path d={`M${x - 4} 322 v 46 M${x + 56} 322 v 46`} strokeWidth="2.6" />
-          </g>
+            <Note x={-140} y={140} r={-3}>THE SPACE</Note>
+      </g>
         ))}
         {/* paper rolls */}
         <R d="M-96 380 L -66 208 M-78 380 L -48 214" w={6} o={0.9} />
@@ -574,6 +586,7 @@ export function SceneStations() {
         <R d="M74 312 v 62 M128 312 v 62" w={2.6} />
         <R d="M86 300 q -10 -26 8 -36 q -10 -16 10 -18 q 20 2 10 18 q 18 10 8 36 z" w={3} />
         <Shade id="sh-pr-v" d="M86 300 q -10 -26 8 -36 q -10 -16 10 -18 q 20 2 10 18 q 18 10 8 36 z" x={80} y={242} w={48} h={62} gap={4} o={0.4} />
+        <Note x={-120} y={160} r={-3}>SET DRESSING</Note>
       </g>
 
       {/* ── 10 · CREW — clapperboard + reels + toolbox ── */}
@@ -587,7 +600,8 @@ export function SceneStations() {
             <path key={x} d={`M${x} 186 l 14 30`} stroke="#f6f0e4" strokeWidth="7" />
           ))}
           <path d="M-124 264 h 126 M-124 288 h 126 M-124 312 h 84" strokeWidth="2.2" opacity="0.5" />
-        </g>
+          <Note x={-150} y={150} r={-2}>VIDEO VILLAGE</Note>
+      </g>
         {/* film reel */}
         <circle cx="86" cy="280" r="54" strokeWidth="3.4" />
         <circle cx="86" cy="280" r="14" strokeWidth="2.8" />

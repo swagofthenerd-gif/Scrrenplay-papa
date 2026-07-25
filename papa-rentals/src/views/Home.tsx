@@ -9,6 +9,7 @@ import { Badge, ItemArt, ItemCard } from '../components/ui'
 import { Icon } from '../components/icons'
 import { VendorCard } from '../components/VendorCard'
 import StudioHero from '../components/StudioHero'
+import ServicesBand from '../components/ServicesBand'
 
 export default function Home() {
   const { go, toast } = useNav()
@@ -82,6 +83,8 @@ export default function Home() {
           ))}
         </div>
       </div>
+
+      <ServicesBand />
 
       {/* ---- Promoted offers & packages come first ---- */}
       {deals.length > 0 && (
