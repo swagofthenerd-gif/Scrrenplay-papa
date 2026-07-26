@@ -880,7 +880,8 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   background: #f6f0e4; /* storyboard paper — stays paper in dark mode by design */
   border: 1px solid #e2d9c6;
 }
-.studio-art { position: absolute; left: 0; right: 0; top: 0; bottom: 96px; overflow: hidden; }
+/* the drawing fills the whole panel now — the slug is written on it, not under it */
+.studio-art { position: absolute; inset: 0; overflow: hidden; }
 .studio-layer {
   position: absolute; left: 0; top: 0; height: 100%; width: auto; max-width: none;
   will-change: transform; transform-origin: 0 0; pointer-events: none;
@@ -923,12 +924,13 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .studio-slide { flex: none; width: 100%; height: 100%; scroll-snap-align: center; overflow: hidden; }
 .studio-tap { width: 100%; height: 100%; background: none; border: none; cursor: pointer; padding: 0; display: block; text-align: left; }
 
-/* wide-shot title block */
-.studio-title { position: relative; padding: 14px 18px 0; max-width: 330px; }
-/* a paper wash that fades downward: copy stays crisp, the set shows below */
+/* wide-shot title block — tucked into the top-left corner of the frame */
+.studio-title { position: relative; padding: 20px 18px 0; max-width: 15.5em; }
+/* A soft paper bloom sized to the copy, not a full-width band: it lifts the
+   words off the drawing without reading as a header bar pasted over the art. */
 .studio-title::before {
-  content: ''; position: absolute; left: -22px; right: -400px; top: -14px; bottom: -34px; z-index: -1;
-  background: linear-gradient(to bottom, rgba(249, 244, 233, 0.97) 0%, rgba(249, 244, 233, 0.9) 55%, rgba(249, 244, 233, 0) 100%);
+  content: ''; position: absolute; left: -14px; right: -30px; top: -10px; bottom: -26px; z-index: -1;
+  background: radial-gradient(120% 100% at 8% 26%, rgba(249, 244, 233, 0.94) 0%, rgba(249, 244, 233, 0.72) 46%, rgba(249, 244, 233, 0) 100%);
 }
 .studio-sc {
   font-size: 10.5px; font-weight: 800; letter-spacing: 2.4px; color: #6b6357; text-transform: uppercase;
@@ -946,15 +948,16 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .studio-tag.deal { background: #fff1e8; color: var(--accent-dark); border-color: rgba(255, 107, 44, 0.4); transform: rotate(1deg); }
 .studio-hint { margin-top: 12px; font-size: 12px; font-weight: 700; color: #6b6357; display: flex; align-items: center; gap: 5px; }
 
-/* settled-station caption */
-.studio-caption {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 96px; z-index: 6; pointer-events: none;
-  background: #fffdf6; border-top: 1.5px solid rgba(65, 59, 51, 0.4);
-  padding: 9px 18px 10px; display: flex; flex-direction: column; justify-content: center;
+/* settled-station slug, written on the panel itself */
+.studio-slug {
+  position: absolute; left: 20px; bottom: 20px; right: 20px; max-width: 300px; z-index: 6; pointer-events: none;
+  background: rgba(255, 253, 246, 0.9); border: 1.2px solid rgba(65, 59, 51, 0.34);
+  border-radius: 3px; padding: 7px 11px 9px; transform: rotate(-0.5deg);
+  box-shadow: 0 2px 8px rgba(60, 48, 30, 0.13);
 }
 /* the pencil rule a director writes the slug on */
-.studio-caption::after {
-  content: ''; position: absolute; left: 18px; right: 18px; top: 30px; height: 1px;
+.studio-slug::after {
+  content: ''; position: absolute; left: 11px; right: 11px; top: 25px; height: 1px;
   background: rgba(65, 59, 51, 0.16);
 }
 

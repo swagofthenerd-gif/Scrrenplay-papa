@@ -222,8 +222,12 @@ export default function StudioHero() {
           ))}
         </div>
 
-        {/* caption strip — the pencil slug line under every storyboard panel */}
-        <div className="studio-caption">
+        {/*
+          Slug line. A storyboard artist writes the scene number on the panel
+          itself, not on a strip bolted underneath it — so this sits inside the
+          frame, bottom-left, on a scrap of paper laid over the drawing.
+        */}
+        <div className="studio-slug">
           <div className="studio-sc">
             SC {String(frame + 1).padStart(2, '0')} · {active ? `CU — ${active.cat.name.toUpperCase()}` : 'WIDE — THE STUDIO'}
           </div>
