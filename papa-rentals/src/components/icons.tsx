@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { DEPT_MARKS } from './deptMarks'
 
 /*
  * Papa Rentals icon system — hand-drawn duotone-soft SVG set.
@@ -760,18 +761,30 @@ export function LogoMark({ size = 22 }: { size?: number }) {
  * The ten departments are represented by the hand-drawn set, not by the line
  * icon set — same pencil as the studio hero, so the categories read as part of
  * the same drawing rather than as generic UI glyphs.
+ *
+ * These are traced vector outlines, not pasted bitmaps, so they stay crisp at
+ * any size and take their colour from `currentColor` like every other icon
+ * here. Each mark's viewBox is cropped tight to its own ink, so `xMidYMid meet`
+ * centres it optically in a square viewport whether the drawing is wide or tall.
  */
 export function DeptMark({ id, size = 46 }: { id: string; size?: number }) {
+  const m = DEPT_MARKS[id]
+  if (!m) return null
   return (
-    <img
+    <svg
       className="dept-mark"
-      src={`${import.meta.env.BASE_URL}dept/${id}.webp`}
-      alt=""
-      aria-hidden="true"
       width={size}
       height={size}
-      loading="lazy"
-      decoding="async"
-    />
+      viewBox={m.vb}
+      preserveAspectRatio="xMidYMid meet"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g transform={m.t} fill="currentColor" stroke="none">
+        {m.d.map((d, i) => (
+          <path key={i} d={d} />
+        ))}
+      </g>
+    </svg>
   )
 }

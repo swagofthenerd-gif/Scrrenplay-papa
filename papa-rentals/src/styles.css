@@ -1000,9 +1000,12 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 
 /* department marks: drawn on paper, so they sit on a paper tile, never on a
    saturated gradient — ink on colour loses all the pencil detail */
-.dept-mark { object-fit: contain; display: block; }
+.dept-mark { display: block; }
 .cat-ico, .sug-cat-ico {
   background: var(--paper, #f3ede1) !important;
   border: 1px solid var(--line);
   padding: 3px;
+  /* the marks are vector paths filled with currentColor, so the tile owns the
+     ink colour — the inherited white would render them invisible on paper */
+  color: #3d382f !important;
 }

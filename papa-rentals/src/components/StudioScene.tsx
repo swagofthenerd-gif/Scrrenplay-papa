@@ -319,16 +319,16 @@ export function SceneBackground() {
 const FLOOR = 386
 
 const STATION_ART = [
-  { id: 'cameras', aspect: 0.978, h: 280 },
-  { id: 'lenses', aspect: 1.538, h: 220 },
-  { id: 'lighting', aspect: 0.481, h: 330 },
-  { id: 'audio', aspect: 1.224, h: 260 },
-  { id: 'grip', aspect: 0.573, h: 320 },
-  { id: 'drones', aspect: 1.363, h: 240 },
-  { id: 'transport', aspect: 1.291, h: 260 },
-  { id: 'studios', aspect: 1.006, h: 290 },
-  { id: 'props', aspect: 1.204, h: 250 },
-  { id: 'crew', aspect: 0.619, h: 310 },
+  { id: 'cameras', aspect: 0.990, h: 285 },
+  { id: 'lenses', aspect: 1.280, h: 235 },
+  { id: 'lighting', aspect: 0.539, h: 335 },
+  { id: 'audio', aspect: 1.042, h: 255 },
+  { id: 'grip', aspect: 0.550, h: 325 },
+  { id: 'drones', aspect: 1.449, h: 235 },
+  { id: 'transport', aspect: 1.123, h: 265 },
+  { id: 'studios', aspect: 1.009, h: 290 },
+  { id: 'props', aspect: 1.083, h: 250 },
+  { id: 'crew', aspect: 0.622, h: 310 },
 ]
 
 export function SceneStations() {
