@@ -886,6 +886,13 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   will-change: transform; transform-origin: 0 0; pointer-events: none;
 }
 .studio-layer.back { opacity: 0.62; }
+/* the establishing wide shot: one drawn set, shown only on frame 0 and
+   dissolved away as the camera pushes in on the first station */
+.studio-wide {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background-position: center 62%; background-size: cover; background-repeat: no-repeat;
+  will-change: opacity, transform; transform-origin: 50% 70%;
+}
 /* paper grain */
 .studio-stage::before {
   content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 2; opacity: 0.5;

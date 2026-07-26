@@ -35,6 +35,7 @@ export default function StudioHero() {
   const midRef = useRef<SVGSVGElement>(null)
   const bgRef = useRef<SVGSVGElement>(null)
   const spotRef = useRef<HTMLDivElement>(null)
+  const wideRef = useRef<HTMLDivElement>(null)
   const artRef = useRef<HTMLDivElement>(null)
   const [frame, setFrame] = useState(0)
 
@@ -66,8 +67,9 @@ export default function StudioHero() {
     const mid = midRef.current
     const bg = bgRef.current
     const spot = spotRef.current
+    const wide = wideRef.current
     const art = artRef.current
-    if (!track || !mid || !bg || !spot || !art) return
+    if (!track || !mid || !bg || !spot || !wide || !art) return
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let raf = 0
 
@@ -115,6 +117,12 @@ export default function StudioHero() {
       mid.style.transform = place(s, 1)
       bg.style.transform = place(Math.max(s, 0.72), reduced ? 1 : 0.55)
       spot.style.opacity = String(0.8 * settle)
+
+      // the establishing shot holds the frame, then dissolves as the camera
+      // pushes past it into the first station — gone well before frame 1
+      const wf = 1 - clamp01(f * 1.45)
+      wide.style.opacity = String(wf)
+      wide.style.transform = reduced ? 'none' : `scale(${1 + 0.12 * (1 - wf)})`
 
       const active = Math.round(f)
       setFrame((prev) => (prev === active ? prev : active))
@@ -167,6 +175,12 @@ export default function StudioHero() {
           <svg ref={midRef} className="studio-layer" viewBox={`0 0 ${SCENE_W} ${SCENE_H}`} style={svgStyle} aria-hidden="true">
             <SceneStations />
           </svg>
+          <div
+            ref={wideRef}
+            className="studio-wide"
+            aria-hidden="true"
+            style={{ backgroundImage: `url(${import.meta.env.BASE_URL}scene/wide.jpg)` }}
+          />
           <div ref={spotRef} className="studio-spot" aria-hidden="true" />
           <div className="studio-panel" aria-hidden="true">
             <i /><i /><i /><i />
