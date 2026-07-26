@@ -4,7 +4,10 @@ import { useNav } from '../nav'
 import { useStore } from '../store'
 import { buzz, dealActive, money } from '../utils'
 import { Icon } from './icons'
-import { SCENE_W, SCENE_H, STATION_X, SceneDefs, SceneBackground, SceneStations } from './StudioScene'
+import {
+  SCENE_W, SCENE_H, STATION_X, PANEL as STATION_PANEL, PANEL_TOP as STATION_PANEL_TOP,
+  SceneDefs, SceneBackground, SceneStations,
+} from './StudioScene'
 
 /*
  * StudioHero — the "walk the studio" storyboard.
@@ -82,9 +85,11 @@ export default function StudioHero() {
       const f = Math.max(0, track.scrollLeft / W)
       const n = STATION_X.length - 1
 
-      // A close-up frames one station (360 units) across the panel; the wide
-      // shot pulls back to take in roughly three stations of the set.
-      const sClose = 1.24 // the station should command the frame
+      // A close-up frames one board (300 units square) in the panel; the wide
+      // shot pulls back to take in roughly three stations of the set. The board
+      // has to fit on both axes, so the scale is capped by width as well —
+      // otherwise a tall narrow viewport crops the frame off the sides.
+      const sClose = Math.min(1.24, W / (348 * k), (H * 0.92) / (STATION_PANEL * k))
       const sWide = Math.max(0.62, Math.min(0.9, W / (830 * k)))
 
       let s: number
@@ -94,24 +99,26 @@ export default function StudioHero() {
         const t = easeInOut(clamp01(f))
         s = lerp(sWide, sClose, t)
         cx = lerp(STATION_X[0], STATION_X[1], t)
-        anchor = lerp(0.93, 0.88, t)
+        anchor = lerp(0.72, 0.5, t)
       } else {
         const i = Math.min(n - 1, Math.floor(f))
         const t = easeInOut(clamp01(f - i))
         s = sClose
         cx = lerp(STATION_X[i], STATION_X[Math.min(n, i + 1)], t)
-        anchor = 0.88
+        anchor = 0.5
       }
 
       const settle = f < 0.5 ? 0 : 1 - Math.min(1, Math.abs(f - Math.round(f)) * 2.2)
       const dolly = reduced ? 1 : 1 + 0.045 * settle
-      const FLOOR = 380 // the scene's floor line, kept pinned in frame
+      // the boards' centre line — pinned in frame, since a board hangs in the
+      // middle of the shot rather than standing on the floor
+      const PIVOT = STATION_PANEL_TOP + STATION_PANEL / 2
 
-      // pin (cx, FLOOR) to (W/2, H*anchor) — origin 0 0 keeps the maths honest
+      // pin (cx, PIVOT) to (W/2, H*anchor) — origin 0 0 keeps the maths honest
       const place = (scale: number, par: number) => {
         const sc = scale * dolly
         const tx = W / 2 - cx * k * sc * par
-        const ty = H * anchor - FLOOR * k * sc
+        const ty = H * anchor - PIVOT * k * sc
         return `translate(${tx}px, ${ty}px) scale(${sc})`
       }
       mid.style.transform = place(s, 1)

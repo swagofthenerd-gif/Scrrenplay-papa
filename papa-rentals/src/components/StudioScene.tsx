@@ -40,16 +40,6 @@ function G({ d }: { d: string }) {
   return <path d={d} strokeWidth="1.3" opacity="0.26" />
 }
 
-/** hand-drawn ellipse-ish ground shadow, scribbled not filled */
-function Shadow({ x, y, w, h = 12 }: { x: number; y: number; w: number; h?: number }) {
-  return (
-    <>
-      <ellipse cx={x} cy={y} rx={w / 2} ry={h / 2} fill="url(#sb-hatch)" stroke="none" opacity="0.75" />
-      <path d={`M${x - w / 2} ${y} q ${w / 4} ${h / 2} ${w / 2} 0 t ${w / 2} 0`} strokeWidth="1.4" opacity="0.4" />
-    </>
-  )
-}
-
 function Note({ x, y, children, r = -2, s = 17 }: { x: number; y: number; children: ReactNode; r?: number; s?: number }) {
   return (
     <text
@@ -310,25 +300,35 @@ export function SceneBackground() {
 /* ---------------- stations layer ---------------- */
 
 /*
- * The stations are the real hand-drawn artwork, extracted from the sketch
- * sheets as ink-baked WebPs rather than redrawn in SVG. Each keeps its drawn
- * aspect ratio and is bottom-aligned to the floor line, so objects stand on
- * the set instead of floating. Heights are per-object on purpose: a light
- * stand should tower over a lens case.
+ * The stations are the real hand-drawn artwork, each shown whole rather than
+ * cut out. A drawing is a picture, not an object, so every station is a
+ * storyboard board pinned up on the set: a drawn frame with the complete
+ * artwork inside it. That way nothing is ever sliced through, and the
+ * rectangle reads as a deliberate panel rather than as a bad crop.
+ *
+ * The source drawings are all square, so the boards are square and uniform —
+ * a wall of boards, which is what a storyboard wall actually looks like.
  */
-const FLOOR = 386
+export const PANEL = 300
+export const PANEL_TOP = 52
+const PANEL_PAD = 16
+
+/*
+ * A hand-pinned board never hangs true. The tilt is derived from the index so
+ * it is stable across renders — a random one would jitter on every repaint.
+ */
+function panelTilt(i: number) {
+  const deg = [-1.6, 1.1, -0.7, 1.7, -1.2, 0.8, -1.9, 1.3, -0.9, 1.5][i % 10]
+  return `rotate(${deg} ${STATION_X[i + 1]} ${PANEL_TOP + PANEL / 2})`
+}
+
+function Pin({ x, y }: { x: number; y: number }) {
+  return <circle cx={x} cy={y + 9} r={5} strokeWidth={2.2} />
+}
 
 const STATION_ART = [
-  { id: 'cameras', aspect: 0.990, h: 285 },
-  { id: 'lenses', aspect: 1.280, h: 235 },
-  { id: 'lighting', aspect: 0.539, h: 335 },
-  { id: 'audio', aspect: 1.042, h: 255 },
-  { id: 'grip', aspect: 0.550, h: 325 },
-  { id: 'drones', aspect: 1.449, h: 235 },
-  { id: 'transport', aspect: 1.123, h: 265 },
-  { id: 'studios', aspect: 1.009, h: 290 },
-  { id: 'props', aspect: 1.083, h: 250 },
-  { id: 'crew', aspect: 0.622, h: 310 },
+  { id: 'cameras' }, { id: 'lenses' }, { id: 'lighting' }, { id: 'audio' }, { id: 'grip' },
+  { id: 'drones' }, { id: 'transport' }, { id: 'studios' }, { id: 'props' }, { id: 'crew' },
 ]
 
 export function SceneStations() {
@@ -340,27 +340,40 @@ export function SceneStations() {
         <PanArrow x={1780} y={112} label="DOLLY IN" />
         <PanArrow x={2860} y={108} label="PAN" />
         <R d={`M-240 386 Q 1200 380 2400 386 T ${SCENE_W + 240} 384`} w={2.2} o={0.7} />
+        {/* the boards' frames: drawn, so they belong in the wobble filter */}
         {STATION_ART.map((s, i) => (
-          <Shadow key={s.id} x={STATION_X[i + 1]} y={FLOOR} w={s.h * s.aspect * 0.86} />
+          <g key={s.id} transform={panelTilt(i)}>
+            <rect x={STATION_X[i + 1] - PANEL / 2} y={PANEL_TOP} width={PANEL} height={PANEL} rx={3} />
+            <rect
+              x={STATION_X[i + 1] - PANEL / 2 + 7}
+              y={PANEL_TOP + 7}
+              width={PANEL - 14}
+              height={PANEL - 14}
+              rx={2}
+              strokeWidth={1.3}
+              opacity={0.45}
+            />
+            <Pin x={STATION_X[i + 1]} y={PANEL_TOP} />
+          </g>
         ))}
       </g>
 
       {/* the drawings themselves stay outside the displacement filter — they
           already have the hand's wobble in them, and smearing a scan reads as
-          a rendering fault rather than as pencil */}
-      {STATION_ART.map((s, i) => {
-        const w = s.h * s.aspect
-        return (
-          <image
-            key={s.id}
-            href={`${import.meta.env.BASE_URL}scene/${s.id}.webp`}
-            x={STATION_X[i + 1] - w / 2}
-            y={FLOOR - s.h}
-            width={w}
-            height={s.h}
-          />
-        )
-      })}
+          a rendering fault rather than as pencil. The whole drawing goes in the
+          board, uncropped, inset far enough to clear the drawn frame. */}
+      {STATION_ART.map((s, i) => (
+        <image
+          key={s.id}
+          href={`${import.meta.env.BASE_URL}scene/${s.id}.webp`}
+          x={STATION_X[i + 1] - PANEL / 2 + PANEL_PAD}
+          y={PANEL_TOP + PANEL_PAD}
+          width={PANEL - PANEL_PAD * 2}
+          height={PANEL - PANEL_PAD * 2}
+          preserveAspectRatio="xMidYMid meet"
+          transform={panelTilt(i)}
+        />
+      ))}
     </g>
   )
 }
