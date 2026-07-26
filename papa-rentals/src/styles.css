@@ -922,10 +922,18 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 }
 .studio-track::-webkit-scrollbar { display: none; }
 .studio-slide { flex: none; width: 100%; height: 100%; scroll-snap-align: center; overflow: hidden; }
-.studio-tap { width: 100%; height: 100%; background: none; border: none; cursor: pointer; padding: 0; display: block; text-align: left; }
+/* Buttons vertically centre their content in the UA stylesheet no matter what
+   `display` says, which pushed the title block into the middle of the frame.
+   Flex with an explicit start alignment is the only way to pin it top-left. */
+.studio-tap {
+  width: 100%; height: 100%; background: none; border: none; cursor: pointer; padding: 0;
+  display: flex; align-items: flex-start; justify-content: flex-start; text-align: left;
+}
 
 /* wide-shot title block — tucked into the top-left corner of the frame */
-.studio-title { position: relative; padding: 20px 18px 0; max-width: 15.5em; }
+/* 15.5em resolved against the 16px parent, not the clamped h1, so the copy was
+   squeezed into four lines and the tags stacked one per row */
+.studio-title { position: relative; padding: 18px 18px 0; max-width: min(320px, 80%); }
 /* A soft paper bloom sized to the copy, not a full-width band: it lifts the
    words off the drawing without reading as a header bar pasted over the art. */
 .studio-title::before {
