@@ -179,7 +179,7 @@ export default function StudioHero() {
             ref={wideRef}
             className="studio-wide"
             aria-hidden="true"
-            style={{ backgroundImage: `url(${import.meta.env.BASE_URL}scene/wide.jpg)` }}
+            style={{ backgroundImage: `url(${import.meta.env.BASE_URL}scene/wide.webp)` }}
           />
           <div ref={spotRef} className="studio-spot" aria-hidden="true" />
           <div className="studio-panel" aria-hidden="true">

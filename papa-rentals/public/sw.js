@@ -2,7 +2,7 @@
 /* Bump this whenever an unhashed asset changes in place — the scene drawings
    live at fixed paths and are served stale-while-revalidate, so without a new
    cache name a returning visitor keeps seeing the previous artwork. */
-const CACHE = 'papa-rentals-v3'
+const CACHE = 'papa-rentals-v4'
 const IMG_CACHE = 'papa-img-v1'
 const IMG_CACHE_MAX = 60
 const PRECACHE = [

@@ -6,7 +6,7 @@ import { vendors } from '../vendors'
 import { useStore } from '../store'
 import { buzz, dealActive, money, todayISO } from '../utils'
 import { Badge, ItemArt, ItemCard } from '../components/ui'
-import { Icon } from '../components/icons'
+import { DeptMark, Icon } from '../components/icons'
 import { VendorCard } from '../components/VendorCard'
 import StudioHero from '../components/StudioHero'
 import ServicesBand from '../components/ServicesBand'
@@ -77,7 +77,7 @@ export default function Home() {
         <div className="cat-row">
           {CATEGORIES.map((c) => (
             <button key={c.id} className="cat-chip" onClick={() => go({ name: 'browse', category: c.id })}>
-              <span className="cat-ico" style={{ background: c.gradient }}><Icon name={c.icon} size={24} /></span>
+              <span className="cat-ico"><DeptMark id={c.id} size={40} /></span>
               {c.name}
             </button>
           ))}

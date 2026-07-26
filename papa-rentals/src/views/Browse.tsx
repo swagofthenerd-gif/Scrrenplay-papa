@@ -7,7 +7,7 @@ import { useNav } from '../nav'
 import { useStore } from '../store'
 import { dealActive, fuzzyMatch, searchRank, weightedRating } from '../utils'
 import { ItemCard, RatingCompact } from '../components/ui'
-import { Icon, type IconName } from '../components/icons'
+import { DeptMark, Icon, type IconName } from '../components/icons'
 
 type Sort = 'relevance' | 'popular' | 'price_asc' | 'price_desc' | 'rating' | 'nearest'
 
@@ -94,7 +94,7 @@ export default function Browse({
               className={`cat-chip ${category === c.id ? 'active' : ''}`}
               onClick={() => go({ name: 'browse', category: category === c.id ? undefined : c.id })}
             >
-              <span className="cat-ico" style={{ background: c.gradient }}><Icon name={c.icon} size={24} /></span>
+              <span className="cat-ico"><DeptMark id={c.id} size={40} /></span>
               {c.name}
             </button>
           ))}

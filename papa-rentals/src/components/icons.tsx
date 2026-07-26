@@ -754,3 +754,24 @@ export function LogoMark({ size = 22 }: { size?: number }) {
     </svg>
   )
 }
+
+/* ---------------- department mark ---------------- */
+/*
+ * The ten departments are represented by the hand-drawn set, not by the line
+ * icon set — same pencil as the studio hero, so the categories read as part of
+ * the same drawing rather than as generic UI glyphs.
+ */
+export function DeptMark({ id, size = 46 }: { id: string; size?: number }) {
+  return (
+    <img
+      className="dept-mark"
+      src={`${import.meta.env.BASE_URL}dept/${id}.webp`}
+      alt=""
+      aria-hidden="true"
+      width={size}
+      height={size}
+      loading="lazy"
+      decoding="async"
+    />
+  )
+}

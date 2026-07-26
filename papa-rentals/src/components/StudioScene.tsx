@@ -311,7 +311,7 @@ export function SceneBackground() {
 
 /*
  * The stations are the real hand-drawn artwork, extracted from the sketch
- * sheets as ink-baked PNGs rather than redrawn in SVG. Each keeps its drawn
+ * sheets as ink-baked WebPs rather than redrawn in SVG. Each keeps its drawn
  * aspect ratio and is bottom-aligned to the floor line, so objects stand on
  * the set instead of floating. Heights are per-object on purpose: a light
  * stand should tower over a lens case.
@@ -319,16 +319,16 @@ export function SceneBackground() {
 const FLOOR = 386
 
 const STATION_ART = [
-  { id: 'cameras', aspect: 1.394, h: 250 },
-  { id: 'lenses', aspect: 1.774, h: 190 },
-  { id: 'lighting', aspect: 0.57, h: 320 },
-  { id: 'audio', aspect: 2.381, h: 150 },
-  { id: 'grip', aspect: 1.516, h: 230 },
-  { id: 'drones', aspect: 1.174, h: 240 },
-  { id: 'transport', aspect: 0.889, h: 300 },
-  { id: 'studios', aspect: 1.371, h: 260 },
-  { id: 'props', aspect: 1.144, h: 250 },
-  { id: 'crew', aspect: 0.813, h: 260 },
+  { id: 'cameras', aspect: 0.978, h: 280 },
+  { id: 'lenses', aspect: 1.538, h: 220 },
+  { id: 'lighting', aspect: 0.481, h: 330 },
+  { id: 'audio', aspect: 1.224, h: 260 },
+  { id: 'grip', aspect: 0.573, h: 320 },
+  { id: 'drones', aspect: 1.363, h: 240 },
+  { id: 'transport', aspect: 1.291, h: 260 },
+  { id: 'studios', aspect: 1.006, h: 290 },
+  { id: 'props', aspect: 1.204, h: 250 },
+  { id: 'crew', aspect: 0.619, h: 310 },
 ]
 
 export function SceneStations() {
@@ -353,7 +353,7 @@ export function SceneStations() {
         return (
           <image
             key={s.id}
-            href={`${import.meta.env.BASE_URL}scene/${s.id}.png`}
+            href={`${import.meta.env.BASE_URL}scene/${s.id}.webp`}
             x={STATION_X[i + 1] - w / 2}
             y={FLOOR - s.h}
             width={w}
