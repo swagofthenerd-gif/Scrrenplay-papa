@@ -94,7 +94,7 @@ export default function Browse({
               className={`cat-chip ${category === c.id ? 'active' : ''}`}
               onClick={() => go({ name: 'browse', category: category === c.id ? undefined : c.id })}
             >
-              <span className="cat-ico"><DeptMark id={c.id} size={40} /></span>
+              <span className="cat-ico"><DeptMark id={c.id} size={44} /></span>
               {c.name}
             </button>
           ))}

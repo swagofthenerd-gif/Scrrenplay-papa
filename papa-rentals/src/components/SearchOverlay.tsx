@@ -111,7 +111,7 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
             <h4>Departments</h4>
             {CATEGORIES.map((c) => (
               <button key={c.id} className="sug-row" onClick={() => { buzz(); onClose(); go({ name: 'browse', category: c.id }) }}>
-                <span className="sug-cat-ico"><DeptMark id={c.id} size={38} /></span>
+                <span className="sug-cat-ico"><DeptMark id={c.id} size={42} /></span>
                 <span className="sug-title">{c.name}</span>
                 <span className="sug-meta"><Icon name="chevron-right" size={16} /></span>
               </button>
@@ -121,7 +121,7 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
           <>
             {results.cats.map((c) => (
               <button key={c.id} className="sug-row" onClick={() => { buzz(); onClose(); go({ name: 'browse', category: c.id }) }}>
-                <span className="sug-cat-ico"><DeptMark id={c.id} size={38} /></span>
+                <span className="sug-cat-ico"><DeptMark id={c.id} size={42} /></span>
                 <span className="sug-title"><Marked text={c.name} q={q} /></span>
                 <span className="sug-meta">department</span>
               </button>

@@ -77,7 +77,7 @@ export default function Home() {
         <div className="cat-row">
           {CATEGORIES.map((c) => (
             <button key={c.id} className="cat-chip" onClick={() => go({ name: 'browse', category: c.id })}>
-              <span className="cat-ico"><DeptMark id={c.id} size={40} /></span>
+              <span className="cat-ico"><DeptMark id={c.id} size={44} /></span>
               {c.name}
             </button>
           ))}

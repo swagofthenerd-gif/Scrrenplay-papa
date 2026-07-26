@@ -1011,14 +1011,17 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .svc-peek > span { display: flex; }
 .svc-peek-more { font-size: 11.5px; font-weight: 700; letter-spacing: 0.2px; }
 
-/* department marks: drawn on paper, so they sit on a paper tile, never on a
-   saturated gradient — ink on colour loses all the pencil detail */
+/* Department marks are drawings, not glyphs. A tinted pill behind them read as
+   a sticker pasted onto the card, so there is no tile at all — the ink sits
+   straight on the card surface and preserveAspectRatio does the centring. */
 .dept-mark { display: block; }
 .cat-ico, .sug-cat-ico {
-  background: var(--paper, #f3ede1) !important;
-  border: 1px solid var(--line);
-  padding: 3px;
-  /* the marks are vector paths filled with currentColor, so the tile owns the
-     ink colour — the inherited white would render them invisible on paper */
-  color: #3d382f !important;
+  background: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  /* the paths are filled with currentColor, so the box owns the ink colour —
+     the inherited white would render them invisible */
+  color: var(--text) !important;
 }
