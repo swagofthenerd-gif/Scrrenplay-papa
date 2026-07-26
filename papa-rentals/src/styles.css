@@ -998,6 +998,19 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .svc-body { font-size: 12.5px; line-height: 1.45; margin-top: 3px; }
 .svc-chev { color: var(--muted); align-self: center; flex: none; }
 
+/* the collapsed row on the home page — one card standing in for the whole list */
+.svc-collapsed {
+  display: flex; align-items: flex-start; gap: 12px; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 15px;
+  box-shadow: var(--shadow-xs); cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.svc-collapsed:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.svc-collapsed:active { transform: scale(0.99); }
+.svc-peek { display: flex; align-items: center; gap: 7px; margin-top: 9px; color: var(--muted); }
+.svc-peek > span { display: flex; }
+.svc-peek-more { font-size: 11.5px; font-weight: 700; letter-spacing: 0.2px; }
+
 /* department marks: drawn on paper, so they sit on a paper tile, never on a
    saturated gradient — ink on colour loses all the pencil detail */
 .dept-mark { display: block; }

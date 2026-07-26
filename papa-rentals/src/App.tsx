@@ -9,6 +9,7 @@ import SearchOverlay from './components/SearchOverlay'
 import ListSpace from './views/ListSpace'
 import HostDashboard from './views/HostDashboard'
 import Support from './views/Support'
+import Services from './views/Services'
 import Home from './views/Home'
 import Browse from './views/Browse'
 import ItemDetail from './views/ItemDetail'
@@ -166,11 +167,12 @@ function Shell() {
           {view.name === 'post' && <ListSpace />}
           {view.name === 'dashboard' && <HostDashboard />}
           {view.name === 'support' && <Support />}
+          {view.name === 'services' && <Services />}
         </main>
       </div>
 
       <nav className="bottom-nav">
-        <button className={view.name === 'home' ? 'active' : ''} onClick={() => go({ name: 'home' })}>
+        <button className={view.name === 'home' || view.name === 'services' ? 'active' : ''} onClick={() => go({ name: 'home' })}>
           <span className="nav-ico"><Icon name="home" /></span>Home
         </button>
         <button className={view.name === 'browse' || view.name === 'item' ? 'active' : ''} onClick={() => go({ name: 'browse' })}>

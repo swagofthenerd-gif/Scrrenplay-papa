@@ -12,6 +12,7 @@ export type View =
   | { name: 'post' }
   | { name: 'dashboard' }
   | { name: 'support' }
+  | { name: 'services' }
 
 export function viewToHash(v: View): string {
   switch (v.name) {
@@ -24,6 +25,7 @@ export function viewToHash(v: View): string {
     case 'post': return '#/post'
     case 'dashboard': return '#/dashboard'
     case 'support': return '#/support'
+    case 'services': return '#/services'
     case 'browse': {
       const p = new URLSearchParams()
       if (v.category) p.set('cat', v.category)
@@ -48,6 +50,7 @@ export function parseHash(hash: string): View {
   if (seg[0] === 'post') return { name: 'post' }
   if (seg[0] === 'dashboard') return { name: 'dashboard' }
   if (seg[0] === 'support') return { name: 'support' }
+  if (seg[0] === 'services') return { name: 'services' }
   if (seg[0] === 'browse') {
     const p = new URLSearchParams(qs)
     return {
