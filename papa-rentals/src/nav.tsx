@@ -20,6 +20,7 @@ export type View =
       minPrice?: number
       maxPrice?: number
       minCapacity?: number
+      maxKm?: number
       hourly?: boolean
       compare?: string[]
     }
@@ -66,6 +67,7 @@ export function viewToHash(v: View): string {
       if (v.minPrice) p.set('min', String(v.minPrice))
       if (v.maxPrice) p.set('max', String(v.maxPrice))
       if (v.minCapacity) p.set('cap', String(v.minCapacity))
+      if (v.maxKm) p.set('km', String(v.maxKm))
       if (v.hourly) p.set('hr', '1')
       if (v.compare && v.compare.length) p.set('cmp', v.compare.join(','))
       const qs = p.toString()
@@ -111,6 +113,7 @@ export function parseHash(hash: string): View {
       minPrice: num('min'),
       maxPrice: num('max'),
       minCapacity: num('cap'),
+      maxKm: num('km'),
       hourly: p.get('hr') === '1',
       compare: p.get('cmp')?.split(',').filter(Boolean) ?? [],
     }

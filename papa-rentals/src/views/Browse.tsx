@@ -5,7 +5,7 @@ import { Modal } from '../components/ui'
 import { money } from '../utils'
 import { useNav, type BrowseSort, type View } from '../nav'
 import { useStore } from '../store'
-import { dealActive, fuzzyMatch, searchRank, weightedRating, buzz } from '../utils'
+import { daysBetween, dealActive, fuzzyMatch, recommendedRate, searchRank, todayISO, uid, weightedRating, buzz } from '../utils'
 import { ItemCard, RatingCompact } from '../components/ui'
 import { DeptMark, Icon, type IconName } from '../components/icons'
 import type { CategoryId, Item } from '../types'
@@ -36,12 +36,13 @@ type BrowseProps = {
   minPrice?: number
   maxPrice?: number
   minCapacity?: number
+  maxKm?: number
   hourly?: boolean
   compare?: string[]
 }
 
 export default function Browse(props: BrowseProps) {
-  const { category, query, dealsOnly, wishlistOnly, minPrice, maxPrice, minCapacity } = props
+  const { category, query, dealsOnly, wishlistOnly, minPrice, maxPrice, minCapacity, maxKm } = props
   const { go, back, toast } = useNav()
   const { state, dispatch } = useStore()
   const saved = state.savedSearches.find(
@@ -104,6 +105,9 @@ export default function Browse(props: BrowseProps) {
     if (maxPrice) list = list.filter((i) => i.pricePerDay <= maxPrice)
     if (minCapacity) list = list.filter((i) => (i.space?.capacity ?? 0) >= minCapacity)
     if (hourlyOnly) list = list.filter((i) => i.hourly)
+    /* Sorting by nearest still lists a lens 40 km away at the bottom. Capping the
+       radius is what actually answers "what can I pick up today". */
+    if (maxKm) list = list.filter((i) => getOwner(i.ownerId).distanceKm <= maxKm)
     // distance is looked up once per item, not once per comparator call
     const dist = new Map<string, number>(list.map((i) => [i.id, getOwner(i.ownerId).distanceKm]))
     const sorted = [...list]
@@ -120,7 +124,7 @@ export default function Browse(props: BrowseProps) {
       default: sorted.sort((a, b) => b.timesRented - a.timesRented)
     }
     return sorted
-  }, [pool, haystacks, category, query, dealsOnly, wishlistOnly, sort, verifiedOnly, instantOnly, offersOnly, minPrice, maxPrice, minCapacity, hourlyOnly, state.wishlist])
+  }, [pool, haystacks, category, query, dealsOnly, wishlistOnly, sort, verifiedOnly, instantOnly, offersOnly, minPrice, maxPrice, minCapacity, maxKm, hourlyOnly, state.wishlist])
 
   /* Buckets come from the department you are in, before the price cut is applied. */
   const buckets = useMemo(
@@ -149,6 +153,7 @@ export default function Browse(props: BrowseProps) {
   if (minPrice) pills.push({ label: `Over ${money(minPrice)}/day`, clear: { minPrice: undefined } })
   if (maxPrice) pills.push({ label: `Under ${money(maxPrice)}/day`, clear: { maxPrice: undefined } })
   if (minCapacity) pills.push({ label: `${minCapacity}+ crew`, clear: { minCapacity: undefined } })
+  if (maxKm) pills.push({ label: `Within ${maxKm} km`, clear: { maxKm: undefined } })
   if (hourlyOnly) pills.push({ label: 'Hourly OK', clear: { hourly: false } })
   const activeFilters = pills.length
   /* The most recently added filter is the one most likely to have emptied the
@@ -459,6 +464,22 @@ export default function Browse(props: BrowseProps) {
             </div>
           </div>
 
+          <div className="sheet-group">
+            <div className="sheet-label">Pickup distance</div>
+            <div className="filter-row">
+              {[5, 10, 25].map((km) => (
+                <button
+                  key={km}
+                  className={`filter-chip chip-ico ${maxKm === km ? 'active' : ''}`}
+                  aria-pressed={maxKm === km}
+                  onClick={() => patch({ maxKm: maxKm === km ? undefined : km })}
+                >
+                  <Icon name="pin" size={14} /> Within {km} km
+                </button>
+              ))}
+            </div>
+          </div>
+
           {category === 'studios' && (
             <div className="sheet-group">
               <div className="sheet-label">Space</div>
@@ -509,8 +530,31 @@ export default function Browse(props: BrowseProps) {
 
 /* Side-by-side compare. Items are resolved once here instead of ~10 lookups per column. */
 function CompareModal({ ids, onClose, onOpen }: { ids: string[]; onClose: () => void; onOpen: (id: string) => void }) {
+  const { dispatch } = useStore()
+  const { toast } = useNav()
   const cols = useMemo(() => ids.map((id) => ({ item: getItem(id), owner: getOwner(getItem(id).ownerId) })), [ids])
   const specRows = Math.max(...cols.map((c) => c.item.specs.length), 0)
+
+  /* Comparing is the last step before deciding, so the winner should go straight
+     into the cart. Dates match Item detail's defaults — a single day starting the
+     day after tomorrow — and stay editable on the cart line. */
+  function addToCart(item: Item) {
+    buzz()
+    const startDate = todayISO(2)
+    const endDate = todayISO(3)
+    dispatch({
+      type: 'ADD_TO_CART',
+      booking: {
+        id: uid(), itemId: item.id, startDate, endDate, pickupTime: '09:00',
+        qty: 1, unit: 'day', hours: 4,
+        insurance: item.insuranceRequired || item.deposit >= 100000,
+        operator: false, transport: 'van',
+        rate: recommendedRate(item.id, daysBetween(startDate, endDate), 'day'),
+        negotiated: false,
+      },
+    })
+    toast(`${item.name} added to cart`)
+  }
 
   return (
     <Modal title="Side by side" onClose={onClose}>
@@ -535,9 +579,14 @@ function CompareModal({ ids, onClose, onOpen }: { ids: string[]; onClose: () => 
       </table>
       <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
         {cols.map(({ item }) => (
-          <button key={item.id} className="btn btn-outline btn-sm" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={() => onOpen(item.id)}>
-            View <Icon name={item.icon} size={15} />
-          </button>
+          <div key={item.id} style={{ flex: 1, display: 'grid', gap: 6 }}>
+            <button className="btn btn-primary btn-sm" onClick={() => addToCart(item)}>
+              <Icon name="cart" size={14} /> Add
+            </button>
+            <button className="btn btn-outline btn-sm" onClick={() => onOpen(item.id)}>
+              View <Icon name={item.icon} size={15} />
+            </button>
+          </div>
         ))}
       </div>
     </Modal>
