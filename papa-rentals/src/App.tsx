@@ -17,6 +17,10 @@ import VendorView from './views/VendorView'
 import CartView from './views/CartView'
 import OrdersView from './views/OrdersView'
 import ProfileView from './views/ProfileView'
+import WalletView from './views/WalletView'
+import SettingsView from './views/SettingsView'
+import InboxView from './views/InboxView'
+import OrderDetailView from './views/OrderDetailView'
 
 /* ---------------- search entry: Airbnb-style pill opening the overlay ---------------- */
 function SearchPill({ onOpen }: { onOpen: () => void }) {
@@ -133,7 +137,7 @@ function Shell() {
 
   const activeOrders = state.orders.filter((o) => !['completed', 'cancelled'].includes(o.status)).length
   const unreadNotifs = state.notifications.filter((n) => !n.read).length
-  const viewKey = view.name === 'item' ? `item-${view.id}` : view.name === 'vendor' ? `vendor-${view.id}` : view.name
+  const viewKey = view.name === 'item' ? `item-${view.id}` : view.name === 'vendor' ? `vendor-${view.id}` : view.name === 'order' ? `order-${view.id}` : view.name
 
   return (
     <NavContext.Provider value={{ view, go, back, toast }}>
@@ -157,7 +161,20 @@ function Shell() {
         <main className="view" key={viewKey}>
           {view.name === 'home' && <Home />}
           {view.name === 'browse' && (
-            <Browse category={view.category} query={view.query} dealsOnly={view.dealsOnly} wishlistOnly={view.wishlistOnly} />
+            <Browse
+              category={view.category}
+              query={view.query}
+              dealsOnly={view.dealsOnly}
+              wishlistOnly={view.wishlistOnly}
+              sort={view.sort}
+              verified={view.verified}
+              instant={view.instant}
+              offers={view.offers}
+              maxPrice={view.maxPrice}
+              minCapacity={view.minCapacity}
+              hourly={view.hourly}
+              compare={view.compare}
+            />
           )}
           {view.name === 'item' && <ItemDetail id={view.id} />}
           {view.name === 'vendor' && <VendorView id={view.id} />}
@@ -166,8 +183,12 @@ function Shell() {
           {view.name === 'profile' && <ProfileView />}
           {view.name === 'post' && <ListSpace />}
           {view.name === 'dashboard' && <HostDashboard />}
-          {view.name === 'support' && <Support />}
+          {view.name === 'support' && <Support orderId={view.orderId} />}
           {view.name === 'services' && <Services />}
+          {view.name === 'wallet' && <WalletView />}
+          {view.name === 'settings' && <SettingsView />}
+          {view.name === 'inbox' && <InboxView />}
+          {view.name === 'order' && <OrderDetailView id={view.id} />}
         </main>
       </div>
 
@@ -182,11 +203,11 @@ function Shell() {
           <span className="nav-ico"><Icon name="cart" /></span>Cart
           {state.cart.length > 0 && <span className="dot">{state.cart.length}</span>}
         </button>
-        <button className={view.name === 'orders' ? 'active' : ''} onClick={() => go({ name: 'orders' })}>
+        <button className={['orders', 'order'].includes(view.name) ? 'active' : ''} onClick={() => go({ name: 'orders' })}>
           <span className="nav-ico"><Icon name="box" /></span>Orders
           {activeOrders > 0 && <span className="dot">{activeOrders}</span>}
         </button>
-        <button className={['profile', 'post', 'dashboard', 'support'].includes(view.name) ? 'active' : ''} onClick={() => go({ name: 'profile' })}>
+        <button className={['profile', 'post', 'dashboard', 'support', 'wallet', 'settings', 'inbox'].includes(view.name) ? 'active' : ''} onClick={() => go({ name: 'profile' })}>
           <span className="nav-ico"><Icon name="user" /></span>Profile
         </button>
       </nav>

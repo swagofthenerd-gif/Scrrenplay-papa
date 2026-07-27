@@ -62,12 +62,9 @@ export function getServices(): Service[] {
       body: 'Spaces bookable by the hour as well as the day, with minimum-hour rules shown upfront.',
       to: { name: 'browse', category: 'studios' },
     },
-    {
-      icon: 'building',
-      title: 'List your space or gear',
-      body: 'Become a vendor in two minutes and keep 90% of every booking.',
-      to: { name: 'post' },
-    },
+    /* "List your space or gear" used to sit here, word-for-word the same pitch as
+       the vendor promo card under the vendor list. Two identical CTAs on one screen
+       read as a bug, so the promo card — which is bigger and better placed — owns it. */
     {
       icon: 'chart',
       title: 'Host dashboard',

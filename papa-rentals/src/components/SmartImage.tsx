@@ -10,7 +10,24 @@ const failed = new Set<string>()
  * network (or a dead URL) lets us down. The fallback is the caller's gradient
  * art, so offline the app simply looks like it did before photos existed.
  */
-export function SmartImage({ src, alt, fallback, eager }: { src: string; alt: string; fallback: ReactNode; eager?: boolean }) {
+/* Intrinsic sizes matching the CSS boxes in styles.css. The containers already
+   reserve space via aspect-ratio, but the attributes let the browser size the
+   image before the CSS lands and stop a decoded photo from repainting the row. */
+const ART_BOX = { card: [400, 300], hero: [800, 600], thumb: [54, 54] } as const
+
+export function SmartImage({
+  src,
+  alt,
+  fallback,
+  eager,
+  box = 'card',
+}: {
+  src: string
+  alt: string
+  fallback: ReactNode
+  eager?: boolean
+  box?: keyof typeof ART_BOX
+}) {
   const [state, setState] = useState<'loading' | 'loaded' | 'error'>(() => (failed.has(src) ? 'error' : 'loading'))
 
   if (state === 'error') return <>{fallback}</>
@@ -21,6 +38,8 @@ export function SmartImage({ src, alt, fallback, eager }: { src: string; alt: st
         className={`art-photo ${state === 'loaded' ? 'loaded' : ''}`}
         src={src}
         alt={alt}
+        width={ART_BOX[box][0]}
+        height={ART_BOX[box][1]}
         loading={eager ? 'eager' : 'lazy'}
         decoding="async"
         onLoad={() => setState('loaded')}
@@ -60,7 +79,7 @@ export function PhotoGallery({ images, alt, fallback, overlay }: { images: strin
       >
         {live.map((src, i) => (
           <div key={src} className="item-art art-hero" style={{ borderRadius: 0 }}>
-            <SmartImage src={src} alt={i === 0 ? alt : `${alt} — photo ${i + 1}`} fallback={fallback} eager={i === 0} />
+            <SmartImage src={src} alt={i === 0 ? alt : `${alt} — photo ${i + 1}`} fallback={fallback} eager={i === 0} box="hero" />
           </div>
         ))}
       </div>

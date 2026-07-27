@@ -402,10 +402,29 @@ ${fee('PapaPoints redeemed', order.pointsUsed, true)}${fee('Wallet credit', orde
 </table>
 <p><small>Papa Rentals (Pvt) Ltd · support@paparentals.pk · This deposit is an authorization hold, not a charge.</small></p>
 </body></html>`
-  const blob = new Blob([html], { type: 'text/html' })
+  // Blob downloads are blocked inside the Android WebView wrapper, so fall back to
+  // rendering the receipt in a new document the user can share or print.
   const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `papa-receipt-${order.id}.html`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 5000)
+  if (typeof a.download === 'string') {
+    try {
+      const blob = new Blob([html], { type: 'text/html' })
+      a.href = URL.createObjectURL(blob)
+      a.download = `papa-receipt-${order.id}.html`
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000)
+      return
+    } catch {
+      /* fall through to the inline renderer */
+    }
+  }
+  const w = window.open('', '_blank')
+  if (w) {
+    w.document.write(html)
+    w.document.close()
+    return
+  }
+  // last resort: replace the current document (WebView with popups disabled)
+  document.open()
+  document.write(html)
+  document.close()
 }

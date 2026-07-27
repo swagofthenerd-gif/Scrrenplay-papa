@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { DRIVER_POOL, PROMO_CODES, RENTER_POOL, getItem, getOwner, syncUserListings } from './data/catalog'
 import type {
   Address, AppNotification, AppState, Booking, ChatMessage, ChatThread,
-  Item, Offer, Order, OrderStatus, OwnerBooking, Review, UserReport,
+  CategoryId, Item, LedgerEntry, Offer, Order, OrderStatus, OwnerBooking, Review, SavedSearch, UserReport,
 } from './types'
 import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, todayISO, uid } from './utils'
 import type { IconName } from './components/icons'
@@ -21,6 +21,10 @@ const initialState: AppState = {
   notifications: [],
   walletBalance: 5000, // welcome credit
   points: 120,
+  ledger: [
+    { id: 'l-welcome', at: Date.now(), kind: 'wallet', amount: 5000, label: 'Welcome credit', cash: false },
+    { id: 'l-signup', at: Date.now(), kind: 'points', amount: 120, label: 'Sign-up bonus' },
+  ],
   myReviews: {},
   reports: [],
   addresses: [
@@ -29,6 +33,7 @@ const initialState: AppState = {
   ],
   selectedAddressId: 'a1',
   recentSearches: [],
+  savedSearches: [],
   recentlyViewed: [],
   blockedOwners: [],
   promoCodesUsed: [],
@@ -45,9 +50,11 @@ export interface PlaceOrderOpts extends TotalsInput {
 }
 
 type Action =
-  | { type: 'SET_PROFILE'; name: string; city: string }
+  | { type: 'SET_PROFILE'; name: string; city: string; onboarded?: boolean }
   | { type: 'ADD_TO_CART'; booking: Booking }
-  | { type: 'REMOVE_FROM_CART'; index: number }
+  | { type: 'UPDATE_CART_LINE'; lineId: string; patch: Partial<Booking> }
+  | { type: 'REMOVE_FROM_CART'; lineId: string }
+  | { type: 'RESTORE_CART_LINE'; booking: Booking; index: number }
   | { type: 'CLEAR_CART' }
   | { type: 'TOGGLE_WISHLIST'; itemId: string }
   | { type: 'PLACE_ORDER'; opts: PlaceOrderOpts }
@@ -60,10 +67,13 @@ type Action =
   | { type: 'ADD_CHAT'; ownerId: string; message: ChatMessage }
   | { type: 'READ_CHAT'; ownerId: string }
   | { type: 'REPORT'; report: UserReport; orderId?: string; block?: string }
+  | { type: 'UNBLOCK_OWNER'; ownerId: string }
   | { type: 'ADD_WALLET'; amount: number }
   | { type: 'ADD_ADDRESS'; address: Address }
   | { type: 'SELECT_ADDRESS'; id: string }
   | { type: 'ADD_RECENT_SEARCH'; q: string }
+  | { type: 'SAVE_SEARCH'; q: string; category?: CategoryId; maxPrice?: number }
+  | { type: 'REMOVE_SAVED_SEARCH'; id: string }
   | { type: 'VIEW_ITEM'; itemId: string }
   | { type: 'READ_NOTIFICATIONS' }
   | { type: 'ADD_LISTING'; item: Item }
@@ -83,6 +93,14 @@ function notify(state: AppState, n: Omit<AppNotification, 'id' | 'at' | 'read'>)
 }
 
 type NotifSpec = Omit<AppNotification, 'id' | 'at' | 'read'>
+
+/** Prepend ledger rows, skipping no-op movements so history stays readable. */
+function record(state: AppState, entries: Omit<LedgerEntry, 'id' | 'at'>[]): LedgerEntry[] {
+  const rows = entries
+    .filter((e) => e.amount !== 0)
+    .map((e) => ({ id: uid(), at: Date.now(), ...e }))
+  return rows.length ? [...rows, ...state.ledger].slice(0, 200) : state.ledger
+}
 
 /** One step forward on the order timeline — used by the manual button AND the auto-advance heartbeat. */
 function stepOrderForward(o: Order): { order: Order; notifs: NotifSpec[] } {
@@ -140,12 +158,19 @@ const OWNER_REPLIES = [
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_PROFILE':
-      return { ...state, profile: { name: action.name, city: action.city, onboarded: true } }
+      return { ...state, profile: { name: action.name, city: action.city, onboarded: action.onboarded ?? true } }
 
     case 'ADD_TO_CART':
-      return { ...state, cart: [...state.cart, action.booking] }
+      return { ...state, cart: [...state.cart, { ...action.booking, id: action.booking.id || uid() }] }
+    case 'UPDATE_CART_LINE':
+      return { ...state, cart: state.cart.map((b) => (b.id === action.lineId ? { ...b, ...action.patch } : b)) }
     case 'REMOVE_FROM_CART':
-      return { ...state, cart: state.cart.filter((_, i) => i !== action.index) }
+      return { ...state, cart: state.cart.filter((b) => b.id !== action.lineId) }
+    case 'RESTORE_CART_LINE': {
+      const cart = [...state.cart]
+      cart.splice(Math.min(action.index, cart.length), 0, action.booking)
+      return { ...state, cart }
+    }
     case 'CLEAR_CART':
       return { ...state, cart: [] }
 
@@ -203,6 +228,11 @@ function reducer(state: AppState, action: Action): AppState {
         orders: [order, ...state.orders],
         walletBalance: state.walletBalance - t.walletUsed,
         points: state.points - t.pointsUsed + pointsEarned,
+        ledger: record(state, [
+          { kind: 'wallet', amount: -t.walletUsed, label: `Paid towards ${order.id}`, orderId: order.id },
+          { kind: 'points', amount: -t.pointsUsed, label: `Redeemed on ${order.id}`, orderId: order.id },
+          { kind: 'points', amount: pointsEarned, label: `Earned on ${order.id}`, orderId: order.id },
+        ]),
         promoCodesUsed: order.promoCode && PROMO_CODES[order.promoCode]?.singleUse
           ? [...state.promoCodesUsed, order.promoCode]
           : state.promoCodesUsed,
@@ -239,6 +269,10 @@ function reducer(state: AppState, action: Action): AppState {
         ),
         walletBalance: state.walletBalance + refund,
         points: state.points + o.pointsUsed - o.pointsEarned,
+        ledger: record(state, [
+          { kind: 'wallet', amount: refund, label: fee > 0 ? `Refund for ${o.id} (less ${fee.toLocaleString()} fee)` : `Refund for ${o.id}`, cash: true, orderId: o.id },
+          { kind: 'points', amount: o.pointsUsed - o.pointsEarned, label: `Points reversed on ${o.id}`, orderId: o.id },
+        ]),
         notifications: notify(state, {
           icon: 'undo', title: `${o.id} cancelled`,
           body: fee > 0 ? `Refunded ${refund.toLocaleString()} to wallet (10% late-cancel fee applied).` : `Fully refunded to your wallet. Deposit hold released.`,
@@ -337,6 +371,9 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, chats: { ...state.chats, [action.ownerId]: { ...thread, unread: 0 } } }
     }
 
+    case 'UNBLOCK_OWNER':
+      return { ...state, blockedOwners: state.blockedOwners.filter((id) => id !== action.ownerId) }
+
     case 'REPORT':
       return {
         ...state,
@@ -352,7 +389,11 @@ function reducer(state: AppState, action: Action): AppState {
       }
 
     case 'ADD_WALLET':
-      return { ...state, walletBalance: state.walletBalance + action.amount }
+      return {
+        ...state,
+        walletBalance: state.walletBalance + action.amount,
+        ledger: record(state, [{ kind: 'wallet', amount: action.amount, label: 'Top-up', cash: true }]),
+      }
 
     case 'ADD_ADDRESS':
       return { ...state, addresses: [...state.addresses, action.address], selectedAddressId: action.address.id }
@@ -364,6 +405,25 @@ function reducer(state: AppState, action: Action): AppState {
       if (!q) return state
       return { ...state, recentSearches: [q, ...state.recentSearches.filter((x) => x.toLowerCase() !== q.toLowerCase())].slice(0, 6) }
     }
+
+    case 'SAVE_SEARCH': {
+      const q = action.q.trim()
+      // "All lighting under 20k" is a real saved search with no typed words in it,
+      // so a category alone is enough — only a search with nothing at all is a no-op.
+      if (!q && !action.category) return state
+      // Same query + same category is the same search — re-saving just refreshes it.
+      const dupe = (s: SavedSearch) => s.q.toLowerCase() === q.toLowerCase() && s.category === action.category
+      return {
+        ...state,
+        savedSearches: [
+          { id: uid(), q, category: action.category, maxPrice: action.maxPrice, createdAt: Date.now() },
+          ...state.savedSearches.filter((s) => !dupe(s)),
+        ].slice(0, 8),
+      }
+    }
+
+    case 'REMOVE_SAVED_SEARCH':
+      return { ...state, savedSearches: state.savedSearches.filter((s) => s.id !== action.id) }
 
     case 'VIEW_ITEM':
       if (state.recentlyViewed[0] === action.itemId) return state
@@ -439,6 +499,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         referralRedeemed: true,
         walletBalance: state.walletBalance + 500,
+        ledger: record(state, [{ kind: 'wallet', amount: 500, label: `Referral ${action.code.trim().toUpperCase()}`, cash: false }]),
         notifications: notify(state, { icon: 'gift', title: 'Referral applied — Rs 500 added', body: 'Your friend gets Rs 500 too. Shukriya!' }),
       }
     }
@@ -704,6 +765,11 @@ const LEGACY_SPACE: Record<string, IconName> = {
 }
 
 function migrate(s: any): any {
+  // cart lines gained stable ids; backfill so older saved carts stay editable
+  const withLineId = (b: any) => (b?.id ? b : { ...b, id: uid() })
+  if (Array.isArray(s.cart)) s.cart = s.cart.map(withLineId)
+  if (Array.isArray(s.orders))
+    s.orders = s.orders.map((o: any) => (Array.isArray(o.lines) ? { ...o, lines: o.lines.map(withLineId) } : o))
   if (Array.isArray(s.notifications))
     s.notifications = s.notifications.map((n: any) =>
       n.icon ? n : { ...n, icon: LEGACY_NOTIF[n.emoji] ?? 'bell', emoji: undefined })

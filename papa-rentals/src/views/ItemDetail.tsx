@@ -28,6 +28,7 @@ export default function ItemDetail({ id }: { id: string }) {
   const [endDate, setEndDate] = useState(todayISO(3))
   const [pickupTime, setPickupTime] = useState('09:00')
   const [qty, setQty] = useState(1)
+  const [starFilter, setStarFilter] = useState<number | null>(null)
   const [unit, setUnit] = useState<RentalUnit>('day')
   const [hours, setHours] = useState(4)
   const [insurance, setInsurance] = useState(item.insuranceRequired || item.deposit >= 100000)
@@ -56,6 +57,7 @@ export default function ItemDetail({ id }: { id: string }) {
   const conflict = findConflict(id, { start: startDate, end: effEnd }, state.orders, state.cart)
   const nextFree = conflict ? nextAvailable(id, effEnd, duration === 0 ? 1 : days, state.orders, state.cart) : null
   const invalidRange = unit === 'day' && endDate < startDate
+  const shownReviews = starFilter == null ? item.reviews : item.reviews.filter((rv) => Math.round(rv.rating) === starFilter)
 
   const wishlisted = state.wishlist.includes(id)
   const thread = state.chats[owner.id]
@@ -63,6 +65,15 @@ export default function ItemDetail({ id }: { id: string }) {
 
   // similarity-ranked: tags + category adjacency + price band + quality
   const alsoRented = useMemo(() => similarItems(id, state, 6), [id, state])
+
+  /* A meaningfully cheaper alternative that is rated just as well. Shown once,
+     quietly — the point is to save the renter money, not to upsell. */
+  const cheaper = useMemo(() => {
+    const c = alsoRented
+      .filter((i) => i.pricePerDay <= item.pricePerDay * 0.8 && i.rating >= item.rating - 0.2)
+      .sort((a, b) => a.pricePerDay - b.pricePerDay)[0]
+    return c ?? null
+  }, [alsoRented, item.pricePerDay, item.rating])
 
   const histo = ratingHistogram(item.rating, item.ratingCount)
   const myReviews = state.myReviews[id] ?? []
@@ -80,7 +91,7 @@ export default function ItemDetail({ id }: { id: string }) {
     dispatch({
       type: 'ADD_TO_CART',
       booking: {
-        itemId: id, startDate, endDate: effEnd, pickupTime, qty, unit, hours,
+        id: uid(), itemId: id, startDate, endDate: effEnd, pickupTime, qty, unit, hours,
         insurance: item.insuranceRequired ? true : insurance, operator, transport, rate, negotiated,
       },
     })
@@ -205,7 +216,31 @@ export default function ItemDetail({ id }: { id: string }) {
                 <p style={{ margin: '6px 0 0' }}>{rv.text}</p>
               </div>
             ))}
-            {item.reviews.map((rv) => (
+            {/* Filtering by star is how people check whether the 1-star reviews
+                are about the gear or about a late delivery. */}
+            <div className="filter-row" style={{ margin: '4px 0 10px' }}>
+              <button className={`filter-chip ${starFilter == null ? 'active' : ''}`} aria-pressed={starFilter == null} onClick={() => setStarFilter(null)}>
+                All {item.reviews.length}
+              </button>
+              {[5, 4, 3, 2, 1].map((s) => {
+                const n = item.reviews.filter((rv) => Math.round(rv.rating) === s).length
+                if (n === 0) return null
+                return (
+                  <button
+                    key={s}
+                    className={`filter-chip chip-ico ${starFilter === s ? 'active' : ''}`}
+                    aria-pressed={starFilter === s}
+                    onClick={() => setStarFilter(starFilter === s ? null : s)}
+                  >
+                    {s} <Icon name="star" size={12} /> {n}
+                  </button>
+                )
+              })}
+            </div>
+            {shownReviews.length === 0 && (
+              <p className="muted small">No {starFilter}-star reviews yet.</p>
+            )}
+            {shownReviews.map((rv) => (
               <div className="review" key={rv.id}>
                 <div className="review-head">
                   <b>{rv.author}</b>
@@ -268,6 +303,12 @@ export default function ItemDetail({ id }: { id: string }) {
               )}
             </div>
 
+            {invalidRange && (
+              <div className="conflict-note" role="alert">
+                <Icon name="warning" size={14} /> The return date is before the start date — pick a later return.
+              </div>
+            )}
+
             <div className="field" style={{ marginTop: 10 }}>
               {transport === 'pickup' ? 'Pickup time' : 'Delivery slot'}
               <div className="slot-row">
@@ -326,7 +367,14 @@ export default function ItemDetail({ id }: { id: string }) {
               />
               <span>
                 <b><Icon name="shield" size={14} /> Papa Damage Protection</b> — {Math.round(INSURANCE_RATE * 100)}% of rental. Covers accidental damage up to full value.
-                {item.insuranceRequired && <b style={{ color: 'var(--accent-dark)' }}> Required for this item.</b>}
+                {item.insuranceRequired && (
+                  <b style={{ color: 'var(--accent-dark)' }}>
+                    {' '}Required by the vendor on this item — it carries a {money(item.deposit)} deposit.
+                  </b>
+                )}
+                {!item.insuranceRequired && item.deposit >= 100000 && (
+                  <span className="muted"> Pre-ticked because the deposit is {money(item.deposit)}; you can remove it.</span>
+                )}
               </span>
             </label>
             <label className="toggle-row">
@@ -375,6 +423,12 @@ export default function ItemDetail({ id }: { id: string }) {
               <div className="price-line"><span>Deposit (hold only — released after return)</span><b>{money(item.deposit * qty)}</b></div>
               <div className="price-line total"><span>Est. charge</span><span>{money(sub + insuranceFee + operatorFee + transportFee)}</span></div>
             </div>
+
+            {cheaper && (
+              <button className="link-btn" style={{ marginTop: 8 }} onClick={() => go({ name: 'item', id: cheaper.id })}>
+                <Icon name="coins" size={13} /> {cheaper.name} rents for {money(cheaper.pricePerDay)}/day — {Math.round((1 - cheaper.pricePerDay / item.pricePerDay) * 100)}% less, rated {cheaper.rating.toFixed(1)}
+              </button>
+            )}
 
             <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={addToCart} disabled={Boolean(conflict) || invalidRange}>
               {conflict ? <><Icon name="ban" size={14} /> Unavailable for these dates</> : item.instantBook ? <><Icon name="bolt" size={14} /> Add to cart — instant book</> : 'Add to cart — request booking'}

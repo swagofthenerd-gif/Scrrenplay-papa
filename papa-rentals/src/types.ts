@@ -112,6 +112,7 @@ export interface TransportOption {
 export type RentalUnit = 'day' | 'hour'
 
 export interface Booking {
+  id: string // stable per cart line, so edits/removals don't depend on array position
   itemId: string
   startDate: string
   endDate: string
@@ -268,6 +269,17 @@ export interface AvailAlert {
   notifyAt: number
 }
 
+/** A search worth coming back to. Renters hunt the same gear every shoot cycle,
+    and retyping "arri 300 daylight" every week is the friction that loses them. */
+export interface SavedSearch {
+  id: string
+  q: string
+  category?: CategoryId
+  /** Price ceiling to watch. Set means "tell me when something fits under this". */
+  maxPrice?: number
+  createdAt: number
+}
+
 export interface Address {
   id: string
   label: string
@@ -281,6 +293,19 @@ export interface Profile {
   onboarded: boolean
 }
 
+/** A single movement of wallet credit or loyalty points. */
+export interface LedgerEntry {
+  id: string
+  at: number
+  kind: 'wallet' | 'points'
+  /** Positive credits the balance, negative debits it. */
+  amount: number
+  label: string
+  /** Wallet credit from promos/referrals can't be withdrawn; refunds can. */
+  cash?: boolean
+  orderId?: string
+}
+
 export interface AppState {
   profile: Profile
   cart: Booking[]
@@ -291,11 +316,15 @@ export interface AppState {
   notifications: AppNotification[]
   walletBalance: number
   points: number
+  /** Every wallet and points movement, newest first. A balance with no history
+      is impossible to trust or to dispute. */
+  ledger: LedgerEntry[]
   myReviews: Record<string, Review[]>
   reports: UserReport[]
   addresses: Address[]
   selectedAddressId: string
   recentSearches: string[]
+  savedSearches: SavedSearch[]
   recentlyViewed: string[]
   blockedOwners: string[]
   promoCodesUsed: string[]

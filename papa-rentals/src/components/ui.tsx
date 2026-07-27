@@ -165,7 +165,7 @@ export function ItemArt({ item, size = 'card' }: { item: Item; size?: 'card' | '
   return (
     <div className={`item-art art-${size}`} style={{ background: cat.gradient }} role="img" aria-label={item.name}>
       {glyph}
-      {item.image && <SmartImage src={item.image} alt="" fallback={null} />}
+      {item.image && <SmartImage src={item.image} alt="" fallback={null} box={size} />}
       {ribbon}
     </div>
   )
@@ -246,7 +246,13 @@ export function ItemCard({
         <div className="item-card-meta">
           <RatingCompact rating={item.rating} count={item.ratingCount} />
           <span className="muted small owner-inline">
-            · {owner.verified && <Icon name="check" size={11} className="ic-verified" />}{owner.name}
+            {/* A bare tick means nothing to a first-time renter and nothing at all
+                to a screen reader — say what it certifies. */}
+            · {owner.verified && (
+              <span title="Verified vendor" aria-label="Verified vendor" role="img">
+                <Icon name="check" size={11} className="ic-verified" />
+              </span>
+            )}{owner.name}
           </span>
         </div>
         <div className="item-card-price">

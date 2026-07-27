@@ -23,6 +23,15 @@ import {
  * grease-pencil orange highlights, panel captions like "SC 03 · CU — LIGHTING".
  */
 
+/* One fixed tagline only ever sells one thing. Rotating them means a returning
+   renter eventually reads all four reasons to stay. */
+const VALUE_PROPS: { icon: React.ComponentProps<typeof Icon>['name']; label: string }[] = [
+  { icon: 'handshake', label: 'Offer your price' },
+  { icon: 'shield', label: 'Damage protection included' },
+  { icon: 'truck', label: 'Delivered to set' },
+  { icon: 'check-circle', label: 'Verified vendors only' },
+]
+
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
 const easeInOut = (t: number) => t * t * (3 - 2 * t)
@@ -41,6 +50,15 @@ export default function StudioHero() {
   const wideRef = useRef<HTMLDivElement>(null)
   const artRef = useRef<HTMLDivElement>(null)
   const [frame, setFrame] = useState(0)
+  const [prop, setProp] = useState(0)
+
+  /* Rotation pauses under prefers-reduced-motion — a tagline swapping itself out
+     mid-read is exactly the kind of motion that setting exists to stop. */
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const t = setInterval(() => setProp((p) => (p + 1) % VALUE_PROPS.length), 4000)
+    return () => clearInterval(t)
+  }, [])
 
   // live per-category stats: count, from-price, live deal
   const stats = useMemo(() => {
@@ -206,7 +224,7 @@ export default function StudioHero() {
                 <div className="studio-offers">
                   {bestOff > 0 && <span className="studio-tag deal"><Icon name="bolt" size={12} /> Up to {bestOff}% off today</span>}
                   {totalDeals > 0 && <span className="studio-tag"><Icon name="ticket" size={12} /> {totalDeals} live deals</span>}
-                  <span className="studio-tag"><Icon name="handshake" size={12} /> Offer your price</span>
+                  <span className="studio-tag"><Icon name={VALUE_PROPS[prop].icon} size={12} /> {VALUE_PROPS[prop].label}</span>
                 </div>
               </div>
             </button>
@@ -243,7 +261,11 @@ export default function StudioHero() {
                   <span className="studio-tag deal"><Icon name="bolt" size={11} /> {active.deals} deal{active.deals > 1 ? 's' : ''}</span>
                 )}
               </div>
-              <div className="studio-caption-cta">Tap the frame to open {active.cat.name} <Icon name="arrow-right" size={12} /></div>
+              {/* A real button, not a hint — the frame is still tappable, but
+                  "tap the frame" is not something a first-time renter tries. */}
+              <button className="studio-caption-cta" onClick={() => go({ name: 'browse', category: active.cat.id })}>
+                Open {active.cat.name} <Icon name="arrow-right" size={12} />
+              </button>
             </>
           ) : (
             <>
@@ -251,7 +273,9 @@ export default function StudioHero() {
                 <b>The studio</b>
                 <span className="muted">{CATEGORIES.length} departments · every rentable on one set</span>
               </div>
-              <div className="studio-caption-cta">Scroll to walk the set <Icon name="arrow-right" size={12} /></div>
+              <button className="studio-caption-cta" onClick={() => go({ name: 'browse' })}>
+                Browse all gear <Icon name="arrow-right" size={12} />
+              </button>
             </>
           )}
         </div>

@@ -14,13 +14,14 @@ const FAQS: [string, string][] = [
   ['My delivery is late — what now?', 'The courier card on your order has a call button and your handover PIN. If the courier is 15+ minutes late, your delivery fee is auto-credited.'],
 ]
 
-export default function Support() {
-  const { back } = useNav()
+export default function Support({ orderId }: { orderId?: string }) {
+  const { back, go } = useNav()
   const { state, dispatch } = useStore()
   const [open, setOpen] = useState<number | null>(null)
   const [text, setText] = useState('')
   const boxRef = useRef<HTMLDivElement>(null)
 
+  const order = orderId ? state.orders.find((o) => o.id === orderId) : undefined
   const thread = state.chats['support']
   const msgs = thread?.messages ?? []
   const typing = Boolean(thread?.typingUntil && thread.typingUntil > Date.now())
@@ -52,6 +53,17 @@ export default function Support() {
         <span className="muted small">24/7 · avg reply 1 min</span>
       </div>
 
+      {order && (
+        <button
+          className="list-row"
+          style={{ width: '100%', cursor: 'pointer', marginBottom: 10 }}
+          onClick={() => go({ name: 'order', id: order.id })}
+        >
+          <span><Icon name="box" size={16} /> About order <b>{order.id}</b></span>
+          <span className="muted small">{order.status.replace('_', ' ')} · {money(order.total)} <Icon name="chevron-right" size={14} /></span>
+        </button>
+      )}
+
       <div className="panel">
         <h3 style={{ fontSize: 15 }}><Icon name="chat" className="h-ico" size={15} /> Chat with Papa Support</h3>
         <div className="chat-box" ref={boxRef} style={{ maxHeight: '38dvh' }}>
@@ -66,7 +78,10 @@ export default function Support() {
           {typing && <div className="typing">Papa Support is typing<i>…</i></div>}
         </div>
         <div className="slot-row" style={{ marginTop: 8 }}>
-          {['Where is my refund?', 'My delivery is late', 'How do claims work?'].map((q) => (
+          {(order
+            ? [`Where is ${order.id}?`, `I need to change ${order.id}`, `Refund status for ${order.id}`]
+            : ['Where is my refund?', 'My delivery is late', 'How do claims work?']
+          ).map((q) => (
             <button key={q} className="slot-chip" onClick={() => send(q)}>{q}</button>
           ))}
         </div>
