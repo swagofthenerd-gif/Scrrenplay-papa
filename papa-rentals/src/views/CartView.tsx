@@ -13,7 +13,7 @@ import {
   lineDuration,
   lineSubtotal,
   money,
-  toISO,
+  shiftBooking,
   todayISO,
   uid,
 } from '../utils'
@@ -35,16 +35,6 @@ function loadKits(): SavedKit[] {
 }
 function storeKits(kits: SavedKit[]) {
   try { localStorage.setItem(KITS_KEY, JSON.stringify(kits)) } catch { /* storage unavailable */ }
-}
-
-/* Move a booking to a new start date without changing how long it runs.
-   Deliberately not daysBetween — that returns billing days (inclusive, floored
-   at 1), which would stretch every line by a day each time it was applied. */
-function shiftBooking(b: Booking, start: string): Booking {
-  const span = Math.max(0, Math.round((new Date(b.endDate).getTime() - new Date(b.startDate).getTime()) / 86400000))
-  const end = new Date(start + 'T00:00:00')
-  end.setDate(end.getDate() + span)
-  return { ...b, startDate: start, endDate: b.unit === 'hour' ? start : toISO(end) }
 }
 
 export default function CartView() {

@@ -32,6 +32,16 @@ export function daysBetween(start: string, end: string): number {
   return Math.max(1, diff + 1) // inclusive of both days, minimum 1 day
 }
 
+/* Move a booking to a new start date without changing how long it runs.
+   Deliberately not daysBetween — that returns billing days (inclusive, floored
+   at 1), so using it here would stretch every line by a day each time. */
+export function shiftBooking(b: Booking, start: string): Booking {
+  const span = Math.max(0, Math.round((new Date(b.endDate).getTime() - new Date(b.startDate).getTime()) / 86400000))
+  const end = new Date(start + 'T00:00:00')
+  end.setDate(end.getDate() + span)
+  return { ...b, startDate: start, endDate: b.unit === 'hour' ? start : toISO(end) }
+}
+
 export function fmtDate(iso: string): string {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }

@@ -3,7 +3,7 @@ import { getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import type { Order, OrderStatus } from '../types'
-import { buzz, daysBetween, downloadReceipt, fmtCountdown, fmtDate, money, todayISO, uid } from '../utils'
+import { buzz, daysBetween, downloadReceipt, fmtCountdown, fmtDate, money, shiftBooking, todayISO, uid } from '../utils'
 import { Badge, ItemArt, Modal, Stars } from '../components/ui'
 import { Icon, type IconName } from '../components/icons'
 import { ReportModal } from './ItemDetail'
@@ -201,13 +201,7 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
     buzz()
     let added = 0
     for (const l of order.lines) {
-      const dur = l.unit === 'hour' ? 1 : Math.round((new Date(l.endDate).getTime() - new Date(l.startDate).getTime()) / 86400000)
-      const start = todayISO(2)
-      const endD = new Date(start + 'T00:00:00')
-      endD.setDate(endD.getDate() + dur)
-      const pad = (n: number) => String(n).padStart(2, '0')
-      const end = `${endD.getFullYear()}-${pad(endD.getMonth() + 1)}-${pad(endD.getDate())}`
-      dispatch({ type: 'ADD_TO_CART', booking: { ...l, id: uid(), startDate: start, endDate: l.unit === 'hour' ? start : end, negotiated: false } })
+      dispatch({ type: 'ADD_TO_CART', booking: { ...shiftBooking(l, todayISO(2)), id: uid(), negotiated: false } })
       added++
     }
     const lostDeal = order.lines.some((l) => l.negotiated)
