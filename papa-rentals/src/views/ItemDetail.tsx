@@ -709,6 +709,7 @@ function OfferModal({ itemId, unit, recommended, onClose }: { itemId: string; un
 /* ---------------- chat: typing indicator, read receipts, replies survive closing ---------------- */
 function ChatModal({ ownerId, ownerName, itemName, onClose }: { ownerId: string; ownerName: string; itemName: string; onClose: () => void }) {
   const { state, dispatch } = useStore()
+  const { go } = useNav()
   const [text, setText] = useState('')
   const boxRef = useRef<HTMLDivElement>(null)
   const thread = state.chats[ownerId]
@@ -744,6 +745,7 @@ function ChatModal({ ownerId, ownerName, itemName, onClose }: { ownerId: string;
           return (
             <div key={m.id} className={`chat-msg ${m.from}`}>
               {m.text}
+              <span className="stamp">{m.time}</span>
               {m.from === 'me' && <span className="ticks">{delivered ? <><Icon name="check" size={12} /><Icon name="check" size={12} /></> : <Icon name="check" size={12} />}</span>}
             </div>
           )
@@ -761,6 +763,14 @@ function ChatModal({ ownerId, ownerName, itemName, onClose }: { ownerId: string;
         />
         <button className="btn btn-primary btn-sm" onClick={send}>Send</button>
       </div>
+      {/* This sheet only ever shows the thread for the listing you're on. Once a
+          conversation has history, the sheet is the wrong place to read it back —
+          the full thread has the day headings and the rest of what you discussed. */}
+      {msgs.length > 0 && (
+        <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={() => { onClose(); go({ name: 'inbox', ownerId }) }}>
+          <Icon name="chat" size={14} /> Open full conversation
+        </button>
+      )}
     </Modal>
   )
 }
