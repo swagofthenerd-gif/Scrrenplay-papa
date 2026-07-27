@@ -26,6 +26,9 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    // Closing search dropped focus on the body, so the next Tab restarted from the
+    // top of the page instead of the search button you just came from.
+    const previous = document.activeElement as HTMLElement | null
     inputRef.current?.focus()
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -34,6 +37,7 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
     return () => {
       document.body.style.overflow = prev
       window.removeEventListener('keydown', onKey)
+      previous?.focus?.()
     }
   }, [onClose])
 
