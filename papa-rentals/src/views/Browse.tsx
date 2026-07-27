@@ -453,7 +453,7 @@ export default function Browse(props: BrowseProps) {
                 <ItemCard
                   item={item}
                   index={idx}
-                  onOpen={() => go({ name: 'item', id: item.id })}
+                  onOpen={() => go({ name: 'item', id: item.id, from: dateFrom, to: dateTo })}
                   wishlisted={state.wishlist.includes(item.id)}
                   onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
                 />

@@ -163,7 +163,7 @@ function Shell() {
           {/* Spread, not a hand-listed set: every filter added to the route was
               one more prop to forget here, and minPrice/maxKm already were. */}
           {view.name === 'browse' && <Browse {...view} />}
-          {view.name === 'item' && <ItemDetail id={view.id} />}
+          {view.name === 'item' && <ItemDetail id={view.id} from={view.from} to={view.to} />}
           {view.name === 'vendor' && <VendorView id={view.id} />}
           {view.name === 'cart' && <CartView />}
           {view.name === 'orders' && <OrdersView />}

@@ -14,7 +14,7 @@ import { Avatar, Icon } from '../components/icons'
 
 const TIME_SLOTS = ['06:00', '09:00', '12:00', '15:00', '18:00']
 
-export default function ItemDetail({ id }: { id: string }) {
+export default function ItemDetail({ id, from, to }: { id: string; from?: string; to?: string }) {
   const item = getItem(id)
   const owner = getOwner(item.ownerId)
   const { go, back, toast } = useNav()
@@ -27,8 +27,10 @@ export default function ItemDetail({ id }: { id: string }) {
   const watchingAvail = state.availAlerts.some((a) => a.itemId === id)
   const watchingPrice = state.priceAlerts.some((a) => a.itemId === id)
 
-  const [startDate, setStartDate] = useState(todayISO(2))
-  const [endDate, setEndDate] = useState(todayISO(3))
+  /* If Browse was filtered to a shoot window, that window is the answer to
+     "what dates" — retyping it here was the most repeated act in the flow. */
+  const [startDate, setStartDate] = useState(from ?? todayISO(2))
+  const [endDate, setEndDate] = useState(to ?? todayISO(3))
   const [pickupTime, setPickupTime] = useState('09:00')
   const [qty, setQty] = useState(1)
   const [starFilter, setStarFilter] = useState<number | null>(null)
