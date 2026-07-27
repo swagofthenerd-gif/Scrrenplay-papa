@@ -72,6 +72,8 @@ type Action =
   | { type: 'ADD_ADDRESS'; address: Address }
   | { type: 'SELECT_ADDRESS'; id: string }
   | { type: 'ADD_RECENT_SEARCH'; q: string }
+  | { type: 'REMOVE_RECENT_SEARCH'; q: string }
+  | { type: 'CLEAR_RECENT_SEARCHES' }
   | { type: 'SAVE_SEARCH'; q: string; category?: CategoryId; maxPrice?: number }
   | { type: 'REMOVE_SAVED_SEARCH'; id: string }
   | { type: 'VIEW_ITEM'; itemId: string }
@@ -405,6 +407,12 @@ function reducer(state: AppState, action: Action): AppState {
       if (!q) return state
       return { ...state, recentSearches: [q, ...state.recentSearches.filter((x) => x.toLowerCase() !== q.toLowerCase())].slice(0, 6) }
     }
+
+    case 'REMOVE_RECENT_SEARCH':
+      return { ...state, recentSearches: state.recentSearches.filter((x) => x !== action.q) }
+
+    case 'CLEAR_RECENT_SEARCHES':
+      return { ...state, recentSearches: [] }
 
     case 'SAVE_SEARCH': {
       const q = action.q.trim()

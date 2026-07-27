@@ -4,13 +4,13 @@ import { useNav } from '../nav'
 import { forYou, similarItems } from '../recs'
 import { vendors } from '../vendors'
 import { useStore } from '../store'
-import { buzz, dealActive, dealEndsAt, fmtCountdown, money, todayISO, uid, weightedRating } from '../utils'
+import { buzz, dealActive, dealEndsAt, fmtCountdown, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
 import { Badge, ItemArt, ItemCard } from '../components/ui'
 import { DeptMark, Icon } from '../components/icons'
 import { VendorCard } from '../components/VendorCard'
 import StudioHero from '../components/StudioHero'
 import ServicesBand from '../components/ServicesBand'
-import type { Item, SavedSearch } from '../types'
+import type { Item } from '../types'
 
 const RAIL_SEEN_KEY = 'papa-rail-impressions'
 
@@ -119,13 +119,6 @@ function JumpBar() {
       ))}
     </nav>
   )
-}
-
-/* A saved search with no typed words still has a category and a price cap, and
-   an empty chip tells the renter nothing about what they saved. */
-function savedLabel(s: SavedSearch): string {
-  const base = s.q || CATEGORIES.find((c) => c.id === s.category)?.name || 'All gear'
-  return s.maxPrice ? `${base} · under ${money(s.maxPrice)}` : base
 }
 
 /* Placeholders while a pull-to-refresh re-rolls the rails. An empty gap reads as

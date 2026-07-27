@@ -496,6 +496,22 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 .filter-chip.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 select.filter-chip { appearance: none; }
 
+/* Removable chip: the label and the X are separate hit targets so a mis-tap on
+   the X doesn't run the search, and a tap on the label never deletes it. */
+.filter-chip.chip-removable { display: inline-flex; align-items: center; gap: 2px; padding: 0 4px 0 0; overflow: hidden; }
+.chip-removable .chip-main {
+  border: 0; background: none; font: inherit; color: inherit; cursor: pointer;
+  padding: 10px 6px 10px 15px; display: inline-flex; align-items: center; gap: 6px;
+}
+.chip-removable .chip-x {
+  border: 0; background: none; color: var(--muted); cursor: pointer; display: inline-flex;
+  align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%;
+}
+.chip-removable .chip-x:active { background: var(--line); }
+
+.search-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.search-sec-head h4 { margin-bottom: 0; }
+
 /* ---------- Detail page ---------- */
 .detail-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 22px; margin-top: 18px; align-items: start; }
 /* grid items default to min-width:auto — without this, wide flex strips

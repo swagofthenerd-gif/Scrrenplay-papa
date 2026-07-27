@@ -1,8 +1,15 @@
-import { CURRENCY, PROMO_CODES, TRANSPORT_OPTIONS, getItem, getOwner } from './data/catalog'
-import type { Booking, DateRange, Item, OfferStatus, Order } from './types'
+import { CATEGORIES, CURRENCY, PROMO_CODES, TRANSPORT_OPTIONS, getItem, getOwner } from './data/catalog'
+import type { Booking, DateRange, Item, OfferStatus, Order, SavedSearch } from './types'
 
 export function money(n: number): string {
   return `${CURRENCY} ${Math.round(n).toLocaleString('en-PK')}`
+}
+
+/* A saved search is a query + optional department + price cap; render it as one
+   readable line so the chip says what it will actually re-run. */
+export function savedLabel(s: SavedSearch): string {
+  const base = s.q || CATEGORIES.find((c) => c.id === s.category)?.name || 'All gear'
+  return s.maxPrice ? `${base} · under ${money(s.maxPrice)}` : base
 }
 
 /* ---------------- dates (local-time correct, not UTC) ---------------- */
