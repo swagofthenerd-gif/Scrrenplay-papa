@@ -37,6 +37,16 @@ function storeKits(kits: SavedKit[]) {
   try { localStorage.setItem(KITS_KEY, JSON.stringify(kits)) } catch { /* storage unavailable */ }
 }
 
+/* Move a booking to a new start date without changing how long it runs.
+   Deliberately not daysBetween — that returns billing days (inclusive, floored
+   at 1), which would stretch every line by a day each time it was applied. */
+function shiftBooking(b: Booking, start: string): Booking {
+  const span = Math.max(0, Math.round((new Date(b.endDate).getTime() - new Date(b.startDate).getTime()) / 86400000))
+  const end = new Date(start + 'T00:00:00')
+  end.setDate(end.getDate() + span)
+  return { ...b, startDate: start, endDate: b.unit === 'hour' ? start : toISO(end) }
+}
+
 export default function CartView() {
   const { go, toast } = useNav()
   const { state, dispatch } = useStore()
@@ -53,24 +63,32 @@ export default function CartView() {
   const [kitOpen, setKitOpen] = useState(false)
   const [addrNote, setAddrNote] = useState('')
   const [kits, setKits] = useState<SavedKit[]>(loadKits)
-  /* Removals are reversible for a few seconds instead of being a dead end. */
-  const [undo, setUndo] = useState<{ label: string; lines: { booking: Booking; index: number }[] } | null>(null)
+  /* Removals are reversible for a few seconds instead of being a dead end.
+     The undo carries its own restore closure, so anything destructive here can
+     use the same bar — cart lines and saved kits both do. */
+  const [undo, setUndo] = useState<{ label: string; restore: () => void } | null>(null)
   const undoTimer = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => () => clearTimeout(undoTimer.current), [])
 
-  function offerUndo(label: string, lines: { booking: Booking; index: number }[]) {
-    setUndo({ label, lines })
+  function offerUndo(label: string, restore: () => void) {
+    setUndo({ label, restore })
     clearTimeout(undoTimer.current)
     undoTimer.current = setTimeout(() => setUndo(null), 7000)
   }
 
+  function offerLineUndo(label: string, lines: { booking: Booking; index: number }[]) {
+    offerUndo(label, () => {
+      // restore in original order so indices land where they were
+      for (const l of [...lines].sort((a, b) => a.index - b.index)) {
+        dispatch({ type: 'RESTORE_CART_LINE', booking: l.booking, index: l.index })
+      }
+    })
+  }
+
   function runUndo() {
     if (!undo) return
-    // restore in original order so indices land where they were
-    for (const l of [...undo.lines].sort((a, b) => a.index - b.index)) {
-      dispatch({ type: 'RESTORE_CART_LINE', booking: l.booking, index: l.index })
-    }
+    undo.restore()
     setUndo(null)
     buzz()
   }
@@ -170,15 +188,16 @@ export default function CartView() {
   function alignDates() {
     const target = shootDays[0]
     buzz()
+    const before = state.cart
     for (const b of state.cart) {
       if (b.startDate === target) continue
-      /* Raw calendar offset, not daysBetween — that one is billing days
-         (inclusive, floored at 1) and would stretch every line by a day. */
-      const span = Math.max(0, Math.round((new Date(b.endDate).getTime() - new Date(b.startDate).getTime()) / 86400000))
-      const end = new Date(target)
-      end.setDate(end.getDate() + span)
-      dispatch({ type: 'UPDATE_CART_LINE', lineId: b.id, patch: { startDate: target, endDate: b.unit === 'hour' ? target : toISO(end) } })
+      const { startDate, endDate } = shiftBooking(b, target)
+      dispatch({ type: 'UPDATE_CART_LINE', lineId: b.id, patch: { startDate, endDate } })
     }
+    // Moving every date at once is a big edit to land with no way back.
+    offerUndo('Dates aligned', () => {
+      for (const b of before) dispatch({ type: 'UPDATE_CART_LINE', lineId: b.id, patch: { startDate: b.startDate, endDate: b.endDate } })
+    })
     toast(`All lines now start ${fmtDate(target)}`)
   }
 
@@ -186,7 +205,7 @@ export default function CartView() {
     const index = state.cart.findIndex((x) => x.id === b.id)
     buzz()
     dispatch({ type: 'REMOVE_FROM_CART', lineId: b.id })
-    offerUndo('Item removed', [{ booking: b, index }])
+    offerLineUndo('Item removed', [{ booking: b, index }])
   }
 
   function saveForLater(b: Booking) {
@@ -194,7 +213,7 @@ export default function CartView() {
     buzz()
     if (!state.wishlist.includes(b.itemId)) dispatch({ type: 'TOGGLE_WISHLIST', itemId: b.itemId })
     dispatch({ type: 'REMOVE_FROM_CART', lineId: b.id })
-    offerUndo('Saved to wishlist', [{ booking: b, index }])
+    offerLineUndo('Saved to wishlist', [{ booking: b, index }])
   }
 
   function saveKit(name: string) {
@@ -205,10 +224,21 @@ export default function CartView() {
     toast(`Saved “${name}” — load it any time from an empty cart`)
   }
 
+  /* A kit is a dozen taps of work behind one word. Deleting it sat next to
+     "Load" with no confirm and no way back — the undo bar costs nothing. */
   function removeKit(name: string) {
+    const index = kits.findIndex((k) => k.name === name)
+    const gone = kits[index]
+    if (!gone) return
     const next = kits.filter((k) => k.name !== name)
     setKits(next)
     storeKits(next)
+    offerUndo(`Deleted “${name}”`, () => {
+      const restored = [...next]
+      restored.splice(index, 0, gone)
+      setKits(restored)
+      storeKits(restored)
+    })
   }
 
   /* Dates from a kit saved weeks ago are stale, so every line comes back on a
@@ -217,12 +247,7 @@ export default function CartView() {
     buzz()
     const start = todayISO(2)
     for (const l of kit.lines) {
-      const span = Math.max(0, Math.round((new Date(l.endDate).getTime() - new Date(l.startDate).getTime()) / 86400000))
-      const endD = new Date(start + 'T00:00:00')
-      endD.setDate(endD.getDate() + span)
-      const pad = (n: number) => String(n).padStart(2, '0')
-      const end = `${endD.getFullYear()}-${pad(endD.getMonth() + 1)}-${pad(endD.getDate())}`
-      dispatch({ type: 'ADD_TO_CART', booking: { ...l, id: uid(), startDate: start, endDate: l.unit === 'hour' ? start : end, negotiated: false } })
+      dispatch({ type: 'ADD_TO_CART', booking: { ...shiftBooking(l, start), id: uid(), negotiated: false } })
     }
     toast(`${kit.name} loaded — check the dates before paying`)
   }
@@ -231,7 +256,7 @@ export default function CartView() {
     const snapshot = state.cart.map((booking, index) => ({ booking, index }))
     dispatch({ type: 'CLEAR_CART' })
     setConfirmClear(false)
-    offerUndo('Cart cleared', snapshot)
+    offerLineUndo('Cart cleared', snapshot)
   }
 
   function placeOrder() {
