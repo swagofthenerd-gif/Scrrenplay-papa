@@ -42,7 +42,13 @@ export default function OrderDetailView({ id }: { id: string }) {
     )
   }
 
-  const owner = getOwner(getItem(order.lines[0].itemId).ownerId)
+  /* A cart can span vendors, and this panel used to show whoever happened to own
+     line one — so a three-vendor order offered one name and a Message button that
+     reached the wrong person for two thirds of the gear. */
+  const owners = [...new Map(order.lines.map((l) => {
+    const o = getOwner(getItem(l.itemId).ownerId)
+    return [o.id, o] as const
+  })).values()]
 
   function calendarFile() {
     const line = order!.lines[0]
@@ -166,22 +172,28 @@ export default function OrderDetailView({ id }: { id: string }) {
       {(order.status === 'in_use' || order.status === 'returned') && <ReturnChecklist orderId={order.id} />}
 
       <div className="panel" style={{ marginTop: 14 }}>
-        <h3 style={{ fontSize: 15 }}><Icon name="store" size={16} /> Vendor</h3>
-        <div className="owner-row">
-          <Avatar name={owner.name} id={owner.id} size={40} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <b>{owner.name} {owner.verified && <Badge tone="green"><Icon name="check" size={13} /> Verified</Badge>}</b>
-            <div className="muted small">{owner.area} · replies in ~{owner.responseMins} min</div>
+        <h3 style={{ fontSize: 15 }}>
+          <Icon name="store" size={16} /> {owners.length > 1 ? `${owners.length} vendors` : 'Vendor'}
+        </h3>
+        {owners.map((owner) => (
+          <div key={owner.id} style={{ marginTop: 8 }}>
+            <div className="owner-row">
+              <Avatar name={owner.name} id={owner.id} size={40} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b>{owner.name} {owner.verified && <Badge tone="green"><Icon name="check" size={13} /> Verified</Badge>}</b>
+                <div className="muted small">{owner.area} · replies in ~{owner.responseMins} min</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => go({ name: 'inbox', ownerId: owner.id })}>
+                <Icon name="chat" size={14} /> Message
+              </button>
+              <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => go({ name: 'vendor', id: owner.id })}>
+                <Icon name="store" size={14} /> Vendor page
+              </button>
+            </div>
           </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => go({ name: 'inbox', ownerId: owner.id })}>
-            <Icon name="chat" size={14} /> Message
-          </button>
-          <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => go({ name: 'vendor', id: owner.id })}>
-            <Icon name="store" size={14} /> Vendor page
-          </button>
-        </div>
+        ))}
       </div>
 
       <button className="btn btn-ghost btn-block" style={{ marginTop: 14 }} onClick={() => go({ name: 'support', orderId: order.id })}>
