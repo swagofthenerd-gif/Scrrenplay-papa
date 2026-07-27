@@ -160,22 +160,9 @@ function Shell() {
 
         <main className="view" key={viewKey}>
           {view.name === 'home' && <Home />}
-          {view.name === 'browse' && (
-            <Browse
-              category={view.category}
-              query={view.query}
-              dealsOnly={view.dealsOnly}
-              wishlistOnly={view.wishlistOnly}
-              sort={view.sort}
-              verified={view.verified}
-              instant={view.instant}
-              offers={view.offers}
-              maxPrice={view.maxPrice}
-              minCapacity={view.minCapacity}
-              hourly={view.hourly}
-              compare={view.compare}
-            />
-          )}
+          {/* Spread, not a hand-listed set: every filter added to the route was
+              one more prop to forget here, and minPrice/maxKm already were. */}
+          {view.name === 'browse' && <Browse {...view} />}
           {view.name === 'item' && <ItemDetail id={view.id} />}
           {view.name === 'vendor' && <VendorView id={view.id} />}
           {view.name === 'cart' && <CartView />}

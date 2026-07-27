@@ -5,7 +5,7 @@ import { Modal } from '../components/ui'
 import { money } from '../utils'
 import { useNav, type BrowseSort, type View } from '../nav'
 import { useStore } from '../store'
-import { daysBetween, dealActive, didYouMean, fuzzyMatch, recommendedRate, refineTags, searchRank, todayISO, uid, weightedRating, buzz } from '../utils'
+import { daysBetween, dealActive, didYouMean, findConflict, fmtDate, fuzzyMatch, recommendedRate, refineTags, searchRank, todayISO, uid, weightedRating, buzz } from '../utils'
 import { ItemCard, RatingCompact } from '../components/ui'
 import { DeptMark, Icon, type IconName } from '../components/icons'
 import type { CategoryId, Item } from '../types'
@@ -50,6 +50,8 @@ type BrowseProps = {
   minCapacity?: number
   maxKm?: number
   hourly?: boolean
+  from?: string
+  to?: string
   compare?: string[]
 }
 
@@ -66,6 +68,7 @@ export default function Browse(props: BrowseProps) {
   const instantOnly = Boolean(props.instant)
   const offersOnly = Boolean(props.offers)
   const hourlyOnly = Boolean(props.hourly)
+  const { from: dateFrom, to: dateTo } = props
   const compare = props.compare ?? []
   const [compareOpen, setCompareOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -120,6 +123,11 @@ export default function Browse(props: BrowseProps) {
     /* Sorting by nearest still lists a lens 40 km away at the bottom. Capping the
        radius is what actually answers "what can I pick up today". */
     if (maxKm) list = list.filter((i) => getOwner(i.ownerId).distanceKm <= maxKm)
+    /* "Is it free the week I shoot" is the question every other filter is a
+       proxy for. Checking it here beats opening ten items to find out. */
+    if (dateFrom && dateTo) {
+      list = list.filter((i) => !findConflict(i.id, { start: dateFrom, end: dateTo }, state.orders, state.cart))
+    }
     // distance is looked up once per item, not once per comparator call
     const dist = new Map<string, number>(list.map((i) => [i.id, getOwner(i.ownerId).distanceKm]))
     const sorted = [...list]
@@ -136,7 +144,7 @@ export default function Browse(props: BrowseProps) {
       default: sorted.sort((a, b) => b.timesRented - a.timesRented)
     }
     return sorted
-  }, [pool, haystacks, category, query, dealsOnly, wishlistOnly, sort, verifiedOnly, instantOnly, offersOnly, minPrice, maxPrice, minCapacity, maxKm, hourlyOnly, state.wishlist])
+  }, [pool, haystacks, category, query, dealsOnly, wishlistOnly, sort, verifiedOnly, instantOnly, offersOnly, minPrice, maxPrice, minCapacity, maxKm, hourlyOnly, dateFrom, dateTo, state.orders, state.cart, state.wishlist])
 
   /* Buckets come from the department you are in, before the price cut is applied. */
   const buckets = useMemo(
@@ -213,6 +221,7 @@ export default function Browse(props: BrowseProps) {
   if (minCapacity) pills.push({ label: `${minCapacity}+ crew`, clear: { minCapacity: undefined } })
   if (maxKm) pills.push({ label: `Within ${maxKm} km`, clear: { maxKm: undefined } })
   if (hourlyOnly) pills.push({ label: 'Hourly OK', clear: { hourly: false } })
+  if (dateFrom && dateTo) pills.push({ label: `Free ${fmtDate(dateFrom)}–${fmtDate(dateTo)}`, clear: { from: undefined, to: undefined } })
   const activeFilters = pills.length
   /* The most recently added filter is the one most likely to have emptied the
      list, so that is the one the empty state offers to undo. */
@@ -498,6 +507,40 @@ export default function Browse(props: BrowseProps) {
 
       {sheetOpen && (
         <Modal title="Filters" onClose={() => setSheetOpen(false)}>
+          <div className="sheet-group">
+            <div className="sheet-label">Available on my dates</div>
+            {/* Only applied once both ends are set — a half-entered range would
+                silently empty the list while the renter is still typing. */}
+            <div className="date-pair">
+              <label className="date-field">
+                <span className="muted small">From</span>
+                <input
+                  type="date"
+                  min={todayISO()}
+                  value={dateFrom ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value || undefined
+                    patch({ from: v, to: dateTo && v && dateTo < v ? v : dateTo })
+                  }}
+                />
+              </label>
+              <label className="date-field">
+                <span className="muted small">To</span>
+                <input
+                  type="date"
+                  min={dateFrom || todayISO()}
+                  value={dateTo ?? ''}
+                  onChange={(e) => patch({ to: e.target.value || undefined })}
+                />
+              </label>
+            </div>
+            {dateFrom && dateTo ? (
+              <button className="link-btn" onClick={() => { buzz(); patch({ from: undefined, to: undefined }) }}>Clear dates</button>
+            ) : (
+              (dateFrom || dateTo) && <div className="muted small">Pick both dates to filter by availability.</div>
+            )}
+          </div>
+
           <div className="sheet-group">
             <div className="sheet-label">Price per day</div>
             {/* Two handles over one track: the pair reads as a range, and each
