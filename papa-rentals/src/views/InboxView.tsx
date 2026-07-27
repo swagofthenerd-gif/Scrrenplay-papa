@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { useStore } from '../store'
@@ -63,6 +63,15 @@ export default function InboxView() {
   )
 }
 
+function dayHeading(at: number): string {
+  const d = new Date(at)
+  const today = new Date()
+  const yesterday = new Date(today.getTime() - 86400000)
+  if (d.toDateString() === today.toDateString()) return 'Today'
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
 function Thread({ ownerId, onBack }: { ownerId: string; onBack: () => void }) {
   const { go } = useNav()
   const { state, dispatch } = useStore()
@@ -115,11 +124,20 @@ function Thread({ ownerId, onBack }: { ownerId: string; onBack: () => void }) {
       <div className="chat-box" ref={boxRef} style={{ maxHeight: '58vh' }}>
         {msgs.map((m, i) => {
           const delivered = m.from === 'me' && msgs.slice(i + 1).some((x) => x.from === 'owner')
+          /* Every message already carried a time and nothing ever showed it, so a
+             reply from three weeks ago read exactly like one from a minute ago —
+             which matters when you're deciding whether to wait or call. */
+          const prev = msgs[i - 1]
+          const dayLabel = !prev || new Date(prev.at).toDateString() !== new Date(m.at).toDateString() ? dayHeading(m.at) : null
           return (
-            <div key={m.id} className={`chat-msg ${m.from}`}>
-              {m.text}
-              {m.from === 'me' && <span className="ticks">{delivered ? <><Icon name="check" size={12} /><Icon name="check" size={12} /></> : <Icon name="check" size={12} />}</span>}
-            </div>
+            <Fragment key={m.id}>
+              {dayLabel && <div className="chat-day">{dayLabel}</div>}
+              <div className={`chat-msg ${m.from}`}>
+                {m.text}
+                <span className="stamp">{m.time}</span>
+                {m.from === 'me' && <span className="ticks">{delivered ? <><Icon name="check" size={12} /><Icon name="check" size={12} /></> : <Icon name="check" size={12} />}</span>}
+              </div>
+            </Fragment>
           )
         })}
         {typing && <div className="typing">{name} is typing<i>…</i></div>}
