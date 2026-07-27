@@ -95,7 +95,7 @@ export default function Browse(props: BrowseProps) {
     return m
   }, [pool])
 
-  const items = useMemo(() => {
+  const result = useMemo(() => {
     let list = pool
     if (category) list = list.filter((i) => i.category === category)
     if (dealsOnly) list = list.filter((i) => dealActive(i.id))
@@ -114,8 +114,11 @@ export default function Browse(props: BrowseProps) {
     if (maxKm) list = list.filter((i) => getOwner(i.ownerId).distanceKm <= maxKm)
     /* "Is it free the week I shoot" is the question every other filter is a
        proxy for. Checking it here beats opening ten items to find out. */
+    let busy = 0
     if (dateFrom && dateTo) {
+      const before = list.length
       list = list.filter((i) => !findConflict(i.id, { start: dateFrom, end: dateTo }, state.orders, state.cart))
+      busy = before - list.length
     }
     // distance is looked up once per item, not once per comparator call
     const dist = new Map<string, number>(list.map((i) => [i.id, getOwner(i.ownerId).distanceKm]))
@@ -132,8 +135,10 @@ export default function Browse(props: BrowseProps) {
       case 'nearest': sorted.sort((a, b) => (dist.get(a.id) ?? 0) - (dist.get(b.id) ?? 0)); break
       default: sorted.sort((a, b) => b.timesRented - a.timesRented)
     }
-    return sorted
+    return { sorted, busy }
   }, [pool, haystacks, category, query, dealsOnly, wishlistOnly, sort, verifiedOnly, instantOnly, offersOnly, minPrice, maxPrice, minCapacity, maxKm, hourlyOnly, dateFrom, dateTo, state.orders, state.cart, state.wishlist])
+  const items = result.sorted
+  const busyOnDates = result.busy
 
   /* Buckets come from the department you are in, before the price cut is applied. */
   const buckets = useMemo(
@@ -307,6 +312,16 @@ export default function Browse(props: BrowseProps) {
             </button>
           ))}
         </div>
+
+        {/* A date filter that quietly removes half the department reads as a thin
+            catalogue. Naming what it hid — and offering the gear back — keeps the
+            filter honest about being a filter. */}
+        {busyOnDates > 0 && (
+          <div className="muted small" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span>{busyOnDates} more {busyOnDates === 1 ? 'listing is' : 'listings are'} booked on those dates.</span>
+            <button className="link-btn" onClick={() => { buzz(); patch({ from: undefined, to: undefined }) }}>Show them anyway</button>
+          </div>
+        )}
 
         {remembered && (
           <button
