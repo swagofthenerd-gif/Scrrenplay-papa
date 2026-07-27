@@ -33,6 +33,7 @@ type BrowseProps = {
   verified?: boolean
   instant?: boolean
   offers?: boolean
+  minPrice?: number
   maxPrice?: number
   minCapacity?: number
   hourly?: boolean
@@ -40,7 +41,7 @@ type BrowseProps = {
 }
 
 export default function Browse(props: BrowseProps) {
-  const { category, query, dealsOnly, wishlistOnly, maxPrice, minCapacity } = props
+  const { category, query, dealsOnly, wishlistOnly, minPrice, maxPrice, minCapacity } = props
   const { go, back, toast } = useNav()
   const { state, dispatch } = useStore()
   const saved = state.savedSearches.find(
@@ -54,6 +55,7 @@ export default function Browse(props: BrowseProps) {
   const hourlyOnly = Boolean(props.hourly)
   const compare = props.compare ?? []
   const [compareOpen, setCompareOpen] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [dense, setDense] = useState(false)
   /* Long result sets render in pages — 200 cards mounted at once is what makes
      the filter chips feel laggy on a mid-range Android. */
@@ -98,6 +100,7 @@ export default function Browse(props: BrowseProps) {
     if (verifiedOnly) list = list.filter((i) => getOwner(i.ownerId).verified)
     if (instantOnly) list = list.filter((i) => i.instantBook)
     if (offersOnly) list = list.filter((i) => i.offersAccepted)
+    if (minPrice) list = list.filter((i) => i.pricePerDay >= minPrice)
     if (maxPrice) list = list.filter((i) => i.pricePerDay <= maxPrice)
     if (minCapacity) list = list.filter((i) => (i.space?.capacity ?? 0) >= minCapacity)
     if (hourlyOnly) list = list.filter((i) => i.hourly)
@@ -117,13 +120,24 @@ export default function Browse(props: BrowseProps) {
       default: sorted.sort((a, b) => b.timesRented - a.timesRented)
     }
     return sorted
-  }, [pool, haystacks, category, query, dealsOnly, wishlistOnly, sort, verifiedOnly, instantOnly, offersOnly, maxPrice, minCapacity, hourlyOnly, state.wishlist])
+  }, [pool, haystacks, category, query, dealsOnly, wishlistOnly, sort, verifiedOnly, instantOnly, offersOnly, minPrice, maxPrice, minCapacity, hourlyOnly, state.wishlist])
 
   /* Buckets come from the department you are in, before the price cut is applied. */
   const buckets = useMemo(
     () => priceBuckets(category ? pool.filter((i) => i.category === category) : pool),
     [pool, category]
   )
+
+  /* Range handles need real end-stops, not a guessed 0–100k. A slider whose top
+     half is empty makes every drag feel broken. */
+  const priceRange = useMemo(() => {
+    const scoped = category ? pool.filter((i) => i.category === category) : pool
+    const prices = scoped.map((i) => i.pricePerDay)
+    if (prices.length === 0) return { lo: 0, hi: 1000, step: 100 }
+    const lo = Math.floor(Math.min(...prices) / 100) * 100
+    const hi = Math.ceil(Math.max(...prices) / 100) * 100
+    return { lo, hi, step: Math.max(100, Math.round((hi - lo) / 40 / 100) * 100) }
+  }, [pool, category])
 
   useEffect(() => setShown(PAGE), [items])
 
@@ -132,6 +146,7 @@ export default function Browse(props: BrowseProps) {
   if (verifiedOnly) pills.push({ label: 'Verified', clear: { verified: false } })
   if (instantOnly) pills.push({ label: 'Instant', clear: { instant: false } })
   if (offersOnly) pills.push({ label: 'Offers OK', clear: { offers: false } })
+  if (minPrice) pills.push({ label: `Over ${money(minPrice)}/day`, clear: { minPrice: undefined } })
   if (maxPrice) pills.push({ label: `Under ${money(maxPrice)}/day`, clear: { maxPrice: undefined } })
   if (minCapacity) pills.push({ label: `${minCapacity}+ crew`, clear: { minCapacity: undefined } })
   if (hourlyOnly) pills.push({ label: 'Hourly OK', clear: { hourly: false } })
@@ -238,6 +253,16 @@ export default function Browse(props: BrowseProps) {
         </div>
 
         <div className="filter-row">
+          {/* The chip row runs off the edge of a phone once four filters are on.
+              One button that owns all of them — and says how many are live — is
+              the difference between "filters exist" and "filters get used". */}
+          <button
+            className={`filter-chip chip-ico ${activeFilters > 0 ? 'active' : ''}`}
+            onClick={() => { buzz(); setSheetOpen(true) }}
+          >
+            <Icon name="sliders" size={14} /> Filters
+            {activeFilters > 0 && <span className="filter-count">{activeFilters}</span>}
+          </button>
           <button className={`filter-chip chip-ico ${verifiedOnly ? 'active' : ''}`} aria-pressed={verifiedOnly} onClick={() => patch({ verified: !verifiedOnly })}>
             <Icon name="check" size={14} /> Verified
           </button>
@@ -380,6 +405,101 @@ export default function Browse(props: BrowseProps) {
           <button className="btn btn-ghost btn-sm" style={{ color: 'var(--bg)', borderColor: 'var(--muted)' }} onClick={() => patch({ compare: [] })}>Clear</button>
           <button className="btn btn-primary btn-sm" disabled={compare.length < 2} onClick={() => setCompareOpen(true)}>Compare</button>
         </div>
+      )}
+
+      {sheetOpen && (
+        <Modal title="Filters" onClose={() => setSheetOpen(false)}>
+          <div className="sheet-group">
+            <div className="sheet-label">Price per day</div>
+            {/* Two handles over one track: the pair reads as a range, and each
+                input keeps its own keyboard focus for screen-reader users. */}
+            <div className="range-pair">
+              <input
+                type="range"
+                min={priceRange.lo}
+                max={priceRange.hi}
+                step={priceRange.step}
+                value={minPrice ?? priceRange.lo}
+                aria-label="Minimum price per day"
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  patch({ minPrice: v <= priceRange.lo ? undefined : Math.min(v, (maxPrice ?? priceRange.hi) - priceRange.step) })
+                }}
+              />
+              <input
+                type="range"
+                min={priceRange.lo}
+                max={priceRange.hi}
+                step={priceRange.step}
+                value={maxPrice ?? priceRange.hi}
+                aria-label="Maximum price per day"
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  patch({ maxPrice: v >= priceRange.hi ? undefined : Math.max(v, (minPrice ?? priceRange.lo) + priceRange.step) })
+                }}
+              />
+            </div>
+            <div className="muted small">
+              {money(minPrice ?? priceRange.lo)} – {maxPrice ? money(maxPrice) : `${money(priceRange.hi)}+`} per day
+            </div>
+          </div>
+
+          <div className="sheet-group">
+            <div className="sheet-label">Trust &amp; booking</div>
+            <div className="filter-row">
+              <button className={`filter-chip chip-ico ${verifiedOnly ? 'active' : ''}`} aria-pressed={verifiedOnly} onClick={() => patch({ verified: !verifiedOnly })}>
+                <Icon name="check" size={14} /> Verified
+              </button>
+              <button className={`filter-chip chip-ico ${instantOnly ? 'active' : ''}`} aria-pressed={instantOnly} onClick={() => patch({ instant: !instantOnly })}>
+                <Icon name="bolt" size={14} /> Instant
+              </button>
+              <button className={`filter-chip chip-ico ${offersOnly ? 'active' : ''}`} aria-pressed={offersOnly} onClick={() => patch({ offers: !offersOnly })}>
+                <Icon name="handshake" size={14} /> Offers OK
+              </button>
+            </div>
+          </div>
+
+          {category === 'studios' && (
+            <div className="sheet-group">
+              <div className="sheet-label">Space</div>
+              <div className="filter-row">
+                <button className={`filter-chip chip-ico ${hourlyOnly ? 'active' : ''}`} aria-pressed={hourlyOnly} onClick={() => patch({ hourly: !hourlyOnly })}>
+                  <Icon name="clock" size={14} /> Hourly OK
+                </button>
+                <select
+                  className="filter-chip"
+                  value={minCapacity ?? ''}
+                  onChange={(e) => patch({ minCapacity: e.target.value ? Number(e.target.value) : undefined })}
+                  aria-label="Crew size"
+                >
+                  <option value="">Any crew size</option>
+                  <option value="15">15+ crew</option>
+                  <option value="30">30+ crew</option>
+                  <option value="60">60+ crew</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          <div className="sheet-group">
+            <div className="sheet-label">Sort by</div>
+            <select className="filter-chip" style={{ width: '100%' }} value={sort} onChange={(e) => patch({ sort: e.target.value as BrowseSort })} aria-label="Sort">
+              {query && <option value="relevance">Best match</option>}
+              <option value="popular">Most rented</option>
+              <option value="rating">Top rated</option>
+              <option value="nearest">Nearest first</option>
+              <option value="price_asc">Price: low to high</option>
+              <option value="price_desc">Price: high to low</option>
+            </select>
+          </div>
+
+          <div className="sheet-actions">
+            <button className="btn btn-ghost" disabled={activeFilters === 0} onClick={() => { buzz(); clearAll() }}>Clear all</button>
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { buzz(); setSheetOpen(false) }}>
+              Show {items.length} {items.length === 1 ? 'result' : 'results'}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {compareOpen && <CompareModal ids={compare} onClose={() => setCompareOpen(false)} onOpen={(id) => { setCompareOpen(false); go({ name: 'item', id }) }} />}

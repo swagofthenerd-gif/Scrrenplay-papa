@@ -1134,3 +1134,42 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
 /* Keep the last panel clear of the bar. */
 .view:has(.pay-bar) { padding-bottom: 96px; }
 @media (min-width: 900px) { .pay-bar { display: none; } }
+
+/* filter chip count: the sheet button has to say how much is hidden inside it,
+   otherwise a filtered list looks identical to an unfiltered one */
+.filter-count {
+  display: inline-grid; place-items: center; min-width: 17px; height: 17px;
+  margin-left: 4px; padding: 0 4px; border-radius: 9px;
+  background: #fff; color: #111; font-size: 11px; font-weight: 700; line-height: 1;
+}
+
+/* filters sheet */
+.sheet-group { margin-bottom: 20px; }
+.sheet-label { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.sheet-actions { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+
+/* dual-handle range: both inputs stack on one track, and only the thumbs take
+   pointer events so the lower handle stays grabbable under the upper one */
+.range-pair { position: relative; height: 34px; }
+.range-pair input[type='range'] {
+  position: absolute; left: 0; right: 0; top: 6px; height: 22px; width: 100%; margin: 0;
+  -webkit-appearance: none; appearance: none;
+  background: none; pointer-events: none; outline: none;
+}
+/* the input spans the whole track, so a default focus ring draws a box around
+   the entire row — put the ring on the thumb, where the focus actually is */
+.range-pair input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--accent-soft), 0 1px 3px rgba(0,0,0,.3); }
+.range-pair input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--accent-soft); }
+.range-pair input[type='range']::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px; background: var(--line);
+}
+.range-pair input[type='range']::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line); }
+.range-pair input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; pointer-events: auto;
+  width: 22px; height: 22px; margin-top: -9px; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  background: var(--accent); border: 2px solid var(--card); cursor: pointer;
+}
+.range-pair input[type='range']::-moz-range-thumb {
+  pointer-events: auto; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--card); cursor: pointer;
+}

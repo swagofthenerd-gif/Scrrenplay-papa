@@ -17,6 +17,7 @@ export type View =
       verified?: boolean
       instant?: boolean
       offers?: boolean
+      minPrice?: number
       maxPrice?: number
       minCapacity?: number
       hourly?: boolean
@@ -62,6 +63,7 @@ export function viewToHash(v: View): string {
       if (v.verified) p.set('ver', '1')
       if (v.instant) p.set('inst', '1')
       if (v.offers) p.set('off', '1')
+      if (v.minPrice) p.set('min', String(v.minPrice))
       if (v.maxPrice) p.set('max', String(v.maxPrice))
       if (v.minCapacity) p.set('cap', String(v.minCapacity))
       if (v.hourly) p.set('hr', '1')
@@ -106,6 +108,7 @@ export function parseHash(hash: string): View {
       verified: p.get('ver') === '1',
       instant: p.get('inst') === '1',
       offers: p.get('off') === '1',
+      minPrice: num('min'),
       maxPrice: num('max'),
       minCapacity: num('cap'),
       hourly: p.get('hr') === '1',
