@@ -13,6 +13,7 @@ import {
   lineDuration,
   lineSubtotal,
   money,
+  toISO,
   todayISO,
   uid,
 } from '../utils'
@@ -164,6 +165,23 @@ export default function CartView() {
     [state.cart]
   )
 
+  /* Shift each line to the earliest start, keeping its own length — a 3-day
+     camera stays 3 days, it just starts when everything else does. */
+  function alignDates() {
+    const target = shootDays[0]
+    buzz()
+    for (const b of state.cart) {
+      if (b.startDate === target) continue
+      /* Raw calendar offset, not daysBetween — that one is billing days
+         (inclusive, floored at 1) and would stretch every line by a day. */
+      const span = Math.max(0, Math.round((new Date(b.endDate).getTime() - new Date(b.startDate).getTime()) / 86400000))
+      const end = new Date(target)
+      end.setDate(end.getDate() + span)
+      dispatch({ type: 'UPDATE_CART_LINE', lineId: b.id, patch: { startDate: target, endDate: b.unit === 'hour' ? target : toISO(end) } })
+    }
+    toast(`All lines now start ${fmtDate(target)}`)
+  }
+
   function removeLine(b: Booking) {
     const index = state.cart.findIndex((x) => x.id === b.id)
     buzz()
@@ -295,6 +313,11 @@ export default function CartView() {
       {shootDays.length > 1 && (
         <p className="muted small" style={{ margin: '0 0 8px' }}>
           <Icon name="calendar" size={13} /> {shootDays.length} shoot days in this cart: {shootDays.map((d) => fmtDate(d)).join(' · ')}
+          {/* Mismatched start dates are almost always an accident of when each
+              item was added, not a plan — and they split one shoot into two
+              deliveries. One tap to put the whole cart on the same morning. */}
+          {' · '}
+          <button className="link-btn" onClick={alignDates}>Put them all on {fmtDate(shootDays[0])}</button>
         </p>
       )}
 
