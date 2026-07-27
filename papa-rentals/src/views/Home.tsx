@@ -239,14 +239,6 @@ export default function Home() {
   const seed: Item | undefined = recentlyViewed.length ? recentlyViewed[shuffle % Math.min(recentlyViewed.length, 3)] : undefined
   const becauseViewed = useMemo(() => (seed ? similarItems(seed.id, state, 6) : []), [seed, state])
 
-  /* Cheapest live price per department — a chip that says "from Rs X" is worth
-     three that just say a name. */
-  const catFrom = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const i of visible) m.set(i.category, Math.min(m.get(i.category) ?? Infinity, i.pricePerDay))
-    return m
-  }, [visible])
-
   /* Well-rated gear that hasn't been discovered yet — surfaces the long tail
      instead of showing the same top-sellers in three different rails. */
   const hiddenGems = useMemo(
@@ -390,21 +382,16 @@ export default function Home() {
           </span>
         </div>
         <div className="cat-row">
-          {CATEGORIES.map((c) => {
-            const from = catFrom.get(c.id)
-            return (
-              <button
-                key={c.id}
-                className="cat-chip"
-                aria-label={from ? `${c.name}, from ${money(from)} per day` : c.name}
-                onClick={() => go({ name: 'browse', category: c.id })}
-              >
-                <span className="cat-ico" aria-hidden="true"><DeptMark id={c.id} size={44} /></span>
-                {c.name}
-                {from != null && <span className="muted small" style={{ display: 'block' }}>from {money(from)}</span>}
-              </button>
-            )
-          })}
+          {CATEGORIES.map((c) => (
+            <button
+              key={c.id}
+              className="cat-chip"
+              onClick={() => go({ name: 'browse', category: c.id })}
+            >
+              <span className="cat-ico" aria-hidden="true"><DeptMark id={c.id} size={44} /></span>
+              {c.name}
+            </button>
+          ))}
         </div>
       </div>
 

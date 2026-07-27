@@ -88,17 +88,6 @@ export default function Browse(props: BrowseProps) {
     [state.myListings, state.blockedOwners]
   )
 
-  /* Home's department row shows an entry price under each chip. Browse showed the
-     same chips without it, so the two rows read as different controls. */
-  const catFrom = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const i of pool) {
-      const cur = m.get(i.category)
-      if (cur == null || i.pricePerDay < cur) m.set(i.category, i.pricePerDay)
-    }
-    return m
-  }, [pool])
-
   // one lowercase haystack per item, built once instead of on every keystroke-driven filter pass
   const haystacks = useMemo(() => {
     const m = new Map<string, string>()
@@ -306,22 +295,17 @@ export default function Browse(props: BrowseProps) {
             <span className="cat-ico"><Icon name="sliders" size={26} /></span>
             All
           </button>
-          {CATEGORIES.map((c) => {
-            const from = catFrom.get(c.id)
-            return (
-              <button
-                key={c.id}
-                className={`cat-chip ${category === c.id ? 'active' : ''}`}
-                aria-pressed={category === c.id}
-                aria-label={from ? `${c.name}, from ${money(from)} per day` : c.name}
-                onClick={() => patch({ category: category === c.id ? undefined : c.id })}
-              >
-                <span className="cat-ico" aria-hidden="true"><DeptMark id={c.id} size={44} /></span>
-                {c.name}
-                {from != null && <span className="muted small" style={{ display: 'block' }}>from {money(from)}</span>}
-              </button>
-            )
-          })}
+          {CATEGORIES.map((c) => (
+            <button
+              key={c.id}
+              className={`cat-chip ${category === c.id ? 'active' : ''}`}
+              aria-pressed={category === c.id}
+              onClick={() => patch({ category: category === c.id ? undefined : c.id })}
+            >
+              <span className="cat-ico" aria-hidden="true"><DeptMark id={c.id} size={44} /></span>
+              {c.name}
+            </button>
+          ))}
         </div>
 
         {remembered && (
