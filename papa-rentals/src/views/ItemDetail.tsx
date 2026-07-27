@@ -24,6 +24,9 @@ export default function ItemDetail({ id }: { id: string }) {
     dispatch({ type: 'VIEW_ITEM', itemId: id })
   }, [id, dispatch])
 
+  const watchingAvail = state.availAlerts.some((a) => a.itemId === id)
+  const watchingPrice = state.priceAlerts.some((a) => a.itemId === id)
+
   const [startDate, setStartDate] = useState(todayISO(2))
   const [endDate, setEndDate] = useState(todayISO(3))
   const [pickupTime, setPickupTime] = useState('09:00')
@@ -346,10 +349,17 @@ export default function ItemDetail({ id }: { id: string }) {
                   }
                 }}>{fmtDate(nextFree)} — tap to apply</button></>}
                 {' · '}
-                <button onClick={() => {
-                  dispatch({ type: 'ADD_AVAIL_ALERT', itemId: id })
-                  toast('We’ll notify you the moment it frees up')
-                }}><Icon name="bell" size={14} /> Notify me</button>
+                {/* Tapping "Notify me" twice used to silently do nothing — the
+                    reducer de-dupes — so say it's already set instead. */}
+                {watchingAvail ? (
+                  <span><Icon name="check-circle" size={14} /> We’ll tell you when it frees up</span>
+                ) : (
+                  <button onClick={() => {
+                    buzz()
+                    dispatch({ type: 'ADD_AVAIL_ALERT', itemId: id })
+                    toast('We’ll notify you the moment it frees up')
+                  }}><Icon name="bell" size={14} /> Notify me</button>
+                )}
               </div>
             ) : (
               <p className="muted small" style={{ margin: '10px 0 0' }}>
@@ -357,6 +367,21 @@ export default function ItemDetail({ id }: { id: string }) {
                 {unit === 'day' && (days >= 7 ? ' · weekly rate (20% off)' : days >= 3 ? ' · 3+ day rate (10% off)' : '')}
               </p>
             )}
+
+            {/* Renters who won't pay today's rate had no way to say so — they
+                just left. A watch turns that into a reason to come back. */}
+            <button
+              className="link-btn"
+              style={{ margin: '10px 0 0' }}
+              aria-pressed={watchingPrice}
+              onClick={() => {
+                buzz()
+                dispatch({ type: 'TOGGLE_PRICE_ALERT', itemId: id })
+                toast(watchingPrice ? 'Price watch removed' : `Watching — we’ll ping you if it drops below ${money(recommendedRate(id, 1))}/day`)
+              }}
+            >
+              <Icon name={watchingPrice ? 'bell-off' : 'bell'} size={14} /> {watchingPrice ? 'Stop watching the price' : 'Notify me if the price drops'}
+            </button>
 
             <label className="toggle-row" style={item.insuranceRequired ? { opacity: 0.9 } : undefined}>
               <input

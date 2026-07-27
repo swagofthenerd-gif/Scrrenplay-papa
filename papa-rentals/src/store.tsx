@@ -5,7 +5,7 @@ import type {
   Address, AppNotification, AppState, Booking, ChatMessage, ChatThread,
   CategoryId, Item, LedgerEntry, Offer, Order, OrderStatus, OwnerBooking, Review, SavedSearch, UserReport,
 } from './types'
-import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, todayISO, uid } from './utils'
+import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, money, recommendedRate, todayISO, uid } from './utils'
 import type { IconName } from './components/icons'
 import type { TotalsInput } from './utils'
 
@@ -41,6 +41,7 @@ const initialState: AppState = {
   ownerBookings: [],
   claims: [],
   availAlerts: [],
+  priceAlerts: [],
   referralRedeemed: false,
 }
 
@@ -85,6 +86,7 @@ type Action =
   | { type: 'DECLINE_OWNER_BOOKING'; id: string }
   | { type: 'FILE_CLAIM'; orderId: string; itemName: string; reason: string; amount: number }
   | { type: 'ADD_AVAIL_ALERT'; itemId: string }
+  | { type: 'TOGGLE_PRICE_ALERT'; itemId: string }
   | { type: 'REDEEM_REFERRAL'; code: string }
   | { type: 'TICK'; now: number }
 
@@ -496,6 +498,15 @@ function reducer(state: AppState, action: Action): AppState {
       }
     }
 
+    case 'TOGGLE_PRICE_ALERT': {
+      const existing = state.priceAlerts.find((a) => a.itemId === action.itemId)
+      if (existing) return { ...state, priceAlerts: state.priceAlerts.filter((a) => a !== existing) }
+      return {
+        ...state,
+        priceAlerts: [...state.priceAlerts, { id: uid(), itemId: action.itemId, price: recommendedRate(action.itemId, 1) }],
+      }
+    }
+
     case 'ADD_AVAIL_ALERT': {
       if (state.availAlerts.some((a) => a.itemId === action.itemId)) return state
       return { ...state, availAlerts: [...state.availAlerts, { id: uid(), itemId: action.itemId, notifyAt: Date.now() + 25000 }] }
@@ -714,6 +725,22 @@ function reducer(state: AppState, action: Action): AppState {
           })
         }
         next = { ...next, availAlerts: next.availAlerts.filter((a) => !alertsDue.includes(a)), notifications }
+      }
+
+      // 8b. price-drop watches — fire once, when the item actually gets cheaper
+      const dropped = next.priceAlerts.filter((a) => recommendedRate(a.itemId, 1) < a.price)
+      if (dropped.length) {
+        changed = true
+        let notifications = next.notifications
+        for (const a of dropped) {
+          const item = getItem(a.itemId)
+          notifications = notify({ ...next, notifications }, {
+            icon: 'coins', title: `Price drop on ${item.name}`,
+            body: `Now ${money(recommendedRate(a.itemId, 1))}/day, down from ${money(a.price)}.`,
+            link: `#/item/${a.itemId}`,
+          })
+        }
+        next = { ...next, priceAlerts: next.priceAlerts.filter((a) => !dropped.includes(a)), notifications }
       }
 
       // 9. shoot-day reminders the day before your start date

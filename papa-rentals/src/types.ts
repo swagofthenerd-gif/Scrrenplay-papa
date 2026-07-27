@@ -269,6 +269,14 @@ export interface AvailAlert {
   notifyAt: number
 }
 
+/** "Tell me if this gets cheaper." Holds the price at the moment it was set so
+    the notification can say what it dropped from, not just that it dropped. */
+export interface PriceAlert {
+  id: string
+  itemId: string
+  price: number
+}
+
 /** A search worth coming back to. Renters hunt the same gear every shoot cycle,
     and retyping "arri 300 daylight" every week is the friction that loses them. */
 export interface SavedSearch {
@@ -332,6 +340,7 @@ export interface AppState {
   ownerBookings: OwnerBooking[]
   claims: Claim[]
   availAlerts: AvailAlert[]
+  priceAlerts: PriceAlert[]
   referralRedeemed: boolean
   freeVanPerkMonth?: string // YYYY-MM when the Silver free-delivery perk was last used
 }
