@@ -573,8 +573,14 @@ function reducer(state: AppState, action: Action): AppState {
             at: now,
           }
           chats[ownerId] = { messages: [...t.messages, reply], unread: t.unread + 1, typingUntil: undefined, pendingReplyAt: undefined }
+          /* Linking to Profile dropped you a screen short of the reply you just
+             tapped. Inbox is where the thread actually is. getOwner falls back to
+             the first vendor for unknown ids, which named support after a stranger. */
           notifications = notify({ ...next, notifications }, {
-            icon: 'chat', title: `${getOwner(ownerId).name} replied`, body: reply.text, link: '#/profile',
+            icon: 'chat',
+            title: `${ownerId === 'support' ? 'Papa Support' : getOwner(ownerId).name} replied`,
+            body: reply.text,
+            link: '#/inbox',
           })
         }
         next = { ...next, chats, notifications }
