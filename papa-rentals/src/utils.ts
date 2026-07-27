@@ -428,3 +428,58 @@ ${fee('PapaPoints redeemed', order.pointsUsed, true)}${fee('Wallet credit', orde
   document.write(html)
   document.close()
 }
+
+/**
+ * Closest catalog word to a query that found nothing — the "did you mean" term.
+ * Only vocabulary that actually appears in item names and tags is offered, so
+ * accepting the suggestion can never lead to a second empty page.
+ */
+export function didYouMean(query: string, pool: Item[]): string | null {
+  const q = query.toLowerCase().trim()
+  if (q.length < 4) return null
+  const vocab = new Set<string>()
+  for (const i of pool) {
+    for (const w of `${i.name} ${i.tags.join(' ')}`.toLowerCase().split(/[^a-z0-9]+/)) {
+      if (w.length >= 4) vocab.add(w)
+    }
+  }
+  /* fuzzyMatch is an AND across query words, so the page is empty because of the
+     one word that landed nowhere — not the longest one. Suggest a fix for that
+     word, or there is nothing useful to say. */
+  const words = q.split(/\s+/).filter((w) => w.length >= 4)
+  const qw = words.find((w) => !pool.some((i) => fuzzyMatch(`${i.name} ${i.tags.join(' ')} ${i.category}`, w)))
+  if (!qw) return null
+  let best: string | null = null
+  let bestD = Infinity
+  for (const w of vocab) {
+    const d = editDistance(w, qw)
+    if (d < bestD) { bestD = d; best = w }
+  }
+  /* editDistance saturates at 3 — it returns 3 for "nothing like it" as readily
+     as for a genuine three-edit typo, so 3 is never trustworthy here. Staying
+     strictly under the cap is what keeps "sennhaizr" from suggesting "arri". */
+  const limit = Math.min(2, Math.max(1, Math.floor(qw.length / 3)))
+  if (!best || bestD === 0 || bestD > limit) return null
+  // Return the whole corrected query, not the bare word — swapping one word out
+  // of "sony camrea rig" should keep the rest of what was typed.
+  return q.split(/\s+/).map((w) => (w === qw ? best : w)).join(' ')
+}
+
+/** Tags shared by enough of the current results to be worth offering as a narrowing chip. */
+export function refineTags(list: Item[], query: string, max = 5): string[] {
+  if (list.length < 4) return []
+  const q = query.toLowerCase()
+  const counts = new Map<string, number>()
+  for (const i of list) {
+    for (const t of new Set(i.tags.map((t) => t.toLowerCase()))) {
+      if (q.includes(t)) continue // already in the query — narrowing by it changes nothing
+      counts.set(t, (counts.get(t) ?? 0) + 1)
+    }
+  }
+  return [...counts.entries()]
+    // A tag on every result narrows nothing; a tag on one result is noise.
+    .filter(([, n]) => n >= 2 && n < list.length)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, max)
+    .map(([t]) => t)
+}

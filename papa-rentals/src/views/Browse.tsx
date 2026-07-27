@@ -5,7 +5,7 @@ import { Modal } from '../components/ui'
 import { money } from '../utils'
 import { useNav, type BrowseSort, type View } from '../nav'
 import { useStore } from '../store'
-import { daysBetween, dealActive, fuzzyMatch, recommendedRate, searchRank, todayISO, uid, weightedRating, buzz } from '../utils'
+import { daysBetween, dealActive, didYouMean, fuzzyMatch, recommendedRate, refineTags, searchRank, todayISO, uid, weightedRating, buzz } from '../utils'
 import { ItemCard, RatingCompact } from '../components/ui'
 import { DeptMark, Icon, type IconName } from '../components/icons'
 import type { CategoryId, Item } from '../types'
@@ -142,6 +142,25 @@ export default function Browse(props: BrowseProps) {
     const hi = Math.ceil(Math.max(...prices) / 100) * 100
     return { lo, hi, step: Math.max(100, Math.round((hi - lo) / 40 / 100) * 100) }
   }, [pool, category])
+
+  /* Narrowing words drawn from the results themselves, so a chip can never lead
+     to an empty page — a "did you mean" that dead-ends is worse than none. */
+  const refinements = useMemo(() => (query ? refineTags(items, query) : []), [items, query])
+  /* An empty page has two different causes, and they need different offers:
+     a word nobody spells right, or two words that are each fine but never appear
+     on the same listing. Broadening beats correcting when it is the second one. */
+  const suggestion = useMemo(() => {
+    if (!query || items.length > 0) return null
+    const fix = didYouMean(query, pool)
+    if (fix) return { term: fix, kind: 'fix' as const }
+    const words = query.trim().split(/\s+/)
+    if (words.length < 2) return null
+    // Keep the word that finds the most on its own — that is the one they meant.
+    const best = words
+      .map((w) => ({ w, n: pool.filter((i) => fuzzyMatch(haystacks.get(i.id) ?? i.name, w)).length }))
+      .sort((a, b) => b.n - a.n)[0]
+    return best && best.n > 0 ? { term: best.w, kind: 'broaden' as const } : null
+  }, [query, items.length, pool, haystacks])
 
   useEffect(() => setShown(PAGE), [items])
 
@@ -337,6 +356,17 @@ export default function Browse(props: BrowseProps) {
           </div>
         )}
 
+        {refinements.length > 0 && (
+          <div className="filter-row" style={{ marginTop: 2 }}>
+            <span className="muted small" style={{ alignSelf: 'center', flex: 'none' }}>Narrow it:</span>
+            {refinements.map((t) => (
+              <button key={t} className="filter-chip chip-ico" onClick={() => { buzz(); patch({ query: `${query} ${t}`.trim() }) }}>
+                + {t}
+              </button>
+            ))}
+          </div>
+        )}
+
         {category === 'studios' && !wishlistOnly && !dealsOnly && (
           <div className="kit-card promo-card" style={{ margin: '4px 0 14px' }}>
             <span className="promo-ico"><Icon name="home" size={24} /></span>
@@ -358,6 +388,11 @@ export default function Browse(props: BrowseProps) {
                   ? `Nothing matches “${query}” — check the spelling, or try a broader word.`
                   : 'Nothing here yet.'}
             </p>
+            {suggestion && (
+              <button className="btn btn-primary btn-sm" onClick={() => { buzz(); patch({ query: suggestion.term }) }}>
+                {suggestion.kind === 'fix' ? <>Search “{suggestion.term}” instead</> : <>Search just “{suggestion.term}”</>}
+              </button>
+            )}
             {lastFilter && (
               <button className="btn btn-outline btn-sm" onClick={() => patch(lastFilter.clear)}>
                 Remove “{lastFilter.label}”
