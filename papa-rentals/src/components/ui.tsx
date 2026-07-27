@@ -274,6 +274,7 @@ export function ItemCard({
           buzz()
           onToggleWish()
         }}
+        aria-pressed={wishlisted}
         aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
       >
         <Icon name={wishlisted ? 'heart-filled' : 'heart'} size={18} />

@@ -138,11 +138,14 @@ export default function ItemDetail({ id, from, to }: { id: string; from?: string
                 >
                   <Icon name="arrow-up-right" size={16} />
                 </button>
+                {/* "Toggle wishlist" reads identically whether the heart is on or off,
+                    so a screen reader user couldn't tell which way the tap would go. */}
                 <button
                   className="icon-btn"
                   style={wishlisted ? { color: 'var(--red)' } : undefined}
                   onClick={() => { buzz(); dispatch({ type: 'TOGGLE_WISHLIST', itemId: id }) }}
-                  aria-label="Toggle wishlist"
+                  aria-pressed={wishlisted}
+                  aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
                 >
                   {wishlisted ? <Icon name="heart-filled" size={16} /> : <Icon name="heart" size={16} />}
                 </button>
