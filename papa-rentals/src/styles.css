@@ -838,8 +838,10 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-lg); animation: slideup 0.3s var(--ease-spring);
 }
 .compare-tray .btn { min-height: 38px; padding: 8px 14px; }
+/* Stacked under the heart, not beside it: side by side the pair ran into the
+   Instant/Approval badge on a 360px screen — 13px of measured overlap. */
 .cmp-btn {
-  position: absolute; top: 10px; right: 54px; z-index: 3; border: none; cursor: pointer;
+  position: absolute; top: 54px; right: 10px; z-index: 3; border: none; cursor: pointer;
   background: rgba(255, 255, 255, 0.92); border-radius: var(--r-pill); width: 38px; height: 38px; color: #6f6a63;
   display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-xs);
   transition: transform var(--dur-fast) var(--ease-out);
