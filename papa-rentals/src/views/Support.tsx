@@ -73,7 +73,7 @@ export default function Support({ orderId }: { orderId?: string }) {
             </div>
           )}
           {msgs.map((m) => (
-            <div key={m.id} className={`chat-msg ${m.from}`}>{m.text}</div>
+            <div key={m.id} className={`chat-msg ${m.from}`}>{m.text}<span className="stamp">{m.time}</span></div>
           ))}
           {typing && <div className="typing">Papa Support is typing<i>…</i></div>}
         </div>
@@ -101,8 +101,16 @@ export default function Support({ orderId }: { orderId?: string }) {
       {state.claims.length > 0 && (
         <div className="panel">
           <h3 style={{ fontSize: 15 }}><Icon name="shield" className="h-ico" size={15} /> Your claims</h3>
+          {/* A claim names the order it came from and used to print it as dead text,
+              so checking what you actually rented meant going back out to Orders and
+              finding it by hand. */}
           {state.claims.map((c) => (
-            <div key={c.id} className="review" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <button
+              key={c.id}
+              className="review"
+              style={{ width: '100%', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}
+              onClick={() => go({ name: 'order', id: c.orderId })}
+            >
               <div style={{ minWidth: 0 }}>
                 <b style={{ fontSize: 14 }}>{c.itemName}</b> <span className="muted small">· {c.orderId}</span>
                 <div className="muted small">{c.reason} · {money(c.amount)}</div>
@@ -110,7 +118,7 @@ export default function Support({ orderId }: { orderId?: string }) {
               {c.status === 'filed' && <Badge tone="orange"><Icon name="mail" size={12} /> Filed</Badge>}
               {c.status === 'reviewing' && <Badge tone="purple"><Icon name="search" size={12} /> Reviewing</Badge>}
               {c.status === 'approved' && <Badge tone="green"><Icon name="check-circle" size={12} /> Paid to wallet</Badge>}
-            </div>
+            </button>
           ))}
         </div>
       )}
