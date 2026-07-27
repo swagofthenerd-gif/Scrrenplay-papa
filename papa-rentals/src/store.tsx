@@ -305,6 +305,11 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         walletBalance: state.walletBalance - fromWallet,
+        /* An extension took money out of the wallet and left no trace in the
+           ledger, so the balance dropped with nothing to explain it. */
+        ledger: record(state, [
+          { kind: 'wallet', amount: -fromWallet, label: `Extended ${o.id} by ${action.days} day${action.days > 1 ? 's' : ''}`, orderId: o.id },
+        ]),
         orders: state.orders.map((x) =>
           x.id === o.id ? { ...x, lines, total: x.total + cost, extendedDays: (x.extendedDays ?? 0) + action.days } : x
         ),
@@ -677,6 +682,7 @@ function reducer(state: AppState, action: Action): AppState {
         changed = true
         let notifications = next.notifications
         let walletBalance = next.walletBalance
+        let ledger = next.ledger
         let myListings = next.myListings
         const ownerBookings = next.ownerBookings.map((b) => {
           if (!hostDue.includes(b)) return b
@@ -690,13 +696,16 @@ function reducer(state: AppState, action: Action): AppState {
           }
           const payout = Math.round(b.total * 0.9)
           walletBalance += payout
+          // Payouts and approved claims both moved the balance silently; the wallet
+          // history is the only place a host can reconcile what they were paid for.
+          ledger = record({ ...next, ledger }, [{ kind: 'wallet', amount: payout, label: `Payout — ${b.renterName}'s booking`, cash: true }])
           notifications = notify({ ...next, notifications }, {
             icon: 'coins', title: `Payout received: Rs ${payout.toLocaleString()}`,
             body: `${b.renterName}'s booking — 90% of Rs ${b.total.toLocaleString()}, straight to your wallet.`, link: '#/dashboard',
           })
           return { ...b, status: 'paid_out' as const, payoutAt: undefined }
         })
-        next = { ...next, ownerBookings, walletBalance, myListings, notifications }
+        next = { ...next, ownerBookings, walletBalance, ledger, myListings, notifications }
       }
 
       // 7. damage claims: filed to reviewing to approved (credited to wallet)
@@ -707,17 +716,19 @@ function reducer(state: AppState, action: Action): AppState {
         changed = true
         let notifications = next.notifications
         let walletBalance = next.walletBalance
+        let ledger = next.ledger
         const claims = next.claims.map((c) => {
           if (!claimsDue.includes(c)) return c
           if (c.status === 'filed') return { ...c, status: 'reviewing' as const }
           walletBalance += c.amount
+          ledger = record({ ...next, ledger }, [{ kind: 'wallet', amount: c.amount, label: `Claim approved — ${c.itemName}`, cash: false, orderId: c.orderId }])
           notifications = notify({ ...next, notifications }, {
             icon: 'check-circle', title: `Claim approved: Rs ${c.amount.toLocaleString()}`,
             body: `${c.itemName} — credited to your wallet. Sorry that happened!`, link: '#/support',
           })
           return { ...c, status: 'approved' as const }
         })
-        next = { ...next, claims, walletBalance, notifications }
+        next = { ...next, claims, walletBalance, ledger, notifications }
       }
 
       // 8. availability alerts
