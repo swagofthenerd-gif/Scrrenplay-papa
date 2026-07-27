@@ -77,11 +77,40 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
     }
   }, [])
 
-  // close on Escape (desktop niceness)
+  /* Escape closes, and Tab stays inside the sheet. Without the trap, focus walked
+     straight out into the page behind — which is still fully rendered — so a
+     keyboard user could "leave" an open sheet and land on controls they can't see. */
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const previous = document.activeElement as HTMLElement | null
+    const sheet = sheetRef.current
+    const focusables = () =>
+      Array.from(
+        sheet?.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') ?? []
+      ).filter((el) => !el.hasAttribute('disabled'))
+
+    focusables()[0]?.focus()
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return onClose()
+      if (e.key !== 'Tab') return
+      const list = focusables()
+      if (list.length === 0) return
+      const first = list[0]
+      const last = list[list.length - 1]
+      const active = document.activeElement
+      if (e.shiftKey && (active === first || !sheet?.contains(active))) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      previous?.focus?.()
+    }
   }, [onClose])
 
   function onTouchStart(e: React.TouchEvent) {
@@ -120,6 +149,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         role="dialog"
+        aria-modal="true"
         aria-label={title}
       >
         <div className="sheet-grip" aria-hidden="true" />
