@@ -125,7 +125,10 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 .h-ico { vertical-align: -0.18em; margin-right: 1px; color: var(--accent); }
 .chip-ico, .row-ico { display: inline-flex; align-items: center; gap: 6px; }
 .cmp-name { display: inline-flex; align-items: center; gap: 6px; }
-.owner-inline { display: inline-flex; align-items: center; gap: 3px; }
+/* "Frame & Fable Co." wrapped to three lines on a narrow card and pushed the
+   rating out of line. The name truncates; the rating never moves. */
+.owner-inline { display: inline-flex; align-items: center; gap: 3px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-card-meta .rating-compact { flex: none; }
 .ic-verified { color: var(--green); }
 .ic-green { color: var(--green); }
 .ic-amber { color: #f59e0b; }
