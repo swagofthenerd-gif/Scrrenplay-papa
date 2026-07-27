@@ -106,11 +106,14 @@ function record(state: AppState, entries: Omit<LedgerEntry, 'id' | 'at'>[]): Led
   return rows.length ? [...rows, ...state.ledger].slice(0, 200) : state.ledger
 }
 
-/** One step forward on the order timeline — used by the manual button AND the auto-advance heartbeat. */
+/** One step forward on the order timeline — used by the manual button AND the auto-advance heartbeat.
+    Notifications here name a specific order, so they link straight to it: the Orders
+    list splits across Active/Completed tabs, and a "complete" alert landed on the
+    tab that no longer holds the order it was about. */
 function stepOrderForward(o: Order): { order: Order; notifs: NotifSpec[] } {
   const notifs: NotifSpec[] = []
   if (o.status === 'requested') {
-    notifs.push({ icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: '#/orders' })
+    notifs.push({ icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
     return { order: { ...o, status: 'confirmed', approveAt: undefined, autoAdvanceAt: Date.now() + 30000 }, notifs }
   }
   const idx = STATUS_FLOW.indexOf(o.status)
@@ -120,11 +123,11 @@ function stepOrderForward(o: Order): { order: Order; notifs: NotifSpec[] } {
   if (next === 'in_transit' && !o.driver) {
     const d = DRIVER_POOL[Math.floor(Math.random() * DRIVER_POOL.length)]
     patch = { ...patch, driver: { ...d, pin: String(1000 + Math.floor(Math.random() * 9000)) } }
-    notifs.push({ icon: 'van', title: `${o.id} is on the way`, body: `${d.name} is driving your gear over. Handover PIN inside.`, link: '#/orders' })
+    notifs.push({ icon: 'van', title: `${o.id} is on the way`, body: `${d.name} is driving your gear over. Handover PIN inside.`, link: `#/order/${o.id}` })
   }
   if (next === 'completed') {
     patch = { ...patch, depositReleased: true }
-    notifs.push({ icon: 'flag-checkered', title: `${o.id} complete — deposit hold released`, body: 'Rate your experience while it’s fresh!', link: '#/orders' })
+    notifs.push({ icon: 'flag-checkered', title: `${o.id} complete — deposit hold released`, body: 'Rate your experience while it’s fresh!', link: `#/order/${o.id}` })
   }
   return { order: { ...o, ...patch }, notifs }
 }
@@ -242,8 +245,8 @@ function reducer(state: AppState, action: Action): AppState {
           : state.promoCodesUsed,
         freeVanPerkMonth: t.usedVanPerk ? todayISO().slice(0, 7) : state.freeVanPerkMonth,
         notifications: notify(state, needsApproval
-          ? { icon: 'hourglass', title: `Booking ${order.id} requested`, body: 'Waiting for owner approval — usually a few minutes.', link: '#/orders' }
-          : { icon: 'check-circle', title: `Order ${order.id} confirmed`, body: 'Gear is being reserved for your dates.', link: '#/orders' }),
+          ? { icon: 'hourglass', title: `Booking ${order.id} requested`, body: 'Waiting for owner approval — usually a few minutes.', link: `#/order/${order.id}` }
+          : { icon: 'check-circle', title: `Order ${order.id} confirmed`, body: 'Gear is being reserved for your dates.', link: `#/order/${order.id}` }),
       }
     }
 
@@ -280,7 +283,7 @@ function reducer(state: AppState, action: Action): AppState {
         notifications: notify(state, {
           icon: 'undo', title: `${o.id} cancelled`,
           body: fee > 0 ? `Refunded ${refund.toLocaleString()} to wallet (10% late-cancel fee applied).` : `Fully refunded to your wallet. Deposit hold released.`,
-          link: '#/orders',
+          link: `#/order/${o.id}`,
         }),
       }
     }
@@ -308,7 +311,7 @@ function reducer(state: AppState, action: Action): AppState {
         notifications: notify(state, {
           icon: 'calendar', title: `${o.id} extended by ${action.days} day${action.days > 1 ? 's' : ''}`,
           body: fromWallet >= cost ? `Rs ${cost.toLocaleString()} paid from wallet.` : `Rs ${cost.toLocaleString()} charged (Rs ${fromWallet.toLocaleString()} from wallet).`,
-          link: '#/orders',
+          link: `#/order/${o.id}`,
         }),
       }
     }
@@ -593,7 +596,7 @@ function reducer(state: AppState, action: Action): AppState {
         let notifications = next.notifications
         const orders = next.orders.map((o) => {
           if (!dueOrders.includes(o)) return o
-          notifications = notify({ ...next, notifications }, { icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: '#/orders' })
+          notifications = notify({ ...next, notifications }, { icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
           return { ...o, status: 'confirmed' as OrderStatus, approveAt: undefined, autoAdvanceAt: now + 25000 }
         })
         next = { ...next, orders, notifications }
@@ -760,7 +763,7 @@ function reducer(state: AppState, action: Action): AppState {
           if (!remindDue.includes(o)) return o
           notifications = notify({ ...next, notifications }, {
             icon: 'clapperboard', title: `Shoot day soon — ${o.id}`,
-            body: 'Gear arrives at your slot time. Charge your batteries and sleep well!', link: '#/orders',
+            body: 'Gear arrives at your slot time. Charge your batteries and sleep well!', link: `#/order/${o.id}`,
           })
           return { ...o, reminded: true }
         })
