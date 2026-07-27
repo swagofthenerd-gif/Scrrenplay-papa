@@ -580,10 +580,11 @@ function CompareModal({ ids, onClose, onOpen }: { ids: string[]; onClose: () => 
       <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
         {cols.map(({ item }) => (
           <div key={item.id} style={{ flex: 1, display: 'grid', gap: 6 }}>
-            <button className="btn btn-primary btn-sm" onClick={() => addToCart(item)}>
+            {/* Three buttons all reading "Add" is a screen-reader dead end. */}
+            <button className="btn btn-primary btn-sm" aria-label={`Add ${item.name} to cart`} onClick={() => addToCart(item)}>
               <Icon name="cart" size={14} /> Add
             </button>
-            <button className="btn btn-outline btn-sm" onClick={() => onOpen(item.id)}>
+            <button className="btn btn-outline btn-sm" aria-label={`View ${item.name}`} onClick={() => onOpen(item.id)}>
               View <Icon name={item.icon} size={15} />
             </button>
           </div>
