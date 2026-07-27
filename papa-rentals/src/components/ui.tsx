@@ -229,7 +229,14 @@ export function ItemCard({
   return (
     <div {...stagger} onClick={onOpen}>
       <ItemArt item={item} />
-      {item.instantBook && <div className="photo-badge"><Icon name="bolt" size={11} /> Instant</div>}
+      {/* Absence of an "Instant" badge is not a signal a renter can read — it looks
+          identical to a card that simply has no badge. Saying "Approval" instead
+          sets the expectation that booking this one involves a wait. */}
+      {item.instantBook ? (
+        <div className="photo-badge"><Icon name="bolt" size={11} /> Instant</div>
+      ) : (
+        <div className="photo-badge badge-approval"><Icon name="hourglass" size={11} /> Approval</div>
+      )}
       <button
         className={`wish-btn ${wishlisted ? 'on' : ''}`}
         onClick={(e) => {

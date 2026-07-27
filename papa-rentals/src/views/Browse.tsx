@@ -11,6 +11,18 @@ import { DeptMark, Icon, type IconName } from '../components/icons'
 import type { CategoryId, Item } from '../types'
 
 const MAX_COMPARE = 3
+const FILTER_MEMORY_KEY = 'papa-browse-filters'
+
+/** The filter half of a Browse view — what's worth remembering per department. */
+type FilterMemory = Pick<BrowseProps, 'verified' | 'instant' | 'offers' | 'minPrice' | 'maxPrice' | 'minCapacity' | 'maxKm' | 'hourly'>
+
+function readFilterMemory(): Record<string, FilterMemory> {
+  try {
+    return JSON.parse(localStorage.getItem(FILTER_MEMORY_KEY) || '{}')
+  } catch {
+    return {}
+  }
+}
 const PAGE = 24
 
 /* A flat "under Rs 10k" bucket is useless in a department where nothing costs
@@ -162,6 +174,33 @@ export default function Browse(props: BrowseProps) {
     return best && best.n > 0 ? { term: best.w, kind: 'broaden' as const } : null
   }, [query, items.length, pool, haystacks])
 
+  /* Filters are remembered per department, but never re-applied behind the
+     renter's back — arriving at a page that silently hides half the catalogue is
+     how people conclude the app is broken. It is offered as one tap instead. */
+  const memoryKey = category ?? 'all'
+  const current: FilterMemory = {
+    verified: props.verified, instant: props.instant, offers: props.offers,
+    minPrice, maxPrice, minCapacity, maxKm, hourly: props.hourly,
+  }
+  const hasCurrent = Object.values(current).some(Boolean)
+
+  useEffect(() => {
+    if (!hasCurrent) return
+    const all = readFilterMemory()
+    all[memoryKey] = current
+    try {
+      localStorage.setItem(FILTER_MEMORY_KEY, JSON.stringify(all))
+    } catch { /* private mode — remembering filters is not worth failing over */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memoryKey, JSON.stringify(current)])
+
+  const [remembered, setRemembered] = useState<FilterMemory | null>(null)
+  useEffect(() => {
+    if (hasCurrent) { setRemembered(null); return }
+    const saved = readFilterMemory()[memoryKey]
+    setRemembered(saved && Object.values(saved).some(Boolean) ? saved : null)
+  }, [memoryKey, hasCurrent])
+
   useEffect(() => setShown(PAGE), [items])
 
   /* Active filters, as removable pills — so you can always see and undo what's narrowing the list. */
@@ -275,6 +314,16 @@ export default function Browse(props: BrowseProps) {
             )
           })}
         </div>
+
+        {remembered && (
+          <button
+            className="link-btn"
+            style={{ marginBottom: 8 }}
+            onClick={() => { buzz(); patch(remembered); setRemembered(null) }}
+          >
+            <Icon name="undo" size={13} /> Reapply your last filters here
+          </button>
+        )}
 
         <div className="filter-row">
           {/* The chip row runs off the edge of a phone once four filters are on.
