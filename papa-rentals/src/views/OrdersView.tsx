@@ -192,6 +192,10 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
   const lines = useMemo(() => order.lines.map((b) => ({ booking: b, item: getItem(b.itemId) })), [order.lines])
   const firstItem = lines[0].item
   const owner = getOwner(firstItem.ownerId)
+  const vendors = useMemo(
+    () => [...new Map(lines.map(({ item }) => { const o = getOwner(item.ownerId); return [o.id, o] as const })).values()],
+    [lines]
+  )
   const done = order.status === 'completed'
   const hasClaim = state.claims.some((c) => c.orderId === order.id)
   const cancelled = order.status === 'cancelled'
@@ -222,7 +226,11 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
   if (order.status === 'in_use') actions.push({ label: 'Extend rental', icon: 'calendar', run: () => setExtendOpen(true) })
   actions.push({ label: 'Track this order', icon: 'box', run: () => go({ name: 'order', id: order.id }) })
   if (done || cancelled) actions.push({ label: 'Book again', icon: 'repeat', run: bookAgain })
-  actions.push({ label: `Message ${owner.name}`, icon: 'chat', run: () => go({ name: 'inbox', ownerId: owner.id }) })
+  /* One row per vendor: a cart can span several, and a single "message the vendor"
+     silently picked whoever owned the first line. */
+  for (const o of vendors) {
+    actions.push({ label: `Message ${o.name}`, icon: 'chat', run: () => go({ name: 'inbox', ownerId: o.id }) })
+  }
   if ((done || order.status === 'returned' || order.status === 'in_use') && order.lines.some((l) => l.insurance) && !hasClaim) {
     actions.push({ label: 'File a damage claim', icon: 'shield', run: () => setClaimOpen(true) })
   }
