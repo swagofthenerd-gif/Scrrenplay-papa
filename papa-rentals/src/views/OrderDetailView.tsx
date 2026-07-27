@@ -175,7 +175,7 @@ export default function OrderDetailView({ id }: { id: string }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => go({ name: 'inbox' })}>
+          <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => go({ name: 'inbox', ownerId: owner.id })}>
             <Icon name="chat" size={14} /> Message
           </button>
           <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => go({ name: 'vendor', id: owner.id })}>

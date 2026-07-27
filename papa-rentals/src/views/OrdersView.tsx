@@ -222,7 +222,7 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
   if (order.status === 'in_use') actions.push({ label: 'Extend rental', icon: 'calendar', run: () => setExtendOpen(true) })
   actions.push({ label: 'Track this order', icon: 'box', run: () => go({ name: 'order', id: order.id }) })
   if (done || cancelled) actions.push({ label: 'Book again', icon: 'repeat', run: bookAgain })
-  actions.push({ label: 'Message the vendor', icon: 'chat', run: () => go({ name: 'inbox' }) })
+  actions.push({ label: `Message ${owner.name}`, icon: 'chat', run: () => go({ name: 'inbox', ownerId: owner.id }) })
   if ((done || order.status === 'returned' || order.status === 'in_use') && order.lines.some((l) => l.insurance) && !hasClaim) {
     actions.push({ label: 'File a damage claim', icon: 'shield', run: () => setClaimOpen(true) })
   }

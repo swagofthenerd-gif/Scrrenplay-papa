@@ -174,7 +174,7 @@ function Shell() {
           {view.name === 'services' && <Services />}
           {view.name === 'wallet' && <WalletView />}
           {view.name === 'settings' && <SettingsView />}
-          {view.name === 'inbox' && <InboxView />}
+          {view.name === 'inbox' && <InboxView ownerId={view.ownerId} />}
           {view.name === 'order' && <OrderDetailView id={view.id} />}
         </main>
       </div>

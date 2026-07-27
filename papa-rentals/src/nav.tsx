@@ -38,7 +38,7 @@ export type View =
   | { name: 'order'; id: string }
   | { name: 'wallet' }
   | { name: 'settings' }
-  | { name: 'inbox' }
+  | { name: 'inbox'; ownerId?: string }
 
 export function viewToHash(v: View): string {
   switch (v.name) {
@@ -57,7 +57,7 @@ export function viewToHash(v: View): string {
     case 'order': return `#/order/${v.id}`
     case 'wallet': return '#/wallet'
     case 'settings': return '#/settings'
-    case 'inbox': return '#/inbox'
+    case 'inbox': return v.ownerId ? `#/inbox/${v.ownerId}` : '#/inbox'
     case 'browse': {
       const p = new URLSearchParams()
       if (v.category) p.set('cat', v.category)
@@ -101,7 +101,7 @@ export function parseHash(hash: string): View {
   if (seg[0] === 'order' && seg[1]) return { name: 'order', id: seg[1] }
   if (seg[0] === 'wallet') return { name: 'wallet' }
   if (seg[0] === 'settings') return { name: 'settings' }
-  if (seg[0] === 'inbox') return { name: 'inbox' }
+  if (seg[0] === 'inbox') return { name: 'inbox', ownerId: seg[1] }
   if (seg[0] === 'browse') {
     const p = new URLSearchParams(qs)
     const rawSort = p.get('sort')

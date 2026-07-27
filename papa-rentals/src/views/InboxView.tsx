@@ -8,10 +8,14 @@ import { Avatar, Icon } from '../components/icons'
 
 /* A real inbox. Chats used to live in an expandable strip on Profile where you
    could read the last line but never reply — every conversation dead-ended. */
-export default function InboxView() {
+export default function InboxView({ ownerId }: { ownerId?: string }) {
   const { go } = useNav()
   const { state } = useStore()
-  const [open, setOpen] = useState<string | null>(null)
+  /* The thread lives in the URL so anything that already knows which vendor you
+     mean — an order, a notification, a listing — can open the conversation
+     itself instead of dropping you on the list to go find it. */
+  const [open, setOpen] = useState<string | null>(ownerId ?? null)
+  useEffect(() => { setOpen(ownerId ?? null) }, [ownerId])
 
   const threads = useMemo(
     () =>
@@ -21,7 +25,7 @@ export default function InboxView() {
     [state.chats]
   )
 
-  if (open) return <Thread ownerId={open} onBack={() => setOpen(null)} />
+  if (open) return <Thread ownerId={open} onBack={() => (ownerId ? go({ name: 'inbox' }) : setOpen(null))} />
 
   return (
     <div className="section">
