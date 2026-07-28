@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { getCategory, getOwner } from '../data/catalog'
+import { useStore } from '../store'
 import type { Item } from '../types'
-import { buzz, dealActive, dealEndsAt, fmtCountdown, money } from '../utils'
+import { buzz, dealActive, dealEndsAt, fmtCountdown, money, scarcityNote } from '../utils'
 import { PhotoGallery, SmartImage } from './SmartImage'
 import { Icon, STAR_PATH } from './icons'
 import type { IconName } from './icons'
@@ -286,7 +287,12 @@ export function ItemCard({
   onToggleWish: () => void
   index?: number
 }) {
+  const { state } = useStore()
   const owner = getOwner(item.ownerId)
+  /* Read here rather than passed in as a prop: every grid on every screen renders
+     this card, and threading availability through all of them would mean the one
+     screen that forgot became the one where a fully-booked item looks free. */
+  const scarcity = scarcityNote(item.id, state.orders, state.cart)
   const hasDeal = dealActive(item.id)
   const dealPrice = hasDeal ? Math.round(item.pricePerDay * (1 - item.flashDeal!.percentOff / 100)) : null
   const stagger = index != null ? { className: 'item-card stagger', style: { ['--i' as string]: Math.min(index, 8) } } : { className: 'item-card' }
@@ -338,6 +344,9 @@ export function ItemCard({
           <span className="muted"> /day</span>
           <span className="muted small"> · {owner.distanceKm} km</span>
         </div>
+        {scarcity && (
+          <div className="item-scarcity"><Icon name="clock" size={11} /> {scarcity}</div>
+        )}
       </div>
     </div>
   )

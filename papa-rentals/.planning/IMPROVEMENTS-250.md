@@ -140,7 +140,7 @@ claiming an item, re-verify it in the code.
 
 ### Cards & visual
 33. [ ] `ItemCard` is reused everywhere but compare overlay is bolted on only in Browse — fold compare into the card component.
-34. [ ] No "just booked" / low-availability social proof ("rented 3× this week").
+34. [x] No "just booked" / low-availability social proof ("rented 3× this week").
 35. [x] Wishlist heart toggles with no animation/haptic on Browse cards.
 36. [x] Cards don't show distance even when sorted by `nearest` — surface the sort dimension.
 37. [x] No "instant book" vs "needs approval" badge on the Browse card — users learn this only in cart/detail.

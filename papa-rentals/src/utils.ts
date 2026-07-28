@@ -167,6 +167,31 @@ export function unavailableRanges(itemId: string, orders: Order[], cart: Booking
   return out
 }
 
+/* Honest scarcity. The tempting line on a card is "rented 3× this week", but the
+   only demand number in the model is a lifetime total, and inventing a weekly
+   figure from it would be a claim the data cannot support. What IS true and
+   checkable is how much of the next fortnight is already spoken for — the same
+   ranges the date picker refuses to book. Returns null when nothing about the
+   item is urgent, because a badge on every card is a badge on none. */
+const SCARCE_WINDOW_DAYS = 14
+/* Two, measured rather than guessed: across the catalogue seventeen of twenty-four
+   items have nothing booked in the fortnight and only five have two days or more,
+   so this marks the busy fifth instead of decorating everything. */
+const SCARCE_MIN_BOOKED = 2
+
+export function scarcityNote(itemId: string, orders: Order[], cart: Booking[]): string | null {
+  const ranges = unavailableRanges(itemId, orders, cart)
+  if (!ranges.length) return null
+  let booked = 0
+  for (let i = 0; i < SCARCE_WINDOW_DAYS; i++) {
+    const iso = todayISO(i)
+    if (ranges.some((r) => rangesOverlap({ start: iso, end: iso }, r))) booked++
+  }
+  if (booked < SCARCE_MIN_BOOKED) return null
+  if (booked >= SCARCE_WINDOW_DAYS) return 'Fully booked for two weeks'
+  return `Booked ${booked} of the next ${SCARCE_WINDOW_DAYS} days`
+}
+
 export function findConflict(itemId: string, range: DateRange, orders: Order[], cart: Booking[]): DateRange | null {
   for (const r of unavailableRanges(itemId, orders, cart)) {
     if (rangesOverlap(range, r)) return r
