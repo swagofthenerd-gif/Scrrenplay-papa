@@ -101,6 +101,18 @@ export function dealActive(itemId: string): boolean {
 export const INSURANCE_RATE = 0.08
 export const OPERATOR_FEE_PER_DAY = 6000
 export const SERVICE_FEE_RATE = 0.05
+
+/* A kit you assemble yourself earns the same kind of discount the curated kits
+   carry, on the same logic: one booking, one delivery, one pickup. The top rung
+   stops at 18% so a hand-built kit can match the best curated one but never
+   undercut it — otherwise the curated kits become the worse deal by definition. */
+export function bundleDiscount(count: number): number {
+  if (count >= 5) return 18
+  if (count === 4) return 15
+  if (count === 3) return 10
+  if (count === 2) return 5
+  return 0
+}
 export const POINTS_PER_100 = 1 // earn 1 PapaPoint per Rs 100; redeem 1 point = Rs 1
 export const GOLD_POINTS = 2000
 export const SILVER_POINTS = 500

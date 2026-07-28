@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ITEMS, KITS, getItem, getOwner } from '../data/catalog'
+import { CATEGORIES, ITEMS, KITS, getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { forYou, similarItems } from '../recs'
 import { vendors } from '../vendors'
 import { useStore } from '../store'
-import { buzz, daysBetween, dealActive, dealEndsAt, fmtCountdown, fmtDate, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
-import { Badge, ItemArt, ItemCard, ListingPromo } from '../components/ui'
+import { buzz, bundleDiscount, daysBetween, dealActive, dealEndsAt, fmtCountdown, fmtDate, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
+import { Badge, ItemArt, ItemCard, ListingPromo, Modal } from '../components/ui'
 import { DeptRow } from '../components/DeptRow'
-import { SectionHeader } from '../components/primitives'
+import { Chip, SectionHeader } from '../components/primitives'
 import { Deferred } from '../components/Deferred'
 import { Icon, type IconName } from '../components/icons'
 import { VendorCard } from '../components/VendorCard'
@@ -221,7 +221,24 @@ export default function Home() {
      the page instead of playing a spinner for 700ms and lying about it. */
   const [shuffle, setShuffle] = useState(0)
   const [kitDate, setKitDate] = useState(todayISO(2))
+  const [builderOpen, setBuilderOpen] = useState(false)
+  const [builderCat, setBuilderCat] = useState<string>('all')
+  const [builderIds, setBuilderIds] = useState<string[]>([])
   const pullStart = useRef<number | null>(null)
+
+  const builderChoices = useMemo(
+    () => ITEMS.filter((i) => (builderCat === 'all' || i.category === builderCat) && !state.blockedOwners.includes(i.ownerId)),
+    [builderCat, state.blockedOwners]
+  )
+  /* Resolved from the picked ids rather than from the filtered list, so switching
+     the category chip never silently drops something already in the kit. */
+  const builderItems = useMemo(
+    () => builderIds.map((id) => ITEMS.find((i) => i.id === id)).filter((i): i is Item => Boolean(i)),
+    [builderIds]
+  )
+  const builderFull = builderItems.reduce((s, i) => s + i.pricePerDay, 0)
+  const builderDiscount = bundleDiscount(builderItems.length)
+  const builderPrice = Math.round(builderFull * (1 - builderDiscount / 100))
 
   /* These handlers only observe the gesture — none of them calls preventDefault, so
      it doesn't matter that React attaches touchmove passively: native scrolling and
@@ -599,8 +616,95 @@ export default function Home() {
               </div>
             )
           })}
+
+          {/* The three curated kits cover three kinds of shoot. Everyone else was
+              being told the bundle rate exists and then given no way to earn it. */}
+          <div className="kit-card kit-card-build">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="plus" size={18} /> Build your own kit</h3>
+              <Badge tone="purple">Save up to 18%</Badge>
+            </div>
+            <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+              Pick the gear your shoot actually needs. The more you bundle, the bigger the discount — 2 items 5%, 3 items 10%, 4 items 15%, 5 or more 18%.
+            </p>
+            <button className="btn btn-outline btn-sm" onClick={() => { buzz(); setBuilderOpen(true) }}>
+              Start building
+            </button>
+          </div>
         </div>
       </div>
+
+      {builderOpen && (
+        <Modal title="Build your own kit" onClose={() => setBuilderOpen(false)}>
+          <label className="muted small" style={{ display: 'block', marginBottom: 10 }}>
+            Shoot date{' '}
+            <input type="date" value={kitDate} min={todayISO(0)} onChange={(e) => setKitDate(e.target.value)} style={{ marginLeft: 6 }} />
+          </label>
+          <div className="rail-filters" style={{ marginBottom: 10 }}>
+            <Chip active={builderCat === 'all'} onClick={() => setBuilderCat('all')}>All</Chip>
+            {CATEGORIES.map((c) => (
+              <Chip key={c.id} active={builderCat === c.id} onClick={() => setBuilderCat(c.id)}>{c.name}</Chip>
+            ))}
+          </div>
+          <div className="builder-list">
+            {builderChoices.map((i) => {
+              const picked = builderIds.includes(i.id)
+              return (
+                <button
+                  key={i.id}
+                  className={`builder-row ${picked ? 'picked' : ''}`}
+                  aria-pressed={picked}
+                  onClick={() => {
+                    buzz()
+                    setBuilderIds((prev) => (prev.includes(i.id) ? prev.filter((x) => x !== i.id) : [...prev, i.id]))
+                  }}
+                >
+                  <ItemArt item={i} size="thumb" />
+                  <span className="builder-info">
+                    <span className="builder-name">{i.name}</span>
+                    <span className="muted small">{money(i.pricePerDay)}/day</span>
+                  </span>
+                  <Icon name={picked ? 'check' : 'plus'} size={16} />
+                </button>
+              )
+            })}
+          </div>
+          {/* The number that decides whether to add one more item has to be on
+              screen while you're deciding, not on a confirmation after. */}
+          <div className="builder-summary">
+            <div>
+              <b>{builderIds.length} item{builderIds.length === 1 ? '' : 's'}</b>
+              {builderDiscount > 0
+                ? <span className="muted"> · <s>{money(builderFull)}</s> {money(builderPrice)} /day · save {builderDiscount}%</span>
+                : <span className="muted"> · add {2 - builderIds.length} more for 5% off</span>}
+            </div>
+            <button
+              className="btn btn-primary btn-sm"
+              disabled={builderIds.length < 2}
+              onClick={() => {
+                buzz()
+                builderItems.forEach((i) =>
+                  dispatch({
+                    type: 'ADD_TO_CART',
+                    booking: {
+                      id: uid(), itemId: i.id, startDate: kitDate, endDate: kitDate,
+                      pickupTime: '09:00', qty: 1, unit: 'day', hours: 4,
+                      insurance: true, operator: false, transport: 'van',
+                      rate: Math.round(i.pricePerDay * (1 - builderDiscount / 100)),
+                      negotiated: false,
+                    },
+                  })
+                )
+                toast(`Your kit of ${builderItems.length} added · ${builderDiscount}% off`)
+                setBuilderIds([])
+                setBuilderOpen(false)
+              }}
+            >
+              Add kit to cart
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* ---- Then the vendors, foodpanda-style storefront cards ---- */}
       <div className="section" id="vendors">

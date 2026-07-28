@@ -1279,3 +1279,19 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
 .resume-name { font-weight: 650; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .resume-dates { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
 .resume-go { flex: none; display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 650; color: var(--accent); }
+
+/* Kit builder. The list scrolls inside the sheet so the running total stays
+   pinned — the number that decides "one more item?" must not scroll away. */
+.kit-card-build { border-style: dashed; }
+.builder-list { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; -webkit-overflow-scrolling: touch; }
+.builder-row {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer;
+  padding: 8px 10px; background: transparent; border: 1px solid var(--line); border-radius: var(--r-md);
+}
+.builder-row.picked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.builder-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.builder-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.builder-summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
+}
