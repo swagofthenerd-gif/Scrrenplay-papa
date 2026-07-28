@@ -182,7 +182,7 @@ claiming an item, re-verify it in the code.
 12. [x] Tier/van perks appear only when they apply — add a muted "unlock at Silver" nudge when they don't.
 
 ### Delivery & payment
-13. [ ] Delivery address only appears `needsDelivery` — no map/pin confirmation, just a label + free text.
+13. [x] Delivery address only appears `needsDelivery` — no map/pin confirmation, just a label + free text.
 14. [x] Address selection uses `onClick` on a `<div>` — not keyboard accessible; make it a radio group.
 15. [x] COD note "deposit still held on card" implies a card on file, but there's no card management anywhere.
 16. [x] No saved payment methods — `PAYMENT_METHODS` is static; you can't add/remove a card.

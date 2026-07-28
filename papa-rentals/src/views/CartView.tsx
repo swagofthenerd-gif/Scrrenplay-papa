@@ -19,7 +19,7 @@ import {
 } from '../utils'
 import { Badge, ItemArt, ItemCard, Modal } from '../components/ui'
 import { Icon } from '../components/icons'
-import type { Booking, TransportId } from '../types'
+import type { Address, Booking, TransportId } from '../types'
 
 /* Lookup maps built once — the option arrays never change at runtime. */
 const TRANSPORT_BY_ID = new Map(TRANSPORT_OPTIONS.map((t) => [t.id, t]))
@@ -271,7 +271,7 @@ export default function CartView() {
         ...opts,
         paymentMethod: payLabel,
         address: needsDelivery && address
-          ? `${address.label} — ${address.detail}${addrNote.trim() ? ` (${addrNote.trim()})` : ''}`
+          ? `${address.label} — ${address.detail}${addrNote.trim() ? ` (${addrNote.trim()})` : ''}${address.geo ? ` [pin ${address.geo.lat},${address.geo.lng}]` : ''}`
           : 'Self pickup',
       },
     })
@@ -498,8 +498,9 @@ export default function CartView() {
                 />
               </label>
               <p className="muted small" style={{ margin: '4px 0 0' }}>
-                Drivers use this instead of a map pin — most late deliveries are a gate they couldn't find.
+                Drivers read this first — most late deliveries are a gate they couldn't find.
               </p>
+              {address && <DropPin address={address} />}
               <button className="btn btn-ghost btn-sm" style={{ marginTop: 10 }} onClick={() => setAddrOpen(true)}>+ Add address</button>
             </div>
           )}
@@ -834,6 +835,75 @@ function SaveKitModal({ count, onClose, onSave }: { count: number; onClose: () =
         Save kit
       </button>
     </Modal>
+  )
+}
+
+/* A street address in Lahore often resolves to the wrong block, and the fix
+   crews already use is to send a pin over WhatsApp. Capturing it here means the
+   driver gets it with the booking instead of chasing it on the day.
+
+   No map tiles: the app runs inside a low-end WebView and often on a location
+   with no usable data connection, so an embedded map would be a blank grey box
+   more often than not. Coordinates plus a link the driver can open in whatever
+   maps app they already have is the version that works offline. */
+function DropPin({ address }: { address: Address }) {
+  const { dispatch } = useStore()
+  const { toast } = useNav()
+  const [busy, setBusy] = useState(false)
+
+  function capture() {
+    if (!navigator.geolocation) {
+      toast('This device can\'t share a location — the landmark note still gets through')
+      return
+    }
+    setBusy(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setBusy(false)
+        dispatch({
+          type: 'SET_ADDRESS_GEO',
+          id: address.id,
+          geo: { lat: Number(pos.coords.latitude.toFixed(5)), lng: Number(pos.coords.longitude.toFixed(5)) },
+        })
+        buzz()
+        toast('Drop pin saved for this address')
+      },
+      () => {
+        // Denied or unavailable is normal indoors — never leave it spinning.
+        setBusy(false)
+        toast('Couldn\'t get a location. Add a landmark note instead.')
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    )
+  }
+
+  if (address.geo) {
+    const { lat, lng } = address.geo
+    return (
+      <div className="list-row" style={{ marginTop: 10 }}>
+        <span>
+          <b><Icon name="pin" size={14} /> Drop pin set</b>
+          <span className="muted small" style={{ display: 'block' }}>
+            {lat}, {lng} — sent to the driver with your booking
+          </span>
+        </span>
+        <span style={{ display: 'flex', gap: 10 }}>
+          {/* Plain link, not a clipboard copy: clipboard writes silently fail in
+              the WebView this ships inside, and a dead "Copied!" toast is worse
+              than no button. */}
+          <a className="link-btn" href={`https://maps.google.com/?q=${lat},${lng}`} target="_blank" rel="noreferrer">Open</a>
+          <button className="link-btn" onClick={() => dispatch({ type: 'SET_ADDRESS_GEO', id: address.id, geo: undefined })}>
+            Clear
+          </button>
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <button className="btn btn-ghost btn-sm" style={{ marginTop: 10 }} disabled={busy} onClick={capture}>
+      <Icon name="pin" size={14} /> {busy ? 'Getting your location…' : 'Confirm drop pin'}
+    </button>
   )
 }
 

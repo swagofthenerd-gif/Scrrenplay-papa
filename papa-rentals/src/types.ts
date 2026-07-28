@@ -293,6 +293,10 @@ export interface Address {
   label: string
   icon?: IconName
   detail: string
+  /** Optional drop pin. Street addresses in Lahore routinely resolve to the
+      wrong block, so a confirmed lat/lng is what the driver actually navigates
+      to — but it stays optional, since a landmark note is often enough. */
+  geo?: { lat: number; lng: number }
 }
 
 /* Only ever the last four digits. The deposit hold and the COD flow both talk

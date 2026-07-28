@@ -74,6 +74,7 @@ type Action =
   | { type: 'ADD_WALLET'; amount: number }
   | { type: 'ADD_ADDRESS'; address: Address }
   | { type: 'SELECT_ADDRESS'; id: string }
+  | { type: 'SET_ADDRESS_GEO'; id: string; geo?: { lat: number; lng: number } }
   | { type: 'ADD_CARD'; card: SavedCard }
   | { type: 'REMOVE_CARD'; id: string }
   | { type: 'SELECT_CARD'; id: string }
@@ -416,6 +417,12 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, addresses: [...state.addresses, action.address], selectedAddressId: action.address.id }
     case 'SELECT_ADDRESS':
       return { ...state, selectedAddressId: action.id }
+
+    case 'SET_ADDRESS_GEO':
+      return {
+        ...state,
+        addresses: state.addresses.map((a) => (a.id === action.id ? { ...a, geo: action.geo } : a)),
+      }
 
     case 'ADD_CARD':
       return { ...state, cards: [...state.cards, action.card], selectedCardId: action.card.id }
