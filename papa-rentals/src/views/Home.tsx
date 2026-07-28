@@ -7,7 +7,8 @@ import { useStore } from '../store'
 import { buzz, dealActive, dealEndsAt, fmtCountdown, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
 import { Badge, ItemArt, ItemCard, ListingPromo } from '../components/ui'
 import { DeptRow } from '../components/DeptRow'
-import { Icon } from '../components/icons'
+import { SectionHeader } from '../components/primitives'
+import { Icon, type IconName } from '../components/icons'
 import { VendorCard } from '../components/VendorCard'
 import StudioHero from '../components/StudioHero'
 import ServicesBand from '../components/ServicesBand'
@@ -37,7 +38,9 @@ function Rail({
 }: {
   id?: string
   title: string
-  icon?: React.ComponentProps<typeof Icon>['name']
+  /* Icon's own prop widens to string so stale persisted data can't crash it.
+     A rail's icon is written in source, so it should be checked. */
+  icon?: IconName
   sub?: string
   action?: { label: string; onClick: () => void }
   filters?: React.ReactNode
@@ -100,17 +103,18 @@ function Rail({
 
   return (
     <div className="section" id={id}>
-      <div className="section-head">
-        <div>
-          <h2>{icon && <Icon name={icon} className="h-ico" />} {title}</h2>
-          {sub && <div className="section-sub">{sub}</div>}
-        </div>
-        {action && (
-          <button className="link-btn" onClick={action.onClick}>
-            {action.label} <Icon name="arrow-right" size={13} />
-          </button>
-        )}
-      </div>
+      <SectionHeader
+        icon={icon}
+        title={title}
+        sub={sub}
+        action={
+          action && (
+            <button className="link-btn" onClick={action.onClick}>
+              {action.label} <Icon name="arrow-right" size={13} />
+            </button>
+          )
+        }
+      />
       {filters && <div className="rail-filters">{filters}</div>}
       <div className="rail-track">
         <div
@@ -426,9 +430,7 @@ export default function Home() {
 
       {state.savedSearches.length > 0 && (
         <div className="section">
-          <div className="section-head">
-            <div><h2><Icon name="search" className="h-ico" /> Saved searches</h2></div>
-          </div>
+          <SectionHeader icon="search" title="Saved searches" />
           <div className="rail-filters">
             {state.savedSearches.map((s) => (
               <span key={s.id} className="saved-search">
@@ -465,22 +467,25 @@ export default function Home() {
       )}
 
       <div className="section">
-        <div className="section-head">
-          <h2>Departments</h2>
-          <span style={{ display: 'flex', gap: 12 }}>
-            {state.wishlist.length > 0 && (
-              <button className="link-btn" onClick={() => go({ name: 'browse', wishlistOnly: true })}>
-                <Icon name="heart-filled" size={13} /> Wishlist ({state.wishlist.length})
+        <SectionHeader
+          icon="clapperboard"
+          title="Departments"
+          action={
+            <span style={{ display: 'flex', gap: 12 }}>
+              {state.wishlist.length > 0 && (
+                <button className="link-btn" onClick={() => go({ name: 'browse', wishlistOnly: true })}>
+                  <Icon name="heart-filled" size={13} /> Wishlist ({state.wishlist.length})
+                </button>
+              )}
+              {/* Trust is the first filter most renters reach for, and burying it
+                  three taps deep in Browse means most never find it. */}
+              <button className="link-btn" onClick={() => go({ name: 'browse', verified: true })}>
+                <Icon name="shield" size={13} /> Verified only
               </button>
-            )}
-            {/* Trust is the first filter most renters reach for, and burying it
-                three taps deep in Browse means most never find it. */}
-            <button className="link-btn" onClick={() => go({ name: 'browse', verified: true })}>
-              <Icon name="shield" size={13} /> Verified only
-            </button>
-            <button className="link-btn" onClick={() => go({ name: 'browse' })}>Browse all <Icon name="arrow-right" size={13} /></button>
-          </span>
-        </div>
+              <button className="link-btn" onClick={() => go({ name: 'browse' })}>Browse all <Icon name="arrow-right" size={13} /></button>
+            </span>
+          }
+        />
         <DeptRow showFrom onPick={(id) => go({ name: 'browse', category: id })} />
       </div>
 
@@ -505,12 +510,7 @@ export default function Home() {
       )}
 
       <div className="section" id="kits">
-        <div className="section-head">
-          <div>
-            <h2><Icon name="backpack" className="h-ico" /> Production kits</h2>
-            <div className="section-sub">One booking, one delivery, one discounted rate</div>
-          </div>
-        </div>
+        <SectionHeader icon="backpack" title="Production kits" sub="One booking, one delivery, one discounted rate" />
         <label className="muted small" style={{ display: 'block', marginBottom: 8 }}>
           Shoot date for kits{' '}
           <input
@@ -576,15 +576,14 @@ export default function Home() {
 
       {/* ---- Then the vendors, foodpanda-style storefront cards ---- */}
       <div className="section" id="vendors">
-        <div className="section-head">
-          <div>
-            <h2><Icon name="store" className="h-ico" /> Vendors near you</h2>
-            {/* The old subtitle ended "tap a vendor to explore their storefront".
-                Telling people how to tap a card is an admission the card doesn't
-                look tappable — the chevron and the pressed state do that job. */}
-            <div className="section-sub">{vendorList.length} rental houses · {vendorList.reduce((s, v) => s + v.count, 0)} listings</div>
-          </div>
-        </div>
+        {/* The old subtitle ended "tap a vendor to explore their storefront".
+            Telling people how to tap a card is an admission the card doesn't
+            look tappable — the chevron and the pressed state do that job. */}
+        <SectionHeader
+          icon="store"
+          title="Vendors near you"
+          sub={`${vendorList.length} rental houses · ${vendorList.reduce((s, v) => s + v.count, 0)} listings`}
+        />
         <div className="vendor-list">
           {vendorList.map((v, idx) => <VendorCard key={v.owner.id} vendor={v} index={idx} />)}
         </div>
@@ -614,7 +613,7 @@ export default function Home() {
 
       {refreshing ? (
         <div className="section">
-          <div className="section-head"><h2><Icon name="sparkles" className="h-ico" /> For you</h2></div>
+          <SectionHeader icon="sparkles" title="For you" />
           <RailSkeleton />
         </div>
       ) : picks.length > 0 && (
@@ -688,12 +687,7 @@ export default function Home() {
       )}
 
       <div className="section" id="trending">
-        <div className="section-head">
-          <div>
-            <h2><Icon name="flame" className="h-ico" /> Trending on set</h2>
-            <div className="section-sub">What crews in your city booked most this week</div>
-          </div>
-        </div>
+        <SectionHeader icon="flame" title="Trending on set" sub="What crews in your city booked most this week" />
         <div className="grid">
           {trending.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
         </div>
