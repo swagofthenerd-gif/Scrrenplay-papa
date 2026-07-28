@@ -76,7 +76,7 @@ claiming an item, re-verify it in the code.
 ### Accessibility & polish
 39. [x] Category chips are icon+text but `DeptMark` SVGs have no `aria-label`/`role`.
 40. [x] Horizontal rails aren't keyboard-scrollable and have no `aria-label`.
-41. [ ] Ensure Home badges (Save X%) meet 3:1 contrast on the purple tone.
+41. [x] Ensure Home badges (Save X%) meet 3:1 contrast on the purple tone.
 42. [x] "Flash deals"/"Trending" rely on color+icon — add a text label for urgency.
 
 ### Content & copy
