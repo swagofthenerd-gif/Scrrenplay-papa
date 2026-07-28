@@ -44,6 +44,21 @@ export default function ItemDetail({ id, from, to }: { id: string; from?: string
   const [chatOpen, setChatOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
 
+  /* The dates this page opened with, so a draft is only recorded once the
+     person has actually chosen a window. Saving the untouched defaults would
+     put every item you merely glanced at into "Pick up where you left off". */
+  const openedWith = useRef({ id, start: from ?? todayISO(2), end: to ?? todayISO(3) })
+  useEffect(() => {
+    // Tapping a "similar item" swaps the id without remounting, so the baseline
+    // has to follow the id or the new item inherits the old one's comparison.
+    if (openedWith.current.id !== id) {
+      openedWith.current = { id, start: startDate, end: endDate }
+      return
+    }
+    if (startDate === openedWith.current.start && endDate === openedWith.current.end) return
+    dispatch({ type: 'SAVE_BOOKING_DRAFT', itemId: id, startDate, endDate })
+  }, [id, startDate, endDate, dispatch])
+
   const effEnd = unit === 'hour' ? startDate : endDate
   const days = unit === 'hour' ? 1 : daysBetween(startDate, effEnd)
   const recRate = recommendedRate(id, days, unit)

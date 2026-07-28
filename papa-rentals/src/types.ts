@@ -282,6 +282,17 @@ export interface PriceAlert {
 
 /** A search worth coming back to. Renters hunt the same gear every shoot cycle,
     and retyping "arri 300 daylight" every week is the friction that loses them. */
+/* A booking someone started shaping on an item page but never put in the cart.
+   Only the dates are kept: everything else on that page (qty, transport,
+   insurance) has a sensible default, but the dates are the one thing the person
+   actually thought about, and losing them means retyping the shoot window. */
+export interface BookingDraft {
+  itemId: string
+  startDate: string
+  endDate: string
+  savedAt: number
+}
+
 export interface SavedSearch {
   id: string
   q: string
@@ -353,6 +364,7 @@ export interface AppState {
   recentSearches: string[]
   savedSearches: SavedSearch[]
   recentlyViewed: string[]
+  bookingDrafts: BookingDraft[]
   blockedOwners: string[]
   promoCodesUsed: string[]
   myListings: Item[]

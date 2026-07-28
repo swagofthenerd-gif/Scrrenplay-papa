@@ -4,7 +4,7 @@ import { useNav } from '../nav'
 import { forYou, similarItems } from '../recs'
 import { vendors } from '../vendors'
 import { useStore } from '../store'
-import { buzz, dealActive, dealEndsAt, fmtCountdown, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
+import { buzz, daysBetween, dealActive, dealEndsAt, fmtCountdown, fmtDate, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
 import { Badge, ItemArt, ItemCard, ListingPromo } from '../components/ui'
 import { DeptRow } from '../components/DeptRow'
 import { SectionHeader } from '../components/primitives'
@@ -302,6 +302,18 @@ export default function Home() {
   const recentlyViewed = useMemo(
     () => state.recentlyViewed.map(getItem).filter((i) => !state.blockedOwners.includes(i.ownerId)),
     [state.recentlyViewed, state.blockedOwners]
+  )
+
+  /* Resolved against the catalogue rather than through getItem, which falls back
+     to ITEMS[0] for an unknown id — a draft on a listing that has since been
+     deleted would otherwise offer to resume a booking on an unrelated camera. */
+  const drafts = useMemo(
+    () =>
+      state.bookingDrafts
+        .map((d) => ({ ...d, item: ITEMS.find((i) => i.id === d.itemId) }))
+        .filter((d): d is typeof d & { item: Item } => Boolean(d.item) && !state.blockedOwners.includes(d.item!.ownerId))
+        .slice(0, 3),
+    [state.bookingDrafts, state.blockedOwners]
   )
 
   /* Depend on the slices `forYou`/`similarItems` actually read, not on `state`.
@@ -615,6 +627,37 @@ export default function Home() {
       </div>
 
       {/* ---- Hybrid discovery tail ---- */}
+      {/* Above "Recently viewed" on purpose: a half-filled booking is a stronger
+          intent than a glance, and it's the one thing on this page you lose by
+          leaving. Tapping through restores the exact window via the route's
+          from/to, so the date picker is already filled in on arrival. */}
+      {drafts.length > 0 && (
+        <div className="section" id="resume">
+          <SectionHeader icon="clock" title="Pick up where you left off" sub="Dates you chose but never booked" />
+          <div className="resume-list">
+            {drafts.map((d) => {
+              const nights = daysBetween(d.startDate, d.endDate)
+              return (
+                <button
+                  key={d.itemId}
+                  className="resume-card"
+                  onClick={() => { buzz(); go({ name: 'item', id: d.itemId, from: d.startDate, to: d.endDate }) }}
+                >
+                  <ItemArt item={d.item} size="thumb" />
+                  <span className="resume-info">
+                    <span className="resume-name">{d.item.name}</span>
+                    <span className="resume-dates">
+                      <Icon name="calendar" size={12} /> {fmtDate(d.startDate)} – {fmtDate(d.endDate)} · {nights} day{nights > 1 ? 's' : ''}
+                    </span>
+                  </span>
+                  <span className="resume-go">Resume <Icon name="arrow-right" size={13} /></span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {recentlyViewed.length > 0 && (
         <Rail
           id="recent"

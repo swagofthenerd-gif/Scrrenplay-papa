@@ -37,6 +37,7 @@ const initialState: AppState = {
   recentSearches: [],
   savedSearches: [],
   recentlyViewed: [],
+  bookingDrafts: [],
   blockedOwners: [],
   promoCodesUsed: [],
   myListings: [],
@@ -84,6 +85,7 @@ type Action =
   | { type: 'SAVE_SEARCH'; q: string; category?: CategoryId; maxPrice?: number }
   | { type: 'REMOVE_SAVED_SEARCH'; id: string }
   | { type: 'VIEW_ITEM'; itemId: string }
+  | { type: 'SAVE_BOOKING_DRAFT'; itemId: string; startDate: string; endDate: string }
   | { type: 'READ_NOTIFICATIONS' }
   | { type: 'ADD_LISTING'; item: Item }
   | { type: 'TOGGLE_LISTING_PAUSE'; itemId: string }
@@ -174,7 +176,14 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, profile: { name: action.name, city: action.city, onboarded: action.onboarded ?? true } }
 
     case 'ADD_TO_CART':
-      return { ...state, cart: [...state.cart, { ...action.booking, id: action.booking.id || uid() }] }
+      return {
+        ...state,
+        cart: [...state.cart, { ...action.booking, id: action.booking.id || uid() }],
+        /* The draft existed to get you back to an unfinished booking. Once it's
+           in the cart the cart is the place to resume, so keeping the draft
+           would offer the same job twice, in two places, with two answers. */
+        bookingDrafts: state.bookingDrafts.filter((d) => d.itemId !== action.booking.itemId),
+      }
     case 'UPDATE_CART_LINE':
       return { ...state, cart: state.cart.map((b) => (b.id === action.lineId ? { ...b, ...action.patch } : b)) }
     case 'REMOVE_FROM_CART':
@@ -468,6 +477,18 @@ function reducer(state: AppState, action: Action): AppState {
     case 'VIEW_ITEM':
       if (state.recentlyViewed[0] === action.itemId) return state
       return { ...state, recentlyViewed: [action.itemId, ...state.recentlyViewed.filter((x) => x !== action.itemId)].slice(0, 8) }
+
+    case 'SAVE_BOOKING_DRAFT': {
+      const prev = state.bookingDrafts.find((d) => d.itemId === action.itemId)
+      // Re-storing identical dates on every keystroke would rewrite localStorage
+      // and re-render every subscriber for no change.
+      if (prev && prev.startDate === action.startDate && prev.endDate === action.endDate) return state
+      const draft = { itemId: action.itemId, startDate: action.startDate, endDate: action.endDate, savedAt: Date.now() }
+      return {
+        ...state,
+        bookingDrafts: [draft, ...state.bookingDrafts.filter((d) => d.itemId !== action.itemId)].slice(0, 4),
+      }
+    }
 
     case 'READ_NOTIFICATIONS':
       if (!state.notifications.some((n) => !n.read)) return state
