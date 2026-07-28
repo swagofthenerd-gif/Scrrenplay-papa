@@ -96,14 +96,28 @@ export default function Browse(props: BrowseProps) {
     return m
   }, [pool])
 
+  /* getOwner is a linear scan of OWNERS. Resolving it here means one lookup per
+     item instead of one per filter pass plus one per comparator call — `nearest`
+     alone used to call it O(n log n) times on every keystroke. */
+  const owners = useMemo(() => new Map(pool.map((i) => [i.id, getOwner(i.ownerId)])), [pool])
+
+  /* Only the wishlist-only view reads the wishlist, but the pipeline below used
+     to depend on state.wishlist directly, so tapping a heart on any card
+     re-filtered and re-sorted the whole catalogue to produce an identical list.
+     Collapsed to a key, the heart is free unless you are browsing the wishlist. */
+  const wishKey = wishlistOnly ? state.wishlist.join(',') : ''
+
   const result = useMemo(() => {
     let list = pool
     if (category) list = list.filter((i) => i.category === category)
     if (dealsOnly) list = list.filter((i) => dealActive(i.id))
-    if (wishlistOnly) list = list.filter((i) => state.wishlist.includes(i.id))
+    if (wishlistOnly) {
+      const wish = new Set(wishKey ? wishKey.split(',') : [])
+      list = list.filter((i) => wish.has(i.id))
+    }
     // typo-tolerant: "alexia" still finds the Alexa
     if (query) list = list.filter((i) => fuzzyMatch(haystacks.get(i.id) ?? i.name, query))
-    if (verifiedOnly) list = list.filter((i) => getOwner(i.ownerId).verified)
+    if (verifiedOnly) list = list.filter((i) => owners.get(i.id)?.verified)
     if (instantOnly) list = list.filter((i) => i.instantBook)
     if (offersOnly) list = list.filter((i) => i.offersAccepted)
     if (minPrice) list = list.filter((i) => i.pricePerDay >= minPrice)
@@ -112,7 +126,7 @@ export default function Browse(props: BrowseProps) {
     if (hourlyOnly) list = list.filter((i) => i.hourly)
     /* Sorting by nearest still lists a lens 40 km away at the bottom. Capping the
        radius is what actually answers "what can I pick up today". */
-    if (maxKm) list = list.filter((i) => getOwner(i.ownerId).distanceKm <= maxKm)
+    if (maxKm) list = list.filter((i) => (owners.get(i.id)?.distanceKm ?? Infinity) <= maxKm)
     /* "Is it free the week I shoot" is the question every other filter is a
        proxy for. Checking it here beats opening ten items to find out. */
     let busy = 0
@@ -122,7 +136,7 @@ export default function Browse(props: BrowseProps) {
       busy = before - list.length
     }
     // distance is looked up once per item, not once per comparator call
-    const dist = new Map<string, number>(list.map((i) => [i.id, getOwner(i.ownerId).distanceKm]))
+    const dist = new Map<string, number>(list.map((i) => [i.id, owners.get(i.id)?.distanceKm ?? 0]))
     const sorted = [...list]
     switch (sort) {
       case 'relevance':
@@ -137,7 +151,7 @@ export default function Browse(props: BrowseProps) {
       default: sorted.sort((a, b) => b.timesRented - a.timesRented)
     }
     return { sorted, busy }
-  }, [pool, haystacks, category, query, dealsOnly, wishlistOnly, sort, verifiedOnly, instantOnly, offersOnly, minPrice, maxPrice, minCapacity, maxKm, hourlyOnly, dateFrom, dateTo, state.orders, state.cart, state.wishlist])
+  }, [pool, haystacks, owners, category, query, dealsOnly, wishlistOnly, wishKey, sort, verifiedOnly, instantOnly, offersOnly, minPrice, maxPrice, minCapacity, maxKm, hourlyOnly, dateFrom, dateTo, state.orders, state.cart])
   const items = result.sorted
   const busyOnDates = result.busy
 
@@ -468,7 +482,7 @@ export default function Browse(props: BrowseProps) {
                 </button>
                 {sort === 'nearest' && (
                   <span className="muted small" style={{ display: 'block', marginTop: 2 }}>
-                    {getOwner(item.ownerId).distanceKm} km away
+                    {owners.get(item.id)?.distanceKm ?? getOwner(item.ownerId).distanceKm} km away
                   </span>
                 )}
               </div>

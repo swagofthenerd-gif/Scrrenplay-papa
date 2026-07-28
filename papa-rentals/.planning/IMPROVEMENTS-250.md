@@ -146,8 +146,8 @@ claiming an item, re-verify it in the code.
 37. [x] No "instant book" vs "needs approval" badge on the Browse card — users learn this only in cart/detail.
 
 ### Performance
-38. [ ] Big `useMemo` has ~12 deps incl. `state.wishlist` — wishlist toggles re-run the whole filter+sort pipeline. Split wishlist highlighting out.
-39. [ ] `getOwner()` called repeatedly inside sort comparators (`nearest`, `verifiedOnly`) — precompute an owner map.
+38. [x] Big `useMemo` has ~12 deps incl. `state.wishlist` — wishlist toggles re-run the whole filter+sort pipeline. Split wishlist highlighting out.
+39. [x] `getOwner()` called repeatedly inside sort comparators (`nearest`, `verifiedOnly`) — precompute an owner map.
 40. [x] Compare modal calls `getItem(id)` ~8× per column per render — resolve items once.
 
 ### Accessibility & UX
