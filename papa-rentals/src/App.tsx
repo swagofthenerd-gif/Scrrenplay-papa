@@ -34,6 +34,32 @@ function SearchPill({ onOpen }: { onOpen: () => void }) {
   )
 }
 
+/* ---------------- light / dark ---------------- */
+function ThemeToggle() {
+  const { state, dispatch } = useStore()
+  /* Read from the DOM rather than from state, because on first launch state has
+     no theme at all — the boot script in index.html has already resolved the
+     system preference into the attribute, and that is the only place the real
+     current answer lives until someone presses this button. */
+  const dark = state.theme
+    ? state.theme === 'dark'
+    : typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark'
+  return (
+    <button
+      className="icon-btn"
+      onClick={() => {
+        buzz()
+        dispatch({ type: 'SET_THEME', theme: dark ? 'light' : 'dark' })
+      }}
+      aria-pressed={dark}
+      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={dark ? 'Light mode' : 'Dark mode'}
+    >
+      <Icon name={dark ? 'sun' : 'moon'} />
+    </button>
+  )
+}
+
 /* ---------------- notification center ---------------- */
 function NotificationSheet({ onClose }: { onClose: () => void }) {
   const { state, dispatch } = useStore()
@@ -149,6 +175,7 @@ function Shell() {
           </div>
           <SearchPill onOpen={() => setSearchOpen(true)} />
           <div className="topbar-actions">
+            <ThemeToggle />
             <button className="icon-btn" onClick={() => setNotifOpen(true)} aria-label={`Notifications, ${unreadNotifs} unread`}>
               <Icon name="bell" />{unreadNotifs > 0 && <span className="dot">{unreadNotifs}</span>}
             </button>

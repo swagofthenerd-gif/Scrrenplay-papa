@@ -66,8 +66,13 @@
   --tap: 44px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+/* The palette is selected by an attribute rather than by the media query alone,
+   so a person who wants dark at noon can have it. A boot script in index.html
+   sets data-theme from the saved choice, falling back to the system setting —
+   which means the system default still works, but it is now a default and not a
+   verdict. Keeping the dark values in one rule (instead of duplicating them into
+   a media query as well) is what stops the two copies drifting apart. */
+:root[data-theme='dark'] {
     --accent: #ff7b40;
     --accent-dark: #ff9563;
     --accent-soft: #3a2417;
@@ -90,7 +95,6 @@
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 6px 12px rgba(0, 0, 0, 0.45), 0 16px 44px rgba(0, 0, 0, 0.5);
-  }
 }
 
 * { box-sizing: border-box; }
@@ -479,10 +483,8 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 /* Approval is the quieter of the two — it is information, not a selling point,
    so it recedes rather than competing with the Instant badge across a grid. */
 .photo-badge.badge-approval { background: rgba(255, 255, 255, 0.78); color: #57534e; font-weight: 600; }
-@media (prefers-color-scheme: dark) {
-  .photo-badge { background: rgba(24, 20, 16, 0.85); color: #f2efec; }
-  .photo-badge.badge-approval { background: rgba(24, 20, 16, 0.7); color: #b8b1aa; }
-}
+:root[data-theme='dark'] .photo-badge { background: rgba(24, 20, 16, 0.85); color: #f2efec; }
+:root[data-theme='dark'] .photo-badge.badge-approval { background: rgba(24, 20, 16, 0.7); color: #b8b1aa; }
 
 /* swipeable gallery */
 .gallery { position: relative; border-radius: var(--r-xl); overflow: hidden; }
@@ -569,9 +571,7 @@ select.filter-chip { appearance: none; }
   font-weight: 800; flex: none; line-height: 1; letter-spacing: -0.5px;
   background: hsl(var(--av-h, 20) 68% 90%); color: hsl(var(--av-h, 20) 46% 34%);
 }
-@media (prefers-color-scheme: dark) {
-  .avatar { background: hsl(var(--av-h, 20) 28% 24%); color: hsl(var(--av-h, 20) 62% 78%); }
-}
+:root[data-theme='dark'] .avatar { background: hsl(var(--av-h, 20) 28% 24%); color: hsl(var(--av-h, 20) 62% 78%); }
 .back-btn {
   background: none; border: none; color: var(--muted); font-weight: 700; cursor: pointer;
   padding: 14px 8px 6px 0; font-size: 14px; min-height: var(--tap);

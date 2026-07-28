@@ -365,6 +365,10 @@ export interface AppState {
   savedSearches: SavedSearch[]
   recentlyViewed: string[]
   bookingDrafts: BookingDraft[]
+  /* Undefined means "follow the phone". Only set once the person has actually
+     picked a side, so someone who never touches the toggle keeps tracking their
+     system setting instead of being frozen into whatever it was on first launch. */
+  theme?: 'light' | 'dark'
   blockedOwners: string[]
   promoCodesUsed: string[]
   myListings: Item[]

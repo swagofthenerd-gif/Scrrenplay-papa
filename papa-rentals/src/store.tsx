@@ -86,6 +86,7 @@ type Action =
   | { type: 'REMOVE_SAVED_SEARCH'; id: string }
   | { type: 'VIEW_ITEM'; itemId: string }
   | { type: 'SAVE_BOOKING_DRAFT'; itemId: string; startDate: string; endDate: string }
+  | { type: 'SET_THEME'; theme: 'light' | 'dark' }
   | { type: 'READ_NOTIFICATIONS' }
   | { type: 'ADD_LISTING'; item: Item }
   | { type: 'TOGGLE_LISTING_PAUSE'; itemId: string }
@@ -477,6 +478,13 @@ function reducer(state: AppState, action: Action): AppState {
     case 'VIEW_ITEM':
       if (state.recentlyViewed[0] === action.itemId) return state
       return { ...state, recentlyViewed: [action.itemId, ...state.recentlyViewed.filter((x) => x !== action.itemId)].slice(0, 8) }
+
+    case 'SET_THEME':
+      /* The attribute is written here rather than in an effect so the paint and
+         the state change land together; an effect runs after render, which shows
+         one frame of the old palette on a slow phone. */
+      document.documentElement.setAttribute('data-theme', action.theme)
+      return { ...state, theme: action.theme }
 
     case 'SAVE_BOOKING_DRAFT': {
       const prev = state.bookingDrafts.find((d) => d.itemId === action.itemId)
