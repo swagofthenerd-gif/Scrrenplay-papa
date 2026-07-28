@@ -96,11 +96,11 @@ claiming an item, re-verify it in the code.
 ## BROWSE (`Browse.tsx` + `ItemDetail.tsx`)
 
 ### Filters & sort
-1. [ ] Filters are ephemeral React state — navigate away and back and everything resets. Persist in URL hash.
+1. [x] Filters are ephemeral React state — navigate away and back and everything resets. Persist in URL hash.
 2. [x] Filters in a horizontal chip row that scrolls off-screen — add a "Filters" button opening a sheet with a count badge.
 3. [ ] No price range — only a "max price" `<select>` with 3 fixed buckets. Add a dual-handle slider.
 4. [ ] `maxPrice` buckets (10k/25k/50k) are camera-centric — make buckets category-aware.
-5. [ ] Sort defaults to `relevance` with query, `popular` otherwise — choice isn't persisted across navigations.
+5. [x] Sort defaults to `relevance` with query, `popular` otherwise — choice isn't persisted across navigations.
 6. [ ] No "distance" input despite a `nearest` sort — surface actual km and let users cap radius.
 7. [x] Clearing filters in empty state only clears 4 of 6 (misses `minCapacity`, `hourlyOnly`). Make "Clear" reset all.
 8. [x] No active-filter chips shown as removable pills above results.
@@ -166,33 +166,33 @@ claiming an item, re-verify it in the code.
 ## CART (`CartView.tsx`)
 
 ### Editing & flexibility
-1. [ ] **Cart lines are not editable** — only Remove. No qty stepper, no date change, no transport/insurance toggle. Biggest cart gap.
-2. [ ] `key={i}` (array index) on cart lines — removing a middle line reindexes and can misrender state. Use a stable line id.
-3. [ ] No "save for later" / move-to-wishlist from cart.
-4. [ ] No per-line "edit dates" — booking is frozen once added.
-5. [ ] Kit items land on `todayISO(2)` with a toast saying "adjust dates in cart" — but cart has no date editor. Points at a feature that doesn't exist.
+1. [x] **Cart lines are not editable** — only Remove. No qty stepper, no date change, no transport/insurance toggle. Biggest cart gap.
+2. [x] `key={i}` (array index) on cart lines — removing a middle line reindexes and can misrender state. Use a stable line id.
+3. [x] No "save for later" / move-to-wishlist from cart.
+4. [x] No per-line "edit dates" — booking is frozen once added.
+5. [x] Kit items land on `todayISO(2)` with a toast saying "adjust dates in cart" — but cart has no date editor. Points at a feature that doesn't exist.
 
 ### Pricing transparency
-6. [ ] Service fee "5%" hardcoded in both label and logic — externalize to one source of truth.
-7. [ ] Deposit hold shown with no tooltip explaining it won't hit their balance.
-8. [ ] Wallet + points can both be toggled with no guard rail if they exceed total — show "covers full amount, Rs X charged".
-9. [ ] No breakdown per owner though transport is "per owner" — group multi-vendor lines by vendor with sub-totals.
-10. [ ] Promo errors show inline, but a valid-but-suboptimal promo gives no "you could save more with X" hint.
-11. [ ] Points redemption is 1:1 with no cap indicator — clarify max redeemable per order.
-12. [ ] Tier/van perks appear only when they apply — add a muted "unlock at Silver" nudge when they don't.
+6. [x] Service fee "5%" hardcoded in both label and logic — externalize to one source of truth.
+7. [x] Deposit hold shown with no tooltip explaining it won't hit their balance.
+8. [x] Wallet + points can both be toggled with no guard rail if they exceed total — show "covers full amount, Rs X charged".
+9. [x] No breakdown per owner though transport is "per owner" — group multi-vendor lines by vendor with sub-totals.
+10. [x] Promo errors show inline, but a valid-but-suboptimal promo gives no "you could save more with X" hint.
+11. [x] Points redemption is 1:1 with no cap indicator — clarify max redeemable per order.
+12. [x] Tier/van perks appear only when they apply — add a muted "unlock at Silver" nudge when they don't.
 
 ### Delivery & payment
 13. [ ] Delivery address only appears `needsDelivery` — no map/pin confirmation, just a label + free text.
-14. [ ] Address selection uses `onClick` on a `<div>` — not keyboard accessible; make it a radio group.
+14. [x] Address selection uses `onClick` on a `<div>` — not keyboard accessible; make it a radio group.
 15. [ ] COD note "deposit still held on card" implies a card on file, but there's no card management anywhere.
 16. [ ] No saved payment methods — `PAYMENT_METHODS` is static; you can't add/remove a card.
-17. [ ] No delivery time-slot selection though pickup times exist per line.
+17. [x] No delivery time-slot selection though pickup times exist per line.
 
 ### Trust, safety & confirmation
-18. [ ] `placeOrder` fires immediately — no confirmation step for a large, deposit-heavy order. Add a review/confirm sheet.
-19. [ ] No cancellation-policy acknowledgment checkbox — policy is muted text.
-20. [ ] "Clear all" wipes the cart instantly with no undo/confirm.
-21. [ ] `Remove` is instant with no undo.
+18. [x] `placeOrder` fires immediately — no confirmation step for a large, deposit-heavy order. Add a review/confirm sheet.
+19. [x] No cancellation-policy acknowledgment checkbox — policy is muted text.
+20. [x] "Clear all" wipes the cart instantly with no undo/confirm.
+21. [x] `Remove` is instant with no undo.
 22. [ ] No stock/availability re-check at checkout — an item could be booked between add and place.
 
 ### Empty & edge states

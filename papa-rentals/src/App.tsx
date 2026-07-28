@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavContext, useHashRouter, useNav } from './nav'
+import { NavContext, browseTabView, useHashRouter, useNav } from './nav'
 import { StoreProvider, useStore } from './store'
 import { buzz, fmtTimeAgo } from './utils'
 import { getItem } from './data/catalog'
@@ -183,7 +183,7 @@ function Shell() {
         <button className={view.name === 'home' || view.name === 'services' ? 'active' : ''} onClick={() => go({ name: 'home' })}>
           <span className="nav-ico"><Icon name="home" /></span>Home
         </button>
-        <button className={view.name === 'browse' || view.name === 'item' ? 'active' : ''} onClick={() => go({ name: 'browse' })}>
+        <button className={view.name === 'browse' || view.name === 'item' ? 'active' : ''} onClick={() => go(browseTabView())}>
           <span className="nav-ico"><Icon name="search" /></span>Browse
         </button>
         <button className={view.name === 'cart' ? 'active' : ''} onClick={() => go({ name: 'cart' })}>

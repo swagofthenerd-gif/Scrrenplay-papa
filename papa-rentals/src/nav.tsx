@@ -135,13 +135,31 @@ export function parseHash(hash: string): View {
 /* Scroll restoration: remember where you were per route, restore on back/forward. */
 const scrollMemory = new Map<string, number>()
 
+/* Browse filters live in the URL, so they survive back/forward — but the Browse
+   tab in the bottom bar pointed at a bare `#/browse`, which threw away a
+   carefully built set of filters the moment somebody checked their cart and came
+   back. Remember the last browse URL and send the tab there instead. */
+let lastBrowse: View = { name: 'browse' }
+function rememberBrowse(v: View) {
+  if (v.name === 'browse') lastBrowse = v
+}
+export function browseTabView(): View {
+  return lastBrowse
+}
+
 export function useHashRouter(): { view: View; go: (v: View, opts?: { replace?: boolean }) => void; back: () => void } {
-  const [view, setView] = useState<View>(() => parseHash(location.hash))
+  const [view, setView] = useState<View>(() => {
+    const v = parseHash(location.hash)
+    rememberBrowse(v)
+    return v
+  })
 
   useEffect(() => {
     if (!location.hash) history.replaceState(null, '', '#/')
     const onHashChange = () => {
-      setView(parseHash(location.hash))
+      const next = parseHash(location.hash)
+      rememberBrowse(next)
+      setView(next)
       // restore remembered scroll for this route (0 for fresh visits)
       requestAnimationFrame(() => {
         window.scrollTo({ top: scrollMemory.get(location.hash) ?? 0 })
@@ -164,7 +182,10 @@ export function useHashRouter(): { view: View; go: (v: View, opts?: { replace?: 
       const y = window.scrollY
       history.replaceState(null, '', target)
       scrollMemory.set(target, y)
-      setView(parseHash(target))
+      const next = parseHash(target)
+      // replace-nav bypasses hashchange, so record filter tweaks here too
+      rememberBrowse(next)
+      setView(next)
       return
     }
     if (target === location.hash) {
