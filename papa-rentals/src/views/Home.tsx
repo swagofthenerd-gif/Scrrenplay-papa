@@ -18,6 +18,11 @@ const RAIL_SEEN_KEY = 'papa-rail-impressions'
    boundary for calling a vendor "near you". */
 const NEARBY_KM = 10
 
+/* Pull distance (in finger-pixels) that arms the refresh, and the ceiling the
+   damped indicator can reach however hard you yank. */
+const PULL_TRIGGER = 70
+const PULL_MAX = 64
+
 /* One reusable rail so every horizontal strip on Home scrolls, labels and
    keyboards the same way. Duplicating this markup is how sections drift apart. */
 function Rail({
@@ -189,6 +194,7 @@ export default function Home() {
   const { go, toast } = useNav()
   const { state, dispatch } = useStore()
   const [pulling, setPulling] = useState(false)
+  const [pullPx, setPullPx] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   /* Bumping this re-rolls every rail that uses it, so a pull actually changes
      the page instead of playing a spinner for 700ms and lying about it. */
@@ -196,19 +202,26 @@ export default function Home() {
   const [kitDate, setKitDate] = useState(todayISO(2))
   const pullStart = useRef<number | null>(null)
 
-  /* Pull-to-refresh never calls preventDefault, so these handlers only observe the
-     gesture — native scrolling (and the Android WebView's own overscroll) keeps
-     working. Adding a preventDefault here would freeze the whole page in the wrapper. */
+  /* These handlers only observe the gesture — none of them calls preventDefault, so
+     it doesn't matter that React attaches touchmove passively: native scrolling and
+     the Android WebView's own overscroll keep working. Blocking touchmove here would
+     be the difference between a smooth flick and a page that feels stuck. */
   function onTouchStart(e: React.TouchEvent) {
     if (window.scrollY <= 0) pullStart.current = e.touches[0].clientY
   }
   function onTouchMove(e: React.TouchEvent) {
     if (pullStart.current == null) return
     const delta = e.touches[0].clientY - pullStart.current
-    setPulling(delta > 70)
+    if (delta <= 0) { setPullPx(0); setPulling(false); return }
+    /* Square-root damping: the indicator tracks the finger closely at first and
+       then visibly fights back, so the gesture tells you it's near the limit
+       instead of snapping open the instant you cross an invisible threshold. */
+    setPullPx(Math.min(PULL_MAX, Math.sqrt(delta) * 6))
+    setPulling(delta > PULL_TRIGGER)
   }
   function onTouchEnd() {
     pullStart.current = null
+    setPullPx(0)
     if (!pulling) return
     setPulling(false)
     setRefreshing(true)
@@ -370,8 +383,17 @@ export default function Home() {
 
   return (
     <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} className={refreshing ? 'is-refreshing' : ''}>
-      <div className={`ptr ${pulling || refreshing ? 'active' : ''}`} aria-hidden="true">
-        <span className="spin"><Icon name="refresh" size={15} /></span> {refreshing ? 'Refreshing…' : 'Release to refresh'}
+      {/* Height follows the damped pull distance while a finger is down, so the strip
+          tracks the gesture instead of snapping open at a hidden threshold. The
+          `dragging` class kills the CSS transition during the drag — otherwise every
+          frame animates toward the last value and the strip lags behind the thumb. */}
+      <div
+        className={`ptr ${pulling || refreshing ? 'active' : ''} ${pullPx > 0 ? 'dragging' : ''}`}
+        style={pullPx > 0 && !refreshing ? { height: pullPx } : undefined}
+        aria-hidden="true"
+      >
+        <span className="spin"><Icon name="refresh" size={15} /></span>{' '}
+        {refreshing ? 'Refreshing…' : pulling ? 'Release to refresh' : 'Pull to refresh'}
       </div>
       <StudioHero />
 

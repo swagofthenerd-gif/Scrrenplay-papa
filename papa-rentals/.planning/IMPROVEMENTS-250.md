@@ -49,8 +49,8 @@ claiming an item, re-verify it in the code.
 
 ### Pull-to-refresh & motion
 21. [x] Pull-to-refresh is a fake 700ms `setTimeout` always saying "You're up to date" — make it actually reshuffle recs.
-22. [ ] Pull threshold (`delta > 70`) has no rubber-band visual — add elastic resistance.
-23. [ ] Pull handler on a plain `<div>` with no `passive` concerns documented — verify it doesn't block scroll on low-end Android WebView.
+22. [x] Pull threshold (`delta > 70`) has no rubber-band visual — add elastic resistance.
+23. [x] Pull handler on a plain `<div>` with no `passive` concerns documented — verify it doesn't block scroll on low-end Android WebView.
 24. [x] No haptic on successful refresh even though `buzz()` exists elsewhere.
 
 ### StudioHero specifically

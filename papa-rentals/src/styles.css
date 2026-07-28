@@ -888,7 +888,17 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   height: 0; color: var(--muted); font-size: 13px; font-weight: 700; transition: height var(--dur-fast) ease;
 }
 .ptr.active { height: 48px; }
+/* While the finger is down the inline height is authoritative and updates every
+   touchmove — a transition here would chase each frame and lag the thumb. It comes
+   back on release so the strip snaps closed (or open into "Refreshing…") smoothly. */
+.ptr.dragging { transition: none; }
 .ptr .spin { display: inline-block; animation: spin 0.8s linear infinite; margin-right: 8px; }
+/* The spinner only means anything once it's actually fetching; spinning it during
+   the drag reads as "already loading" before you've committed to the gesture. */
+.ptr:not(.active) .spin { animation: none; opacity: 0.5; }
+@media (prefers-reduced-motion: reduce) {
+  .ptr .spin { animation: none; }
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- Onboarding ---------- */
