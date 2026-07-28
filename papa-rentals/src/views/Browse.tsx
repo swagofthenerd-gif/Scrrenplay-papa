@@ -218,6 +218,18 @@ export default function Browse(props: BrowseProps) {
     setRemembered(saved && Object.values(saved).some(Boolean) ? saved : null)
   }, [memoryKey, hasCurrent])
 
+  /* Filtered against the catalogue, not just listed. Offering a recent search as
+     the escape route from a dead end and landing the person in a second dead end
+     is worse than offering nothing — and the current query is excluded because
+     that is the search they are already stuck inside. */
+  const priorSearches = useMemo(
+    () =>
+      state.recentSearches
+        .filter((r) => r.toLowerCase() !== (query ?? '').toLowerCase() && ITEMS.some((i) => fuzzyMatch(i.name, r)))
+        .slice(0, 4),
+    [state.recentSearches, query],
+  )
+
   useEffect(() => setShown(PAGE), [items])
 
   /* Active filters, as removable pills — so you can always see and undo what's narrowing the list. */
@@ -459,6 +471,22 @@ export default function Browse(props: BrowseProps) {
               <button className="btn btn-ghost btn-sm" onClick={clearAll}>
                 Clear all {activeFilters} filters
               </button>
+            )}
+            {/* Recents live in the search overlay, which is one tap away — but a
+                dead end is exactly where nobody wants to reopen a search box and
+                retype. These are searches that already returned something for this
+                person, so they are a way back out rather than another guess. */}
+            {priorSearches.length > 0 && (
+              <div className="empty-recents">
+                <div className="muted small">Or go back to a search that worked:</div>
+                <div className="filter-row" style={{ justifyContent: 'center' }}>
+                  {priorSearches.map((r) => (
+                    <button key={r} className="filter-chip chip-ico" onClick={() => { buzz(); patch({ query: r }) }}>
+                      <Icon name="clock" size={12} /> {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         ) : (

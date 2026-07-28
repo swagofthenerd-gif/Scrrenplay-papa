@@ -1399,3 +1399,11 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
    labels stay readable on a 320px screen instead of breaking mid-word. */
 .kit-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .kit-actions .btn { flex: 1 1 auto; }
+
+/* Sits below the empty state's recovery buttons, separated by a rule so it reads
+   as a second, weaker offer rather than another button in the same stack. */
+.empty-recents {
+  margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid var(--line);
+  width: 100%; display: flex; flex-direction: column; gap: 8px; align-items: center;
+}

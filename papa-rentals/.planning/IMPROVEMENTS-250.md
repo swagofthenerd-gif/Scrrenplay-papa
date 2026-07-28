@@ -123,7 +123,7 @@ claiming an item, re-verify it in the code.
 18. [x] Results grid isn't result-count-aware — 1 vs 100 results render identically; consider a compact list toggle.
 19. [x] No pagination or infinite scroll — everything renders at once. Add windowing.
 20. [x] Empty state is generic — when a specific filter kills results, name it.
-21. [ ] No recent/trending searches in Browse (may live in `SearchOverlay` — unify).
+21. [x] No recent/trending searches in Browse (may live in `SearchOverlay` — unify).
 22. [x] Category chips duplicated from Home; no explicit "All" chip to clear category.
 
 ### ItemDetail
@@ -158,11 +158,11 @@ claiming an item, re-verify it in the code.
 45. [ ] No loading state between filter changes — add optimistic skeletons for future server-backed data.
 
 ### Future-facing
-46. [ ] Persist last-used filters per category.
+46. [x] Persist last-used filters per category.
 47. [ ] "Notify me when available / price drops" on out-of-range results.
 48. [ ] Map view for spaces (studios) — location is a primary decision factor.
 49. [ ] Log which filters produce zero results — a supply-gap signal.
-50. [ ] Single "clear all + reset sort" action.
+50. [x] Single "clear all + reset sort" action.
 
 ---
 
