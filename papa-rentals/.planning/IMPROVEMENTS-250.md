@@ -29,7 +29,7 @@ claiming an item, re-verify it in the code.
 3. [ ] No "Continue where you left off" rail — surface last item viewed with its half-filled date picker.
 4. [ ] Trending is a static `timesRented` sort. Add time-decay so rising gear surfaces, not all-time winners.
 5. [x] Deals rail has no urgency cue on the card — show `DealCountdown` inline, not just on detail page.
-6. [ ] Add location signal to hero ("34 vendors near Lahore") so the onboarding city visibly does something.
+6. [x] Add location signal to hero ("34 vendors near Lahore") so the onboarding city visibly does something.
 7. [x] `forYou`/`similarItems` use `useMemo([state])` — recompute on unrelated changes (wallet top-up, notifications). Narrow deps.
 8. [x] No "recently viewed" rail even though `state.recentlyViewed` exists — you only use `[0]`. Show the full strip.
 9. [ ] Kits are hardcoded bundles — add "Build your own kit" that seeds cart and applies a dynamic bundle discount.

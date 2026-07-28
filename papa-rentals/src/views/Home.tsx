@@ -14,6 +14,10 @@ import type { Item } from '../types'
 
 const RAIL_SEEN_KEY = 'papa-rail-impressions'
 
+/* Same-day van delivery stops being reliable past this, so it's the honest
+   boundary for calling a vendor "near you". */
+const NEARBY_KM = 10
+
 /* One reusable rail so every horizontal strip on Home scrolls, labels and
    keyboards the same way. Duplicating this markup is how sections drift apart. */
 function Rail({
@@ -289,9 +293,14 @@ export default function Home() {
     () => ({
       listings: visible.length,
       vendors: vendorList.length,
+      /* The city picked during onboarding never appeared anywhere again, so it
+         read as a question we asked for no reason. Counting the vendors inside
+         delivery range makes it earn its place — and it's the number a renter
+         actually wants: not how big the platform is, how big it is for them. */
+      nearby: vendorList.filter((v) => v.owner.distanceKm <= NEARBY_KM).length,
       shoots: visible.reduce((s, i) => s + i.timesRented, 0),
     }),
-    [visible, vendorList.length]
+    [visible, vendorList]
   )
 
   const cartCount = state.cart.length
@@ -313,7 +322,12 @@ export default function Home() {
 
       <div className="proof-band" role="note">
         <div><b>{proof.listings}</b><span className="muted small"> listings</span></div>
-        <div><b>{proof.vendors}</b><span className="muted small"> vendors</span></div>
+        <div>
+          <b>{proof.nearby > 0 ? proof.nearby : proof.vendors}</b>
+          <span className="muted small">
+            {proof.nearby > 0 && state.profile.city ? ` vendors near ${state.profile.city}` : ' vendors'}
+          </span>
+        </div>
         <div><b>{proof.shoots.toLocaleString('en-GB')}</b><span className="muted small"> shoots supplied</span></div>
       </div>
 
