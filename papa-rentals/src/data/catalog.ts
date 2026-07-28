@@ -1,4 +1,4 @@
-import type { Category, Item, Kit, Owner, TransportOption } from '../types'
+import type { Category, CategoryId, Item, Kit, Owner, TransportOption } from '../types'
 import { ITEM_IMAGES, img } from './images'
 
 // booked ranges are generated relative to "today" so the demo always has realistic availability
@@ -389,4 +389,17 @@ export function getItem(id: string): Item {
 
 export function getCategory(id: string): Category {
   return CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[0]
+}
+
+/* Cheapest live listing in a department. Tapping a department chip blind is a
+   coin flip — a renter with Rs 4,000 for the day has no idea whether Drones is
+   even in reach until they've loaded the grid and scrolled it. Showing the
+   entry price up front turns the chip row into a budget filter.
+   Lives here, next to the catalog, so Home and the search overlay can never
+   quote two different numbers for the same department. */
+export function deptFromPrice(id: CategoryId): number | undefined {
+  const prices = [...ITEMS, ...USER_ITEMS]
+    .filter((i) => i.category === id && !i.paused)
+    .map((i) => i.pricePerDay)
+  return prices.length ? Math.min(...prices) : undefined
 }

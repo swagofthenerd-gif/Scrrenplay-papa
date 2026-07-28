@@ -24,14 +24,14 @@ claiming an item, re-verify it in the code.
 ## HOME (`Home.tsx` + `StudioHero`, `ServicesBand`)
 
 ### Discovery & personalization
-1. [ ] "For you" only shows when `picks.length > 0` — new users see nothing. Add cold-start fallback (editor's picks / most-rented) so the rail never vanishes.
-2. [ ] "Because you viewed" keys off only `recentlyViewed[0]`. Rotate through the last 3-4 viewed items.
+1. [x] "For you" only shows when `picks.length > 0` — new users see nothing. Add cold-start fallback (editor's picks / most-rented) so the rail never vanishes.
+2. [x] "Because you viewed" keys off only `recentlyViewed[0]`. Rotate through the last 3-4 viewed items.
 3. [ ] No "Continue where you left off" rail — surface last item viewed with its half-filled date picker.
 4. [ ] Trending is a static `timesRented` sort. Add time-decay so rising gear surfaces, not all-time winners.
-5. [ ] Deals rail has no urgency cue on the card — show `DealCountdown` inline, not just on detail page.
+5. [x] Deals rail has no urgency cue on the card — show `DealCountdown` inline, not just on detail page.
 6. [ ] Add location signal to hero ("34 vendors near Lahore") so the onboarding city visibly does something.
 7. [ ] `forYou`/`similarItems` use `useMemo([state])` — recompute on unrelated changes (wallet top-up, notifications). Narrow deps.
-8. [ ] No "recently viewed" rail even though `state.recentlyViewed` exists — you only use `[0]`. Show the full strip.
+8. [x] No "recently viewed" rail even though `state.recentlyViewed` exists — you only use `[0]`. Show the full strip.
 9. [ ] Kits are hardcoded bundles — add "Build your own kit" that seeds cart and applies a dynamic bundle discount.
 10. [ ] No seasonal/contextual merchandising (wedding season, Ramadan, ad-shoot week). Add a data-driven promo slot at top.
 
@@ -42,54 +42,54 @@ claiming an item, re-verify it in the code.
 14. [ ] "tap a vendor to explore their storefront" instructional copy is a smell — make the card afford tapping visually.
 15. [ ] Kit cards show `<s>` full price then discounted, but no "per day" clarity — label it "bundle/day".
 16. [ ] Become-a-vendor promo appears on Home and inside Browse studios — dedupe or vary copy.
-17. [ ] No empty/skeleton state — every rail pops in at once on cold load. Add skeleton cards.
-18. [ ] Spaces rail sorts by `timesRented`, titled "Spaces to shoot at", no filter chips — let users filter by city/capacity in the rail.
+17. [x] No empty/skeleton state — every rail pops in at once on cold load. Add skeleton cards.
+18. [x] Spaces rail sorts by `timesRented`, titled "Spaces to shoot at", no filter chips — let users filter by city/capacity in the rail.
 19. [ ] Icons carry meaning (bolt, backpack, flame) with no legend — consider text labels on first run.
 20. [ ] Horizontal rails have no scroll affordance (peek of next card / desktop arrows).
 
 ### Pull-to-refresh & motion
-21. [ ] Pull-to-refresh is a fake 700ms `setTimeout` always saying "You're up to date" — make it actually reshuffle recs.
+21. [x] Pull-to-refresh is a fake 700ms `setTimeout` always saying "You're up to date" — make it actually reshuffle recs.
 22. [ ] Pull threshold (`delta > 70`) has no rubber-band visual — add elastic resistance.
 23. [ ] Pull handler on a plain `<div>` with no `passive` concerns documented — verify it doesn't block scroll on low-end Android WebView.
-24. [ ] No haptic on successful refresh even though `buzz()` exists elsewhere.
+24. [x] No haptic on successful refresh even though `buzz()` exists elsewhere.
 
 ### StudioHero specifically
-25. [ ] Scroll-driven parallax (`SCENE_W=3960`) is heavy for low-end WebView — add `prefers-reduced-motion` bail-out + static fallback.
-26. [ ] Hero headline is a single fixed string — rotate 2-3 value props (gear / spaces / crew) per visit.
-27. [ ] Hero has no primary CTA button — a filmmaker landing cold has no obvious "Start".
-28. [ ] "SC 01" storyboard slugs are decorative — make them tappable to jump to that department so the metaphor pays off.
+25. [x] Scroll-driven parallax (`SCENE_W=3960`) is heavy for low-end WebView — add `prefers-reduced-motion` bail-out + static fallback.
+26. [x] Hero headline is a single fixed string — rotate 2-3 value props (gear / spaces / crew) per visit.
+27. [x] Hero has no primary CTA button — a filmmaker landing cold has no obvious "Start".
+28. [x] "SC 01" storyboard slugs are decorative — make them tappable to jump to that department so the metaphor pays off.
 
 ### Conversion & trust
-29. [ ] No social proof band ("2,300 shoots delivered this month", partner logos) near top.
-30. [ ] Welcome credit (Rs 5,000) from onboarding never re-surfaced on Home — show persistent banner until used.
-31. [ ] No "verified vendors only" quick toggle on Home — expose the trust filter earlier.
-32. [ ] Kit "Add to cart" dumps everything at `todayISO(2)` with a toast telling users to fix dates — open a quick date sheet before adding.
-33. [ ] No wishlist entry point on Home — it lives in Profile/Browse only.
+29. [x] No social proof band ("2,300 shoots delivered this month", partner logos) near top.
+30. [x] Welcome credit (Rs 5,000) from onboarding never re-surfaced on Home — show persistent banner until used.
+31. [x] No "verified vendors only" quick toggle on Home — expose the trust filter earlier.
+32. [x] Kit "Add to cart" dumps everything at `todayISO(2)` with a toast telling users to fix dates — open a quick date sheet before adding.
+33. [x] No wishlist entry point on Home — it lives in Profile/Browse only.
 
 ### Performance & housekeeping
-34. [ ] `visible = [...ITEMS, ...live]` rebuilt every render — memoize; it feeds 5+ downstream computations.
-35. [ ] `trending` does a full `[...visible].sort()` every render — memoize alongside `deals`/`spaces`.
+34. [x] `visible = [...ITEMS, ...live]` rebuilt every render — memoize; it feeds 5+ downstream computations.
+35. [x] `trending` does a full `[...visible].sort()` every render — memoize alongside `deals`/`spaces`.
 36. [ ] All rails render every card eagerly — no virtualization/lazy images. Lazy-render below-the-fold rails.
 37. [ ] `ItemArt`/`SmartImage` — confirm `loading="lazy"` and correct sizing for rail vs grid; oversized art hurts the 24MB WebView.
-38. [ ] No analytics hooks on rail impressions/taps — add lightweight event logging (even localStorage).
+38. [x] No analytics hooks on rail impressions/taps — add lightweight event logging (even localStorage).
 
 ### Accessibility & polish
 39. [ ] Category chips are icon+text but `DeptMark` SVGs have no `aria-label`/`role`.
-40. [ ] Horizontal rails aren't keyboard-scrollable and have no `aria-label`.
+40. [x] Horizontal rails aren't keyboard-scrollable and have no `aria-label`.
 41. [ ] Ensure Home badges (Save X%) meet 3:1 contrast on the purple tone.
 42. [ ] "Flash deals"/"Trending" rely on color+icon — add a text label for urgency.
 
 ### Content & copy
 43. [ ] "Bundled packages at a package price" is circular — tighten to a benefit ("One booking, one discounted rate").
-44. [ ] No price-range hint on department chips — "Cameras from Rs X/day" sets expectations before the tap.
-45. [ ] Vendor subtitle counts vendors but not inventory — "34 houses · 900+ items" is stronger.
+44. [x] No price-range hint on department chips — "Cameras from Rs X/day" sets expectations before the tap.
+45. [x] Vendor subtitle counts vendors but not inventory — "34 houses · 900+ items" is stronger.
 
 ### Future-facing hooks
-46. [ ] Dismissible "You have N items in cart — finish booking" resume banner on Home.
-47. [ ] "Near your last shoot location" rail using `state.addresses`.
-48. [ ] Lightweight "Saved searches / alerts" so users get notified on price drops.
-49. [ ] "New this week" rail keyed on listing `createdAt` to reward new vendors (drives supply).
-50. [ ] Single reusable `<Rail title icon subtitle seeAll>` component — Home hand-rolls the same header markup 6×.
+46. [x] Dismissible "You have N items in cart — finish booking" resume banner on Home.
+47. [x] "Near your last shoot location" rail using `state.addresses`.
+48. [x] Lightweight "Saved searches / alerts" so users get notified on price drops.
+49. [x] "New this week" rail keyed on listing `createdAt` to reward new vendors (drives supply).
+50. [x] Single reusable `<Rail title icon subtitle seeAll>` component — Home hand-rolls the same header markup 6×.
 
 ---
 

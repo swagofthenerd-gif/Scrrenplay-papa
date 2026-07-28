@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CATEGORIES, ITEMS } from '../data/catalog'
+import { CATEGORIES, ITEMS, deptFromPrice } from '../data/catalog'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import { buzz, highlightMatch, money, savedLabel, searchRank } from '../utils'
@@ -159,7 +159,12 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
               <button key={c.id} className="sug-row" onClick={() => { buzz(); onClose(); go({ name: 'browse', category: c.id }) }}>
                 <span className="sug-cat-ico"><DeptMark id={c.id} size={42} /></span>
                 <span className="sug-title">{c.name}</span>
-                <span className="sug-meta"><Icon name="chevron-right" size={16} /></span>
+                {/* Same helper Home's chips use — two screens quoting different
+                    entry prices for one department is worse than quoting none. */}
+                <span className="sug-meta">
+                  {deptFromPrice(c.id) !== undefined && <>from {money(deptFromPrice(c.id) as number)} </>}
+                  <Icon name="chevron-right" size={16} />
+                </span>
               </button>
             ))}
           </>

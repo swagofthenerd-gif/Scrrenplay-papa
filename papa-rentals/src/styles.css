@@ -356,6 +356,13 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
   color: #fff;
 }
 .cat-chip.active { border-color: var(--accent); background: var(--accent-soft); }
+/* Sits under the department name, quieter than it — a budget hint, not a claim.
+   Line-height is pinned so a chip with no live listings (no hint) stays the
+   same height as its neighbours instead of shortening the row. */
+.cat-chip .cat-from {
+  font-size: 10px; font-weight: 600; color: var(--muted); line-height: 12px; margin-top: -3px;
+  white-space: nowrap;
+}
 
 /* ---------- Hero ---------- */
 .hero {

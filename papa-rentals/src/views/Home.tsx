@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CATEGORIES, ITEMS, KITS, getItem, getOwner } from '../data/catalog'
+import { CATEGORIES, ITEMS, KITS, deptFromPrice, getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { forYou, similarItems } from '../recs'
 import { vendors } from '../vendors'
@@ -382,16 +382,20 @@ export default function Home() {
           </span>
         </div>
         <div className="cat-row">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              className="cat-chip"
-              onClick={() => go({ name: 'browse', category: c.id })}
-            >
-              <span className="cat-ico" aria-hidden="true"><DeptMark id={c.id} size={44} /></span>
-              {c.name}
-            </button>
-          ))}
+          {CATEGORIES.map((c) => {
+            const from = deptFromPrice(c.id)
+            return (
+              <button
+                key={c.id}
+                className="cat-chip"
+                onClick={() => go({ name: 'browse', category: c.id })}
+              >
+                <span className="cat-ico" aria-hidden="true"><DeptMark id={c.id} size={44} /></span>
+                {c.name}
+                {from !== undefined && <span className="cat-from">from {money(from)}</span>}
+              </button>
+            )
+          })}
         </div>
       </div>
 
