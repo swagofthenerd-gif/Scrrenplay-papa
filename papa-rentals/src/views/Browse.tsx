@@ -464,28 +464,17 @@ export default function Browse(props: BrowseProps) {
         ) : (
           <div className={dense ? 'dense-list' : 'grid'}>
             {items.slice(0, shown).map((item, idx) => (
-              <div key={item.id} style={{ position: 'relative' }}>
-                <ItemCard
-                  item={item}
-                  index={idx}
-                  onOpen={() => go({ name: 'item', id: item.id, from: dateFrom, to: dateTo })}
-                  wishlisted={state.wishlist.includes(item.id)}
-                  onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
-                />
-                <button
-                  className={`cmp-btn ${compare.includes(item.id) ? 'on' : ''}`}
-                  aria-label={compare.includes(item.id) ? `Remove ${item.name} from compare` : `Compare ${item.name}`}
-                  aria-pressed={compare.includes(item.id)}
-                  onClick={() => toggleCompare(item)}
-                >
-                  <Icon name="scale" size={16} />
-                </button>
-                {sort === 'nearest' && (
-                  <span className="muted small" style={{ display: 'block', marginTop: 2 }}>
-                    {owners.get(item.id)?.distanceKm ?? getOwner(item.ownerId).distanceKm} km away
-                  </span>
-                )}
-              </div>
+              <ItemCard
+                key={item.id}
+                item={item}
+                index={idx}
+                onOpen={() => go({ name: 'item', id: item.id, from: dateFrom, to: dateTo })}
+                wishlisted={state.wishlist.includes(item.id)}
+                onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
+                compared={compare.includes(item.id)}
+                onToggleCompare={() => toggleCompare(item)}
+                footNote={sort === 'nearest' ? `${owners.get(item.id)?.distanceKm ?? getOwner(item.ownerId).distanceKm} km away` : undefined}
+              />
             ))}
           </div>
         )}

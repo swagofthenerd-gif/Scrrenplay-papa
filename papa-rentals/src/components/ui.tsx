@@ -280,12 +280,25 @@ export function ItemCard({
   wishlisted,
   onToggleWish,
   index,
+  compared,
+  onToggleCompare,
+  footNote,
 }: {
   item: Item
   onOpen: () => void
   wishlisted: boolean
   onToggleWish: () => void
   index?: number
+  /* Compare used to be a button Browse positioned on top of the card from the
+     outside, which meant the card had no idea it was there: the overlay could
+     land on the wishlist heart, and no other screen could offer compare without
+     copying the same absolute-positioned hack. Passing the handler in keeps the
+     control inside the card that owns the layout, and omitting it renders
+     nothing — so every other grid is unchanged. */
+  compared?: boolean
+  onToggleCompare?: () => void
+  /** Context the grid knows and the card can't, e.g. distance when sorting by nearest. */
+  footNote?: ReactNode
 }) {
   const { state } = useStore()
   const owner = getOwner(item.ownerId)
@@ -319,6 +332,19 @@ export function ItemCard({
       >
         <Icon name={wishlisted ? 'heart-filled' : 'heart'} size={18} />
       </button>
+      {onToggleCompare && (
+        <button
+          className={`cmp-btn ${compared ? 'on' : ''}`}
+          aria-label={compared ? `Remove ${item.name} from compare` : `Compare ${item.name}`}
+          aria-pressed={Boolean(compared)}
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleCompare()
+          }}
+        >
+          <Icon name="scale" size={16} />
+        </button>
+      )}
       <div className="item-card-body">
         <div className="item-card-title">{item.name}</div>
         <div className="item-card-meta">
@@ -347,6 +373,7 @@ export function ItemCard({
         {scarcity && (
           <div className="item-scarcity"><Icon name="clock" size={11} /> {scarcity}</div>
         )}
+        {footNote && <div className="muted small item-footnote">{footNote}</div>}
       </div>
     </div>
   )

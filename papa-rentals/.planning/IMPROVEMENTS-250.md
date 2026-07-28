@@ -113,7 +113,7 @@ claiming an item, re-verify it in the code.
 ### Compare feature
 11. [x] Compare state resets on navigation and isn't persisted.
 12. [x] Compare capped at 3 silently — tapping a 4th does nothing with no feedback. Toast "Compare holds 3".
-13. [ ] `cmp-btn` overlays every card corner and can fight the wishlist heart — verify no overlap on small screens.
+13. [x] `cmp-btn` overlays every card corner and can fight the wishlist heart — verify no overlap on small screens.
 14. [x] Compare table shows `specs[0]` as "Top spec" only — expand to a few key specs per category.
 15. [x] Compare has no "add to cart" from the table — only "View".
 
@@ -139,7 +139,7 @@ claiming an item, re-verify it in the code.
 32. [ ] Quantity stepper allows qty without checking stock — vendor with 2 units should block qty 5.
 
 ### Cards & visual
-33. [ ] `ItemCard` is reused everywhere but compare overlay is bolted on only in Browse — fold compare into the card component.
+33. [x] `ItemCard` is reused everywhere but compare overlay is bolted on only in Browse — fold compare into the card component.
 34. [x] No "just booked" / low-availability social proof ("rented 3× this week").
 35. [x] Wishlist heart toggles with no animation/haptic on Browse cards.
 36. [x] Cards don't show distance even when sorted by `nearest` — surface the sort dimension.
