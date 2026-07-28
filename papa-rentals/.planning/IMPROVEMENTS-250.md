@@ -69,7 +69,7 @@ claiming an item, re-verify it in the code.
 ### Performance & housekeeping
 34. [x] `visible = [...ITEMS, ...live]` rebuilt every render — memoize; it feeds 5+ downstream computations.
 35. [x] `trending` does a full `[...visible].sort()` every render — memoize alongside `deals`/`spaces`.
-36. [ ] All rails render every card eagerly — no virtualization/lazy images. Lazy-render below-the-fold rails.
+36. [x] All rails render every card eagerly — no virtualization/lazy images. Lazy-render below-the-fold rails.
 37. [x] `ItemArt`/`SmartImage` — confirm `loading="lazy"` and correct sizing for rail vs grid; oversized art hurts the 24MB WebView.
 38. [x] No analytics hooks on rail impressions/taps — add lightweight event logging (even localStorage).
 

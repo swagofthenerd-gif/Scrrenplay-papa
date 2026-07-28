@@ -8,6 +8,7 @@ import { buzz, dealActive, dealEndsAt, fmtCountdown, money, savedLabel, todayISO
 import { Badge, ItemArt, ItemCard, ListingPromo } from '../components/ui'
 import { DeptRow } from '../components/DeptRow'
 import { SectionHeader } from '../components/primitives'
+import { Deferred } from '../components/Deferred'
 import { Icon, type IconName } from '../components/icons'
 import { VendorCard } from '../components/VendorCard'
 import StudioHero from '../components/StudioHero'
@@ -155,6 +156,21 @@ const JUMPS: { id: string; label: string; icon: React.ComponentProps<typeof Icon
   { id: 'trending', label: 'Trending', icon: 'flame' },
 ]
 
+/* Jumping into the lazily-rendered tail lands you short: the smooth scroll starts
+   against reserved placeholders, and the sections it passes on the way mount and
+   grow while it's still travelling, pushing the target further down. So we settle,
+   then correct — a second scroll once the section is real puts its header where
+   the first one promised. The correction is cheap when nothing moved, because
+   scrollIntoView on an already-aligned element is a no-op. */
+function jumpTo(id: string) {
+  const el = document.getElementById(id)
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  window.setTimeout(() => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, 700)
+}
+
 function JumpBar() {
   return (
     <nav className="jump-bar" aria-label="Jump to a section">
@@ -164,7 +180,7 @@ function JumpBar() {
           className="slot-chip"
           onClick={() => {
             buzz()
-            document.getElementById(j.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            jumpTo(j.id)
           }}
         >
           <Icon name={j.icon} size={13} /> {j.label}
@@ -622,32 +638,49 @@ export default function Home() {
         </Rail>
       )}
 
+      {/* Everything from here down starts at least two screens low, and rendering
+          every card in all seven sections on first paint is what made the home
+          screen hitch before it appeared on the WebView this ships in. Each one
+          mounts a screen ahead of the scroll; the placeholder holds its height and
+          its id so the jump bar still reaches a section that hasn't rendered. */}
+
       {/* Title and subtitle both used to over-promise: the rail is ranked by
           listing date, so it's "recent", and some of it has been booked. */}
       {justListed.length > 0 && (
-        <Rail id="new" title="Recently listed" icon="bulb" sub="The newest gear on Papa Rentals">
-          {justListed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-        </Rail>
+        <Deferred id="new">
+          <Rail id="new" title="Recently listed" icon="bulb" sub="The newest gear on Papa Rentals">
+            {justListed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </Rail>
+        </Deferred>
       )}
 
       {coldStart.length > 0 && (
-        <Rail id="starters" title="Popular starters" icon="sparkles" sub="Highest-rated gear in every department">
-          {coldStart.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-        </Rail>
+        <Deferred id="starters">
+          <Rail id="starters" title="Popular starters" icon="sparkles" sub="Highest-rated gear in every department">
+            {coldStart.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </Rail>
+        </Deferred>
       )}
 
       {nearLastShoot.length > 0 && (
-        <Rail id="nearby" title="Near your last shoot" icon="pin" sub={`Vendors around ${lastShootArea}`}>
-          {nearLastShoot.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-        </Rail>
+        <Deferred id="nearby">
+          <Rail id="nearby" title="Near your last shoot" icon="pin" sub={`Vendors around ${lastShootArea}`}>
+            {nearLastShoot.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </Rail>
+        </Deferred>
       )}
 
       {seed && becauseViewed.length > 0 && (
-        <Rail id="because" title="Because you viewed" icon="target" sub={seed.name}>
-          {becauseViewed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-        </Rail>
+        <Deferred id="because">
+          <Rail id="because" title="Because you viewed" icon="target" sub={seed.name}>
+            {becauseViewed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </Rail>
+        </Deferred>
       )}
 
+      {/* Taller reservation than the plain rails: this one carries a filter row of
+          space-type chips above its track. */}
+      <Deferred id="spaces" minHeight={320}>
       <Rail
         id="spaces"
         title="Spaces to shoot at"
@@ -679,19 +712,25 @@ export default function Home() {
       >
         {shownSpaces.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
       </Rail>
+      </Deferred>
 
       {hiddenGems.length > 0 && (
-        <Rail id="gems" title="Hidden gems" icon="gift" sub="4.5+ stars, under 12 bookings so far">
-          {hiddenGems.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-        </Rail>
+        <Deferred id="gems">
+          <Rail id="gems" title="Hidden gems" icon="gift" sub="4.5+ stars, under 12 bookings so far">
+            {hiddenGems.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </Rail>
+        </Deferred>
       )}
 
-      <div className="section" id="trending">
-        <SectionHeader icon="flame" title="Trending on set" sub="What crews in your city booked most this week" />
-        <div className="grid">
-          {trending.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+      {/* A grid, not a rail — it wraps to several rows, so it reserves more. */}
+      <Deferred id="trending" minHeight={520}>
+        <div className="section" id="trending">
+          <SectionHeader icon="flame" title="Trending on set" sub="What crews in your city booked most this week" />
+          <div className="grid">
+            {trending.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </div>
         </div>
-      </div>
+      </Deferred>
     </div>
   )
 }
