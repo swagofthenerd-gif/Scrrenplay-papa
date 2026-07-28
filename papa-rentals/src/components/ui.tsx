@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { getCategory, getOwner } from '../data/catalog'
 import type { Item } from '../types'
 import { buzz, dealActive, dealEndsAt, fmtCountdown, money } from '../utils'
 import { PhotoGallery, SmartImage } from './SmartImage'
 import { Icon, STAR_PATH } from './icons'
+import type { IconName } from './icons'
 
 /* ---------------- stars: SVG with fractional fill ---------------- */
 function Star({ frac, size }: { frac: number; size: number }) {
@@ -41,6 +42,39 @@ export function Stars({ value, size = 14, onChange }: { value: number; size?: nu
 
 export function Badge({ children, tone = 'default' }: { children: ReactNode; tone?: 'default' | 'green' | 'orange' | 'purple' | 'red' }) {
   return <span className={`badge badge-${tone}`}>{children}</span>
+}
+
+/* ---------------- "list your own gear" prompt ---------------- */
+/* Two of these live in the app — one under Home's vendor list, one above the
+   studios grid in Browse — and they'd drifted apart in layout while saying the
+   same thing. The wording and icon stay per-placement on purpose (a renter
+   browsing studios should be offered the studio pitch, not a generic one), but
+   the structure is shared so the next tweak can't land on only one of them. */
+export function ListingPromo({
+  icon,
+  title,
+  blurb,
+  cta,
+  onClick,
+  style,
+}: {
+  icon: IconName
+  title: string
+  blurb: string
+  cta: string
+  onClick: () => void
+  style?: CSSProperties
+}) {
+  return (
+    <div className="kit-card promo-card" style={style}>
+      <span className="promo-ico"><Icon name={icon} size={25} /></span>
+      <div className="promo-body">
+        <b>{title}</b>
+        <div className="muted small">{blurb}</div>
+      </div>
+      <button className="btn btn-primary btn-sm" onClick={onClick}>{cta}</button>
+    </div>
+  )
 }
 
 /* ---------------- live flash-deal countdown ---------------- */

@@ -859,6 +859,10 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--accent-soft); color: var(--accent-dark);
 }
+/* min-width:0 is what lets the blurb wrap instead of shoving the CTA off the
+   card — a flex item defaults to its content width, and the copy is long. */
+.promo-body { flex: 1; min-width: 0; }
+.promo-body b { font-size: 14px; }
 
 /* ---------- FAQ ---------- */
 .faq-q {

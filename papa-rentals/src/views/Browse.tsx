@@ -6,7 +6,7 @@ import { money } from '../utils'
 import { useNav, type BrowseSort, type View } from '../nav'
 import { useStore } from '../store'
 import { daysBetween, dealActive, didYouMean, findConflict, fmtDate, fuzzyMatch, recommendedRate, refineTags, searchRank, todayISO, uid, weightedRating, buzz } from '../utils'
-import { ItemCard, RatingCompact } from '../components/ui'
+import { ItemCard, ListingPromo, RatingCompact } from '../components/ui'
 import { DeptMark, Icon, type IconName } from '../components/icons'
 import type { CategoryId, Item } from '../types'
 
@@ -425,14 +425,14 @@ export default function Browse(props: BrowseProps) {
         )}
 
         {category === 'studios' && !wishlistOnly && !dealsOnly && (
-          <div className="kit-card promo-card" style={{ margin: '4px 0 14px' }}>
-            <span className="promo-ico"><Icon name="home" size={24} /></span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <b style={{ fontSize: 14 }}>Have a space crews would love?</b>
-              <div className="muted small">Post it free — you keep 90% of every booking.</div>
-            </div>
-            <button className="btn btn-primary btn-sm" onClick={() => go({ name: 'post' })}>List it</button>
-          </div>
+          <ListingPromo
+            icon="home"
+            title="Have a space crews would love?"
+            blurb="Post it free — you keep 90% of every booking."
+            cta="List it"
+            onClick={() => go({ name: 'post' })}
+            style={{ margin: '4px 0 14px' }}
+          />
         )}
 
         {items.length === 0 ? (

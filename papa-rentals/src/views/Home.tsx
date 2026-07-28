@@ -5,7 +5,7 @@ import { forYou, similarItems } from '../recs'
 import { vendors } from '../vendors'
 import { useStore } from '../store'
 import { buzz, dealActive, dealEndsAt, fmtCountdown, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
-import { Badge, ItemArt, ItemCard } from '../components/ui'
+import { Badge, ItemArt, ItemCard, ListingPromo } from '../components/ui'
 import { DeptMark, Icon } from '../components/icons'
 import { VendorCard } from '../components/VendorCard'
 import StudioHero from '../components/StudioHero'
@@ -602,14 +602,15 @@ export default function Home() {
         <div className="vendor-list">
           {vendorList.map((v, idx) => <VendorCard key={v.owner.id} vendor={v} index={idx} />)}
         </div>
-        <div className="kit-card promo-card">
-          <span className="promo-ico"><Icon name="home" size={26} /></span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <b style={{ fontSize: 14 }}>Own a studio, camera kit or grip truck?</b>
-            <div className="muted small">Become a vendor in 2 minutes — you keep 90% of every booking.</div>
-          </div>
-          <button className="btn btn-primary btn-sm" onClick={() => go({ name: 'post' })}>Start listing</button>
-        </div>
+        {/* House icon on a pitch that leads with "camera kit or grip truck" was
+            the wrong picture; a truck matches what the sentence is asking for. */}
+        <ListingPromo
+          icon="truck"
+          title="Own a studio, camera kit or grip truck?"
+          blurb="Become a vendor in 2 minutes — you keep 90% of every booking."
+          cta="Start listing"
+          onClick={() => go({ name: 'post' })}
+        />
       </div>
 
       {/* ---- Hybrid discovery tail ---- */}

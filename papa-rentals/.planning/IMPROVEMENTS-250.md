@@ -41,7 +41,7 @@ claiming an item, re-verify it in the code.
 13. [ ] Section headers mix `<h2>` with-icon and without — standardize to one icon+title+subtitle+link pattern.
 14. [x] "tap a vendor to explore their storefront" instructional copy is a smell — make the card afford tapping visually.
 15. [x] Kit cards show `<s>` full price then discounted, but no "per day" clarity — label it "bundle/day".
-16. [ ] Become-a-vendor promo appears on Home and inside Browse studios — dedupe or vary copy.
+16. [x] Become-a-vendor promo appears on Home and inside Browse studios — dedupe or vary copy.
 17. [x] No empty/skeleton state — every rail pops in at once on cold load. Add skeleton cards.
 18. [x] Spaces rail sorts by `timesRented`, titled "Spaces to shoot at", no filter chips — let users filter by city/capacity in the rail.
 19. [ ] Icons carry meaning (bolt, backpack, flame) with no legend — consider text labels on first run.
