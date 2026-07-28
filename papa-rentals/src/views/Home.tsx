@@ -245,12 +245,21 @@ export default function Home() {
   const deals = useMemo(() => visible.filter((i) => dealActive(i.id)), [visible, shuffle])
 
   /* Raw rental counts freeze the same eight items on the page forever. Damp the
-     count and mix in rating so the strip breathes between refreshes. */
+     count, mix in rating, then divide by the listing's age: 40 rentals in two
+     months is momentum, 40 spread over two years is not, and only the first is
+     worth calling "trending". Gear with no listing date scores as mature rather
+     than as brand new, so a missing field can't game its way to the top. */
   const trending = useMemo(() => {
-    const scored = visible.map((i) => ({
-      i,
-      score: Math.log10(i.timesRented + 1) * 2 + (weightedRating(i.rating, i.ratingCount) - 4),
-    }))
+    const scored = visible.map((i) => {
+      const ageDays = i.listedAt ? Math.max(7, (Date.now() - i.listedAt) / 86400000) : 180
+      return {
+        i,
+        score:
+          (Math.log10(i.timesRented + 1) * 2 + (weightedRating(i.rating, i.ratingCount) - 4)) *
+          // Gentle decay: a 30-day listing gets ~1.6x the weight of a 180-day one.
+          Math.pow(30 / ageDays, 0.35),
+      }
+    })
     scored.sort((a, b) => b.score - a.score)
     const top = scored.slice(0, 14).map((s) => s.i)
     return top.slice(shuffle % 3, (shuffle % 3) + 8)
@@ -322,8 +331,15 @@ export default function Home() {
 
   /* Nothing in the catalogue carries a listed-on date, so "new" is inferred from
      the gear nobody has rented yet — which is what a renter actually cares about. */
+  /* Was `timesRented <= 2`, which called well-established gear "new" purely
+     because nobody had booked it — the rail read as a bargain bin. Age is the
+     thing the title actually claims, so rank on it. */
   const justListed = useMemo(
-    () => visible.filter((i) => i.timesRented <= 2).sort((a, b) => b.rating - a.rating).slice(0, 8),
+    () =>
+      visible
+        .filter((i) => i.listedAt !== undefined)
+        .sort((a, b) => (b.listedAt as number) - (a.listedAt as number))
+        .slice(0, 8),
     [visible]
   )
 
@@ -598,8 +614,10 @@ export default function Home() {
         </Rail>
       )}
 
+      {/* Title and subtitle both used to over-promise: the rail is ranked by
+          listing date, so it's "recent", and some of it has been booked. */}
       {justListed.length > 0 && (
-        <Rail id="new" title="New this week" icon="bulb" sub="Freshly listed gear, not yet booked out">
+        <Rail id="new" title="Recently listed" icon="bulb" sub="The newest gear on Papa Rentals">
           {justListed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
         </Rail>
       )}

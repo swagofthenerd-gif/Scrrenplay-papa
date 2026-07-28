@@ -72,6 +72,9 @@ export interface Item {
   image?: string // hero/card photo URL; gradient+icon art is the fallback
   images?: string[] // detail-page gallery (first entry === image)
   timesRented: number
+  /** When the listing went live (epoch ms). Drives "New this week" and lets
+      Trending rank recent momentum instead of all-time totals. */
+  listedAt?: number
   instantBook: boolean
   offersAccepted: boolean
   insuranceRequired?: boolean

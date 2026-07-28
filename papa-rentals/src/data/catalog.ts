@@ -278,6 +278,19 @@ for (const item of ITEMS) {
   }
 }
 
+/* When each listing joined the catalogue. Without it "Trending" can only rank
+   all-time rental counts, which pins the same eight items to the page forever —
+   a vendor who listed last week can never break in no matter how well they do.
+   Seeded relative to load rather than hard-coded, so a demo opened next year
+   doesn't claim its newest gear is eighteen months old. Real listings posted
+   through the app carry their own timestamp and don't come through here. */
+const DAY_MS = 86400000
+ITEMS.forEach((item, idx) => {
+  // Catalogue order doubles as recency order (index 0 is the newest), spread a
+  // week apart across ~6 months so the ranking is stable within a session.
+  item.listedAt = Date.now() - (idx * 7 + 3) * DAY_MS
+})
+
 export const KITS: Kit[] = [
   {
     id: 'k1', name: 'Indie Feature Starter', icon: 'backpack', itemIds: ['i3', 'i5', 'i6', 'i8'], percentOff: 18,

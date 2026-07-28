@@ -474,7 +474,10 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, notifications: state.notifications.map((n) => (n.read ? n : { ...n, read: true })) }
 
     case 'ADD_LISTING': {
-      const myListings = [action.item, ...state.myListings]
+      // Stamped here rather than in the form, so every path into the catalogue
+      // gets a date — "New this week" skips undated listings, and a vendor's
+      // first post is exactly the one that deserves to show up there.
+      const myListings = [{ ...action.item, listedAt: action.item.listedAt ?? Date.now() }, ...state.myListings]
       syncUserListings(myListings)
       return {
         ...state,

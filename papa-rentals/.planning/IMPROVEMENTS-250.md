@@ -27,7 +27,7 @@ claiming an item, re-verify it in the code.
 1. [x] "For you" only shows when `picks.length > 0` — new users see nothing. Add cold-start fallback (editor's picks / most-rented) so the rail never vanishes.
 2. [x] "Because you viewed" keys off only `recentlyViewed[0]`. Rotate through the last 3-4 viewed items.
 3. [ ] No "Continue where you left off" rail — surface last item viewed with its half-filled date picker.
-4. [ ] Trending is a static `timesRented` sort. Add time-decay so rising gear surfaces, not all-time winners.
+4. [x] Trending is a static `timesRented` sort. Add time-decay so rising gear surfaces, not all-time winners.
 5. [x] Deals rail has no urgency cue on the card — show `DealCountdown` inline, not just on detail page.
 6. [x] Add location signal to hero ("34 vendors near Lahore") so the onboarding city visibly does something.
 7. [x] `forYou`/`similarItems` use `useMemo([state])` — recompute on unrelated changes (wallet top-up, notifications). Narrow deps.
