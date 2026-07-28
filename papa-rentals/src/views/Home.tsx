@@ -607,6 +607,13 @@ export default function Home() {
                 <div>
                   <s className="muted small">{money(full)}</s> <b>{money(price)}</b><span className="muted"> bundle /day · {kitItems.length} items</span>
                 </div>
+                {/* Two actions, not one. "Add kit" commits four bookings from a
+                    one-line blurb; anyone who wants to know what is actually in the
+                    box had no way to find out without adding it and reading the cart. */}
+                <div className="kit-actions">
+                <button className="btn btn-outline btn-sm" onClick={() => { buzz(); go({ name: 'kit', id: kit.id }) }}>
+                  See what's inside
+                </button>
                 <button
                   className="btn btn-primary btn-sm"
                   onClick={() => {
@@ -636,6 +643,7 @@ export default function Home() {
                 >
                   Add kit to cart
                 </button>
+                </div>
               </div>
             )
           })}

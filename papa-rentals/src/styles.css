@@ -1327,3 +1327,75 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
   font-weight: 600;
   color: #b45309;
 }
+
+/* ---------- kit detail ---------- */
+.kit-hero {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
+  padding: 16px; box-shadow: var(--shadow-xs); margin-top: 6px;
+}
+.kit-hero-ico {
+  display: grid; place-items: center; flex: 0 0 52px; height: 52px;
+  background: var(--purple-soft); color: var(--purple); border-radius: var(--r-md);
+}
+.kit-hero-title { margin: 0; font-size: 20px; line-height: 1.2; }
+.kit-hero > div { flex: 1; min-width: 0; }
+
+/* Guidance, not a warning: same shape as the hero card so it reads as part of the
+   description rather than as something that went wrong. */
+.kit-note {
+  display: flex; gap: 10px; align-items: flex-start; margin-top: 14px;
+  background: var(--card-2); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 12px 14px;
+}
+.kit-note > svg { flex: 0 0 auto; margin-top: 2px; color: var(--muted); }
+
+.kit-lines { display: flex; flex-direction: column; gap: 8px; }
+.kit-line {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 10px; cursor: pointer; font: inherit; color: inherit;
+}
+.kit-line:active { background: var(--card-2); }
+.kit-line-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.kit-line-name { font-weight: 700; font-size: 14px; }
+.kit-line-clash {
+  display: flex; align-items: center; gap: 4px;
+  color: var(--red); font-size: 11px; font-weight: 700;
+}
+.kit-line-price { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: 0 0 auto; }
+
+.kit-excl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.kit-excl li {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--muted);
+}
+.kit-excl li > svg { color: var(--red); flex: 0 0 auto; }
+
+.kit-dates { display: flex; gap: 10px; }
+.kit-dates label { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.kit-dates input {
+  width: 100%; padding: 10px 12px; font: inherit;
+  background: var(--card); color: var(--ink);
+  border: 1.5px solid var(--line-strong); border-radius: var(--r-md);
+}
+
+/* Red text with a soft red bed, so it survives a glance on a bright phone screen
+   outdoors where a thin coloured line disappears. */
+.field-error {
+  display: flex; align-items: flex-start; gap: 6px; margin-top: 10px;
+  background: var(--red-soft); color: var(--red);
+  border-radius: var(--r-md); padding: 9px 11px;
+  font-size: 12.5px; font-weight: 600; line-height: 1.4;
+}
+.field-error > svg { flex: 0 0 auto; margin-top: 1px; }
+
+.kit-summary {
+  margin: 14px 0; padding: 12px 14px;
+  background: var(--card-2); border: 1px solid var(--line); border-radius: var(--r-md);
+}
+
+/* The two kit-card actions sit on one row; they wrap rather than shrink so the
+   labels stay readable on a 320px screen instead of breaking mid-word. */
+.kit-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.kit-actions .btn { flex: 1 1 auto; }

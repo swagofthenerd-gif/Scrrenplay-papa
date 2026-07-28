@@ -14,6 +14,7 @@ import Home from './views/Home'
 import Browse from './views/Browse'
 import ItemDetail from './views/ItemDetail'
 import VendorView from './views/VendorView'
+import KitDetail from './views/KitDetail'
 import CartView from './views/CartView'
 import OrdersView from './views/OrdersView'
 import ProfileView from './views/ProfileView'
@@ -192,6 +193,7 @@ function Shell() {
           {view.name === 'browse' && <Browse {...view} />}
           {view.name === 'item' && <ItemDetail id={view.id} from={view.from} to={view.to} />}
           {view.name === 'vendor' && <VendorView id={view.id} />}
+          {view.name === 'kit' && <KitDetail id={view.id} />}
           {view.name === 'cart' && <CartView />}
           {view.name === 'orders' && <OrdersView />}
           {view.name === 'profile' && <ProfileView />}

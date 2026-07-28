@@ -99,6 +99,15 @@ export interface Kit {
   itemIds: string[]
   percentOff: number
   blurb: string
+  /* The kit page has to answer "is this the one for me", and a list of item
+     names does not answer it — two kits can share a camera and suit completely
+     different shoots. These are the questions people actually ask before
+     booking a bundle they cannot inspect first. */
+  bestFor?: string
+  /** Named plainly, because the expensive surprise is what a kit quietly leaves out. */
+  notIncluded?: string[]
+  /** Whether the price assumes someone who knows how to rig it. */
+  crewNote?: string
 }
 
 export type TransportId = 'pickup' | 'van' | 'truck'
