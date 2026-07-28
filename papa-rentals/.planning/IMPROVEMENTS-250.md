@@ -35,7 +35,7 @@ claiming an item, re-verify it in the code.
 7. [x] `forYou`/`similarItems` use `useMemo([state])` — recompute on unrelated changes (wallet top-up, notifications). Narrow deps.
 8. [x] No "recently viewed" rail even though `state.recentlyViewed` exists — you only use `[0]`. Show the full strip.
 9. [x] Kits are hardcoded bundles — add "Build your own kit" that seeds cart and applies a dynamic bundle discount.
-10. [ ] No seasonal/contextual merchandising (wedding season, Ramadan, ad-shoot week). Add a data-driven promo slot at top.
+10. [x] No seasonal/contextual merchandising (wedding season, Ramadan, ad-shoot week). Add a data-driven promo slot at top.
 
 ### Layout, hierarchy & clarity
 11. [x] Long vertical scroll of ~8 sections with no way to jump — add sticky sub-nav / section anchors. *(home jump bar, deployed)*

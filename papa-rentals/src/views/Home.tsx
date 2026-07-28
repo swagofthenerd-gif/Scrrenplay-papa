@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CATEGORIES, ITEMS, KITS, getItem, getOwner } from '../data/catalog'
+import { activePromo } from '../data/promos'
 import { useNav } from '../nav'
 import { forYou, similarItems } from '../recs'
 import { vendors } from '../vendors'
@@ -236,6 +237,11 @@ export default function Home() {
     () => builderIds.map((id) => ITEMS.find((i) => i.id === id)).filter((i): i is Item => Boolean(i)),
     [builderIds]
   )
+  /* Recomputed per render off today's date: the app can sit open past midnight
+     on a phone that never gets closed, and a promo whose season ended overnight
+     should stop claiming it's on. */
+  const promo = activePromo(todayISO(0))
+
   const builderFull = builderItems.reduce((s, i) => s + i.pricePerDay, 0)
   const builderDiscount = bundleDiscount(builderItems.length)
   const builderPrice = Math.round(builderFull * (1 - builderDiscount / 100))
@@ -457,6 +463,23 @@ export default function Home() {
         </div>
         <div><b>{proof.shoots.toLocaleString('en-GB')}</b><span className="muted small"> shoots supplied</span></div>
       </div>
+
+      {/* Above the jump bar because it's the one thing on this page that's only
+          true this month. Nothing renders out of season — an empty slot beats a
+          banner for a season that ended. */}
+      {promo && (
+        <button
+          className="season-promo"
+          onClick={() => { buzz(); go({ name: 'browse', ...promo.target }) }}
+        >
+          <Icon name={promo.icon} size={22} className="season-promo-ico" />
+          <span className="season-promo-text">
+            <span className="season-promo-title">{promo.title}</span>
+            <span className="muted small">{promo.blurb}</span>
+          </span>
+          <span className="season-promo-cta">{promo.cta} <Icon name="arrow-right" size={13} /></span>
+        </button>
+      )}
 
       <JumpBar />
 

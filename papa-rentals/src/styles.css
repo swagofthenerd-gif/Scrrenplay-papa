@@ -1295,3 +1295,23 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
   display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
   margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
 }
+
+/* Seasonal promo slot. Tinted rather than gradient-filled: it sits directly
+   under the hero, and a second loud block there competes with it. */
+.season-promo {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer;
+  margin: 0 0 12px; padding: 12px 14px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: var(--r-md);
+}
+.season-promo:active { transform: scale(0.995); }
+.season-promo-ico { flex: none; color: var(--accent); }
+.season-promo-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.season-promo-title { font-weight: 700; font-size: 14px; }
+.season-promo-cta { flex: none; display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 650; color: var(--accent); }
+@media (max-width: 520px) {
+  /* The CTA wraps under the text rather than squeezing the blurb to two words. */
+  .season-promo { flex-wrap: wrap; }
+  .season-promo-cta { width: 100%; justify-content: flex-end; }
+}
