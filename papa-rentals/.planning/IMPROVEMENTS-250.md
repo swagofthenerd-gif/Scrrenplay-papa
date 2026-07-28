@@ -30,7 +30,7 @@ claiming an item, re-verify it in the code.
 4. [ ] Trending is a static `timesRented` sort. Add time-decay so rising gear surfaces, not all-time winners.
 5. [x] Deals rail has no urgency cue on the card — show `DealCountdown` inline, not just on detail page.
 6. [ ] Add location signal to hero ("34 vendors near Lahore") so the onboarding city visibly does something.
-7. [ ] `forYou`/`similarItems` use `useMemo([state])` — recompute on unrelated changes (wallet top-up, notifications). Narrow deps.
+7. [x] `forYou`/`similarItems` use `useMemo([state])` — recompute on unrelated changes (wallet top-up, notifications). Narrow deps.
 8. [x] No "recently viewed" rail even though `state.recentlyViewed` exists — you only use `[0]`. Show the full strip.
 9. [ ] Kits are hardcoded bundles — add "Build your own kit" that seeds cart and applies a dynamic bundle discount.
 10. [ ] No seasonal/contextual merchandising (wedding season, Ramadan, ad-shoot week). Add a data-driven promo slot at top.
@@ -70,7 +70,7 @@ claiming an item, re-verify it in the code.
 34. [x] `visible = [...ITEMS, ...live]` rebuilt every render — memoize; it feeds 5+ downstream computations.
 35. [x] `trending` does a full `[...visible].sort()` every render — memoize alongside `deals`/`spaces`.
 36. [ ] All rails render every card eagerly — no virtualization/lazy images. Lazy-render below-the-fold rails.
-37. [ ] `ItemArt`/`SmartImage` — confirm `loading="lazy"` and correct sizing for rail vs grid; oversized art hurts the 24MB WebView.
+37. [x] `ItemArt`/`SmartImage` — confirm `loading="lazy"` and correct sizing for rail vs grid; oversized art hurts the 24MB WebView.
 38. [x] No analytics hooks on rail impressions/taps — add lightweight event logging (even localStorage).
 
 ### Accessibility & polish

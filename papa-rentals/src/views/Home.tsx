@@ -218,7 +218,14 @@ export default function Home() {
     [state.recentlyViewed, state.blockedOwners]
   )
 
-  const picks = useMemo(() => forYou(state, 8), [state, shuffle])
+  /* Depend on the slices `forYou`/`similarItems` actually read, not on `state`.
+     Keyed on the whole object, both rails re-scored the entire catalogue on
+     every TICK, wallet movement and notification — several times a minute, for
+     an identical result. On the low-end WebView this ships inside that is the
+     difference between a rail that scrolls and one that stutters. */
+  const recsDeps = [state.recentlyViewed, state.wishlist, state.orders, state.cart, state.myListings, state.blockedOwners]
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const picks = useMemo(() => forYou(state, 8), [...recsDeps, shuffle])
 
   /* Cold start: a brand-new renter has no affinity, so "For you" would be blank.
      Show the highest-rated, most-rented starters instead of an empty section. */
@@ -237,7 +244,8 @@ export default function Home() {
   /* Rotate the seed through recent history instead of pinning it to the last
      item — otherwise this rail never changes until you open something new. */
   const seed: Item | undefined = recentlyViewed.length ? recentlyViewed[shuffle % Math.min(recentlyViewed.length, 3)] : undefined
-  const becauseViewed = useMemo(() => (seed ? similarItems(seed.id, state, 6) : []), [seed, state])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const becauseViewed = useMemo(() => (seed ? similarItems(seed.id, state, 6) : []), [seed, ...recsDeps])
 
   /* Well-rated gear that hasn't been discovered yet — surfaces the long tail
      instead of showing the same top-sellers in three different rails. */
