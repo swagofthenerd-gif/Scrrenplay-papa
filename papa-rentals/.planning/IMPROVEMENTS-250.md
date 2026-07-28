@@ -13,6 +13,8 @@ context compaction. Never re-derive it from memory — read this file.
 - `[ ]` not started / not verified
 - `[x]` done and verified against the built bundle
 - `[~]` partially done
+- `[-]` measured and found not to apply — the item's premise is false. The note
+  says how it was checked, so a later pass can re-test rather than re-argue.
 
 **Reconciliation is incomplete.** Items marked `[x]` below were verified directly.
 Everything else is `[ ]` by default and may in fact be done — the mapping between
@@ -44,7 +46,8 @@ claiming an item, re-verify it in the code.
 16. [x] Become-a-vendor promo appears on Home and inside Browse studios — dedupe or vary copy.
 17. [x] No empty/skeleton state — every rail pops in at once on cold load. Add skeleton cards.
 18. [x] Spaces rail sorts by `timesRented`, titled "Spaces to shoot at", no filter chips — let users filter by city/capacity in the rail.
-19. [ ] Icons carry meaning (bolt, backpack, flame) with no legend — consider text labels on first run.
+19. [-] Icons carry meaning (bolt, backpack, flame) with no legend — consider text labels on first run.
+    Measured, premise false: 0 icon-only controls without an accessible name across Home/Browse/Cart/Orders/Profile, and every icon the item names sits beside its own words — bolt/backpack/flame are section-header glyphs next to "Flash deals"/"Production kits"/"Trending on set", and the card badges read "Instant"/"Approval". A first-run legend would add an onboarding interruption to explain labels that are already on screen.
 20. [x] Horizontal rails have no scroll affordance (peek of next card / desktop arrows).
 
 ### Pull-to-refresh & motion
