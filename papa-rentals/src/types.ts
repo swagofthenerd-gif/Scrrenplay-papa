@@ -295,6 +295,16 @@ export interface Address {
   detail: string
 }
 
+/* Only ever the last four digits. The deposit hold and the COD flow both talk
+   about "your card", so one has to exist — but a demo has no business holding a
+   full PAN, and the last four is all the UI ever needs to show. */
+export interface SavedCard {
+  id: string
+  brand: string
+  last4: string
+  expiry: string
+}
+
 export interface Profile {
   name: string
   city: string
@@ -331,6 +341,8 @@ export interface AppState {
   reports: UserReport[]
   addresses: Address[]
   selectedAddressId: string
+  cards: SavedCard[]
+  selectedCardId: string
   recentSearches: string[]
   savedSearches: SavedSearch[]
   recentlyViewed: string[]

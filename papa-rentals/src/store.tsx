@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { DRIVER_POOL, PROMO_CODES, RENTER_POOL, getItem, getOwner, syncUserListings } from './data/catalog'
 import type {
   Address, AppNotification, AppState, Booking, ChatMessage, ChatThread,
-  CategoryId, Item, LedgerEntry, Offer, Order, OrderStatus, OwnerBooking, Review, SavedSearch, UserReport,
+  CategoryId, Item, LedgerEntry, Offer, Order, OrderStatus, OwnerBooking, Review, SavedCard, SavedSearch, UserReport,
 } from './types'
 import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, money, recommendedRate, todayISO, uid } from './utils'
 import type { IconName } from './components/icons'
@@ -32,6 +32,8 @@ const initialState: AppState = {
     { id: 'a2', label: 'Home base', icon: 'home', detail: 'House 12, Street 4, DHA Phase 3, Lahore' },
   ],
   selectedAddressId: 'a1',
+  cards: [{ id: 'c1', brand: 'Visa', last4: '4291', expiry: '09/28' }],
+  selectedCardId: 'c1',
   recentSearches: [],
   savedSearches: [],
   recentlyViewed: [],
@@ -72,6 +74,9 @@ type Action =
   | { type: 'ADD_WALLET'; amount: number }
   | { type: 'ADD_ADDRESS'; address: Address }
   | { type: 'SELECT_ADDRESS'; id: string }
+  | { type: 'ADD_CARD'; card: SavedCard }
+  | { type: 'REMOVE_CARD'; id: string }
+  | { type: 'SELECT_CARD'; id: string }
   | { type: 'ADD_RECENT_SEARCH'; q: string }
   | { type: 'REMOVE_RECENT_SEARCH'; q: string }
   | { type: 'CLEAR_RECENT_SEARCHES' }
@@ -411,6 +416,16 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, addresses: [...state.addresses, action.address], selectedAddressId: action.address.id }
     case 'SELECT_ADDRESS':
       return { ...state, selectedAddressId: action.id }
+
+    case 'ADD_CARD':
+      return { ...state, cards: [...state.cards, action.card], selectedCardId: action.card.id }
+    case 'REMOVE_CARD': {
+      const cards = state.cards.filter((c) => c.id !== action.id)
+      // never leave the selection pointing at a card that no longer exists
+      return { ...state, cards, selectedCardId: state.selectedCardId === action.id ? cards[0]?.id ?? '' : state.selectedCardId }
+    }
+    case 'SELECT_CARD':
+      return { ...state, selectedCardId: action.id }
 
     case 'ADD_RECENT_SEARCH': {
       const q = action.q.trim()
@@ -837,6 +852,12 @@ function migrate(s: any): any {
       icon: a.icon ?? (a.label?.includes('🎬') ? 'clapperboard' : a.label?.includes('🏠') ? 'home' : 'pin'),
       label: typeof a.label === 'string' ? a.label.replace(EMOJI_RE, '').trim() : a.label,
     }))
+  /* Saved before cards existed: without this the payment panel renders an empty
+     list and "deposit held on your card" points at nothing. */
+  if (!Array.isArray(s.cards)) {
+    s.cards = [{ id: 'c1', brand: 'Visa', last4: '4291', expiry: '09/28' }]
+    s.selectedCardId = 'c1'
+  }
   return s
 }
 

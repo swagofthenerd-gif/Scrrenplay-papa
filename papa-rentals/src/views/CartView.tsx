@@ -46,6 +46,7 @@ export default function CartView() {
   const [redeemPoints, setRedeemPoints] = useState(false)
   const [payMethod, setPayMethod] = useState('card')
   const [addrOpen, setAddrOpen] = useState(false)
+  const [cardOpen, setCardOpen] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
@@ -98,8 +99,16 @@ export default function CartView() {
 
   const t = useMemo(() => cartTotals(state.cart, opts), [state.cart, opts])
   const address = state.addresses.find((a) => a.id === state.selectedAddressId) ?? state.addresses[0]
+  const card = state.cards.find((c) => c.id === state.selectedCardId) ?? state.cards[0]
   const needsDelivery = state.cart.some((b) => b.transport !== 'pickup')
   const needsApproval = state.cart.some((b) => !getItem(b.itemId).instantBook)
+  /* "Card" in an order record is useless a month later when you're reconciling
+     against a bank statement — name the card that was actually used. */
+  const payName = PAY_BY_ID.get(payMethod)?.name ?? 'Card'
+  const payLabel = payMethod === 'card' && card ? `${card.brand} ••${card.last4}` : payName
+  /* Card and COD both settle against a card — one is the payment, the other is
+     the deposit hold. Letting the order through with no card just fails later. */
+  const needsCard = (payMethod === 'card' || payMethod === 'cod') && !card
 
   /* Multi-vendor carts are grouped by owner — delivery is charged once per vendor, and that should be visible. */
   const groups = useMemo(() => {
@@ -260,7 +269,7 @@ export default function CartView() {
       type: 'PLACE_ORDER',
       opts: {
         ...opts,
-        paymentMethod: PAY_BY_ID.get(payMethod)?.name ?? 'Card',
+        paymentMethod: payLabel,
         address: needsDelivery && address
           ? `${address.label} — ${address.detail}${addrNote.trim() ? ` (${addrNote.trim()})` : ''}`
           : 'Self pickup',
@@ -510,10 +519,48 @@ export default function CartView() {
                 >
                   <span style={{ fontSize: 20 }}><Icon name={p.icon} size={14} /></span>
                   <b>{p.name}</b>
-                  {p.id === 'cod' && <span className="muted small" style={{ marginLeft: 'auto' }}>rental paid in cash, deposit held on your card</span>}
+                  {p.id === 'cod' && (
+                    <span className="muted small" style={{ marginLeft: 'auto' }}>
+                      {card ? `rental in cash, deposit held on ${card.brand} ••${card.last4}` : 'rental in cash — add a card for the deposit hold'}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
+
+            {/* Both "card" and COD lean on a card being on file — the deposit hold
+                has to land somewhere. Until now nothing in the app let you see or
+                change which card that was. */}
+            {(payMethod === 'card' || payMethod === 'cod') && (
+              <div style={{ marginTop: 10 }}>
+                <div role="radiogroup" aria-label="Saved cards">
+                  {state.cards.map((c) => (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={c.id === state.selectedCardId}
+                        className={`addr-row ${c.id === state.selectedCardId ? 'active' : ''}`}
+                        style={{ flex: 1, textAlign: 'left' }}
+                        onClick={() => dispatch({ type: 'SELECT_CARD', id: c.id })}
+                      >
+                        <b style={{ flex: 'none' }}>{c.brand} ••{c.last4}</b>
+                        <span className="muted">expires {c.expiry}</span>
+                      </button>
+                      <button className="link-btn" onClick={() => dispatch({ type: 'REMOVE_CARD', id: c.id })}>
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {state.cards.length === 0 && (
+                  <p className="muted small" style={{ margin: '4px 0 0' }}>
+                    No card on file — the deposit hold needs one before you can pay.
+                  </p>
+                )}
+                <button className="btn btn-ghost btn-sm" style={{ marginTop: 10 }} onClick={() => setCardOpen(true)}>+ Add card</button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -547,7 +594,7 @@ export default function CartView() {
             <button
               className="btn btn-primary btn-block"
               onClick={() => setReviewOpen(true)}
-              disabled={Boolean(t.promoError) || conflicts.length > 0}
+              disabled={Boolean(t.promoError) || conflicts.length > 0 || needsCard}
             >
               {needsApproval ? `Review & request · ${money(t.total)}` : `Review & pay ${money(t.total)}`}
             </button>
@@ -591,7 +638,7 @@ export default function CartView() {
         <button
           className="btn btn-primary"
           onClick={() => setReviewOpen(true)}
-          disabled={Boolean(t.promoError) || conflicts.length > 0}
+          disabled={Boolean(t.promoError) || conflicts.length > 0 || needsCard}
         >
           {needsApproval ? 'Review & request' : 'Review & pay'}
         </button>
@@ -599,6 +646,7 @@ export default function CartView() {
 
       {undo && <UndoBar label={undo.label} onUndo={runUndo} />}
       {addrOpen && <AddAddressModal onClose={() => setAddrOpen(false)} />}
+      {cardOpen && <AddCardModal onClose={() => setCardOpen(false)} />}
       {kitOpen && <SaveKitModal count={state.cart.length} onClose={() => setKitOpen(false)} onSave={saveKit} />}
       {confirmClear && (
         <Modal title="Clear your cart?" onClose={() => setConfirmClear(false)}>
@@ -645,7 +693,7 @@ export default function CartView() {
           <div className="price-line"><span className="muted">Deposit hold</span><span className="muted">{money(t.depositHold)}</span></div>
           <p className="muted small">
             {needsDelivery && address ? `Delivering to ${address.label} — ${address.detail}. ` : 'Self pickup from the vendor. '}
-            Paying by {PAY_BY_ID.get(payMethod)?.name ?? 'Card'}.
+            Paying by {payLabel}.
           </p>
           <p className="muted small">
             By continuing you accept the cancellation policy: free until 48h before your start date, 10% fee inside 48h.
@@ -784,6 +832,57 @@ function SaveKitModal({ count, onClose, onSave }: { count: number; onClose: () =
       </label>
       <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} disabled={name.trim().length < 2} onClick={() => onSave(name.trim())}>
         Save kit
+      </button>
+    </Modal>
+  )
+}
+
+/* Deliberately asks for the last four digits only. The app never charges
+   anything, and a demo storing a full card number in localStorage would be a
+   liability with no upside — the UI only ever displays "••4291" anyway. */
+function AddCardModal({ onClose }: { onClose: () => void }) {
+  const { dispatch } = useStore()
+  const { toast } = useNav()
+  const [brand, setBrand] = useState('Visa')
+  const [last4, setLast4] = useState('')
+  const [expiry, setExpiry] = useState('')
+  const valid = /^\d{4}$/.test(last4) && /^\d{2}\/\d{2}$/.test(expiry)
+
+  return (
+    <Modal title="Add a card" onClose={onClose}>
+      <p className="muted small" style={{ marginTop: 0 }}>
+        Papa never stores full card numbers — your bank holds the deposit and we only keep the last four digits so you can
+        tell your cards apart.
+      </p>
+      <label className="field">
+        Card type
+        <select value={brand} onChange={(e) => setBrand(e.target.value)}>
+          <option>Visa</option>
+          <option>Mastercard</option>
+          <option>UnionPay</option>
+        </select>
+      </label>
+      <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+        <label className="field" style={{ flex: 1 }}>
+          Last 4 digits
+          <input value={last4} inputMode="numeric" maxLength={4} placeholder="4291" onChange={(e) => setLast4(e.target.value.replace(/\D/g, ''))} />
+        </label>
+        <label className="field" style={{ flex: 1 }}>
+          Expiry
+          <input value={expiry} inputMode="numeric" maxLength={5} placeholder="09/28" onChange={(e) => setExpiry(e.target.value)} />
+        </label>
+      </div>
+      <button
+        className="btn btn-primary btn-block"
+        style={{ marginTop: 14 }}
+        disabled={!valid}
+        onClick={() => {
+          dispatch({ type: 'ADD_CARD', card: { id: uid(), brand, last4, expiry } })
+          toast(`${brand} ••${last4} saved`)
+          onClose()
+        }}
+      >
+        Save card
       </button>
     </Modal>
   )

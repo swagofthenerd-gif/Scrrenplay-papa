@@ -184,8 +184,8 @@ claiming an item, re-verify it in the code.
 ### Delivery & payment
 13. [ ] Delivery address only appears `needsDelivery` — no map/pin confirmation, just a label + free text.
 14. [x] Address selection uses `onClick` on a `<div>` — not keyboard accessible; make it a radio group.
-15. [ ] COD note "deposit still held on card" implies a card on file, but there's no card management anywhere.
-16. [ ] No saved payment methods — `PAYMENT_METHODS` is static; you can't add/remove a card.
+15. [x] COD note "deposit still held on card" implies a card on file, but there's no card management anywhere.
+16. [x] No saved payment methods — `PAYMENT_METHODS` is static; you can't add/remove a card.
 17. [x] No delivery time-slot selection though pickup times exist per line.
 
 ### Trust, safety & confirmation
