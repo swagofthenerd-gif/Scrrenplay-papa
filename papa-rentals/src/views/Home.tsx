@@ -39,6 +39,11 @@ function Rail({
 }) {
   const track = useRef<HTMLDivElement>(null)
   const [atEnd, setAtEnd] = useState(false)
+  /* A rail with three cards doesn't scroll, but the hint said "Swipe for more"
+     anyway — an instruction that does nothing when you follow it. Measure the
+     track and only claim there's more when there actually is. */
+  const [atStart, setAtStart] = useState(true)
+  const [overflows, setOverflows] = useState(false)
 
   /* Which rails actually get seen decides which ones survive. No analytics
      backend yet, so impressions accumulate locally for the first one to read. */
@@ -61,10 +66,30 @@ function Rail({
     return () => io.disconnect()
   }, [id])
 
-  function onScroll() {
+  function measure() {
     const el = track.current
     if (!el) return
+    setOverflows(el.scrollWidth > el.clientWidth + 8)
+    setAtStart(el.scrollLeft <= 8)
     setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 8)
+  }
+
+  /* Rails are filled from state, so card counts change under us (a wishlist
+     toggle, a refresh reshuffle). Re-measure when the track resizes rather
+     than trusting a single mount-time reading. */
+  useEffect(() => {
+    const el = track.current
+    if (!el) return
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [children])
+
+  function nudge(dir: 1 | -1) {
+    const el = track.current
+    if (!el) return
+    el.scrollBy({ left: dir * Math.round(el.clientWidth * 0.8), behavior: 'smooth' })
   }
 
   return (
@@ -81,17 +106,31 @@ function Rail({
         )}
       </div>
       {filters && <div className="rail-filters">{filters}</div>}
-      <div
-        className="h-scroll"
-        ref={track}
-        onScroll={onScroll}
-        role="group"
-        aria-label={title}
-        tabIndex={0}
-      >
-        {children}
+      <div className="rail-track">
+        <div
+          className="h-scroll"
+          ref={track}
+          onScroll={measure}
+          role="group"
+          aria-label={title}
+          tabIndex={0}
+        >
+          {children}
+        </div>
+        {/* Arrows are for pointers, not thumbs — CSS hides them on touch, where
+            the swipe hint below carries the same message without stealing space. */}
+        {overflows && !atStart && (
+          <button className="rail-arrow prev" onClick={() => nudge(-1)} aria-label={`Scroll ${title} back`}>
+            <Icon name="chevron-left" size={18} />
+          </button>
+        )}
+        {overflows && !atEnd && (
+          <button className="rail-arrow next" onClick={() => nudge(1)} aria-label={`Scroll ${title} forward`}>
+            <Icon name="chevron-right" size={18} />
+          </button>
+        )}
       </div>
-      {!atEnd && <div className="rail-more muted small" aria-hidden="true">Swipe for more <Icon name="chevron-right" size={12} /></div>}
+      {overflows && !atEnd && <div className="rail-more muted small" aria-hidden="true">Swipe for more <Icon name="chevron-right" size={12} /></div>}
     </div>
   )
 }

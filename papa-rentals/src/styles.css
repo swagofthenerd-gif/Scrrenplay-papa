@@ -359,6 +359,24 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 /* Sits under the department name, quieter than it — a budget hint, not a claim.
    Line-height is pinned so a chip with no live listings (no hint) stays the
    same height as its neighbours instead of shortening the row. */
+/* ---------- Rail scroll arrows (pointer devices only) ---------- */
+.rail-track { position: relative; }
+.rail-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 34px; height: 34px; border-radius: var(--r-pill); cursor: pointer;
+  display: none; align-items: center; justify-content: center;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line); box-shadow: var(--shadow-md);
+}
+.rail-arrow.prev { left: 2px; }
+.rail-arrow.next { right: 2px; }
+.rail-arrow:active { transform: translateY(-50%) scale(0.92); }
+/* Only where there's a real cursor — on a touch screen these are dead weight
+   sitting on top of the cards you're trying to swipe. */
+@media (hover: hover) and (pointer: fine) {
+  .rail-arrow { display: flex; }
+}
+
 .cat-chip .cat-from {
   font-size: 10px; font-weight: 600; color: var(--muted); line-height: 12px; margin-top: -3px;
   white-space: nowrap;

@@ -45,7 +45,7 @@ claiming an item, re-verify it in the code.
 17. [x] No empty/skeleton state — every rail pops in at once on cold load. Add skeleton cards.
 18. [x] Spaces rail sorts by `timesRented`, titled "Spaces to shoot at", no filter chips — let users filter by city/capacity in the rail.
 19. [ ] Icons carry meaning (bolt, backpack, flame) with no legend — consider text labels on first run.
-20. [ ] Horizontal rails have no scroll affordance (peek of next card / desktop arrows).
+20. [x] Horizontal rails have no scroll affordance (peek of next card / desktop arrows).
 
 ### Pull-to-refresh & motion
 21. [x] Pull-to-refresh is a fake 700ms `setTimeout` always saying "You're up to date" — make it actually reshuffle recs.
