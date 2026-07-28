@@ -124,7 +124,7 @@ claiming an item, re-verify it in the code.
 19. [x] No pagination or infinite scroll — everything renders at once. Add windowing.
 20. [x] Empty state is generic — when a specific filter kills results, name it.
 21. [ ] No recent/trending searches in Browse (may live in `SearchOverlay` — unify).
-22. [ ] Category chips duplicated from Home; no explicit "All" chip to clear category.
+22. [x] Category chips duplicated from Home; no explicit "All" chip to clear category.
 
 ### ItemDetail
 23. [x] Date pickers default to `todayISO(2)/(3)` — no visual calendar showing unavailable ranges though `unavailableRanges`/`findConflict` exist.
