@@ -39,8 +39,8 @@ claiming an item, re-verify it in the code.
 11. [x] Long vertical scroll of ~8 sections with no way to jump — add sticky sub-nav / section anchors. *(home jump bar, deployed)*
 12. [ ] Departments row duplicated between Home and Browse — unify into one component so they never drift.
 13. [ ] Section headers mix `<h2>` with-icon and without — standardize to one icon+title+subtitle+link pattern.
-14. [ ] "tap a vendor to explore their storefront" instructional copy is a smell — make the card afford tapping visually.
-15. [ ] Kit cards show `<s>` full price then discounted, but no "per day" clarity — label it "bundle/day".
+14. [x] "tap a vendor to explore their storefront" instructional copy is a smell — make the card afford tapping visually.
+15. [x] Kit cards show `<s>` full price then discounted, but no "per day" clarity — label it "bundle/day".
 16. [ ] Become-a-vendor promo appears on Home and inside Browse studios — dedupe or vary copy.
 17. [x] No empty/skeleton state — every rail pops in at once on cold load. Add skeleton cards.
 18. [x] Spaces rail sorts by `timesRented`, titled "Spaces to shoot at", no filter chips — let users filter by city/capacity in the rail.
@@ -74,13 +74,13 @@ claiming an item, re-verify it in the code.
 38. [x] No analytics hooks on rail impressions/taps — add lightweight event logging (even localStorage).
 
 ### Accessibility & polish
-39. [ ] Category chips are icon+text but `DeptMark` SVGs have no `aria-label`/`role`.
+39. [x] Category chips are icon+text but `DeptMark` SVGs have no `aria-label`/`role`.
 40. [x] Horizontal rails aren't keyboard-scrollable and have no `aria-label`.
 41. [ ] Ensure Home badges (Save X%) meet 3:1 contrast on the purple tone.
-42. [ ] "Flash deals"/"Trending" rely on color+icon — add a text label for urgency.
+42. [x] "Flash deals"/"Trending" rely on color+icon — add a text label for urgency.
 
 ### Content & copy
-43. [ ] "Bundled packages at a package price" is circular — tighten to a benefit ("One booking, one discounted rate").
+43. [x] "Bundled packages at a package price" is circular — tighten to a benefit ("One booking, one discounted rate").
 44. [x] No price-range hint on department chips — "Cameras from Rs X/day" sets expectations before the tap.
 45. [x] Vendor subtitle counts vendors but not inventory — "34 houses · 900+ items" is stronger.
 

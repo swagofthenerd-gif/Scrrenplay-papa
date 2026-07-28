@@ -888,6 +888,13 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left;
   background: none; border: none; cursor: pointer; padding: 0; color: var(--ink);
 }
+/* Replaces the "tap a vendor to explore their storefront" hint that used to sit
+   in the section subtitle: the chevron slides and the row dips on press, so the
+   card says it's tappable instead of the copy saying it. */
+.vendor-head { transition: transform var(--dur-fast) var(--ease-out); }
+.vendor-head:active { transform: scale(0.985); }
+.vendor-head .vendor-chev { transition: transform var(--dur-fast) var(--ease-out); }
+.vendor-head:hover .vendor-chev { transform: translateX(3px); }
 .vendor-head-main { flex: 1; min-width: 0; }
 .vendor-name-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .vendor-name { font-size: 15.5px; letter-spacing: -0.2px; }

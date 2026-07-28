@@ -445,7 +445,7 @@ export default function Home() {
         <div className="section-head">
           <div>
             <h2><Icon name="backpack" className="h-ico" /> Production kits</h2>
-            <div className="section-sub">Bundled packages at a package price</div>
+            <div className="section-sub">One booking, one delivery, one discounted rate</div>
           </div>
         </div>
         <label className="muted small" style={{ display: 'block', marginBottom: 8 }}>
@@ -516,7 +516,10 @@ export default function Home() {
         <div className="section-head">
           <div>
             <h2><Icon name="store" className="h-ico" /> Vendors near you</h2>
-            <div className="section-sub">{vendorList.length} rental houses · {vendorList.reduce((s, v) => s + v.count, 0)} listings · tap a vendor to explore their storefront</div>
+            {/* The old subtitle ended "tap a vendor to explore their storefront".
+                Telling people how to tap a card is an admission the card doesn't
+                look tappable — the chevron and the pressed state do that job. */}
+            <div className="section-sub">{vendorList.length} rental houses · {vendorList.reduce((s, v) => s + v.count, 0)} listings</div>
           </div>
         </div>
         <div className="vendor-list">
