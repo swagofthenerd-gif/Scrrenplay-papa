@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CATEGORIES, ITEMS, KITS, deptFromPrice, getItem, getOwner } from '../data/catalog'
+import { ITEMS, KITS, getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { forYou, similarItems } from '../recs'
 import { vendors } from '../vendors'
 import { useStore } from '../store'
 import { buzz, dealActive, dealEndsAt, fmtCountdown, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
 import { Badge, ItemArt, ItemCard, ListingPromo } from '../components/ui'
-import { DeptMark, Icon } from '../components/icons'
+import { DeptRow } from '../components/DeptRow'
+import { Icon } from '../components/icons'
 import { VendorCard } from '../components/VendorCard'
 import StudioHero from '../components/StudioHero'
 import ServicesBand from '../components/ServicesBand'
@@ -480,22 +481,7 @@ export default function Home() {
             <button className="link-btn" onClick={() => go({ name: 'browse' })}>Browse all <Icon name="arrow-right" size={13} /></button>
           </span>
         </div>
-        <div className="cat-row">
-          {CATEGORIES.map((c) => {
-            const from = deptFromPrice(c.id)
-            return (
-              <button
-                key={c.id}
-                className="cat-chip"
-                onClick={() => go({ name: 'browse', category: c.id })}
-              >
-                <span className="cat-ico" aria-hidden="true"><DeptMark id={c.id} size={44} /></span>
-                {c.name}
-                {from !== undefined && <span className="cat-from">from {money(from)}</span>}
-              </button>
-            )
-          })}
-        </div>
+        <DeptRow showFrom onPick={(id) => go({ name: 'browse', category: id })} />
       </div>
 
       <ServicesBand />

@@ -7,7 +7,8 @@ import { useNav, type BrowseSort, type View } from '../nav'
 import { useStore } from '../store'
 import { daysBetween, dealActive, didYouMean, findConflict, fmtDate, fuzzyMatch, recommendedRate, refineTags, searchRank, todayISO, uid, weightedRating, buzz } from '../utils'
 import { ItemCard, ListingPromo, RatingCompact } from '../components/ui'
-import { DeptMark, Icon, type IconName } from '../components/icons'
+import { DeptRow } from '../components/DeptRow'
+import { Icon, type IconName } from '../components/icons'
 import type { CategoryId, Item } from '../types'
 
 const MAX_COMPARE = 3
@@ -291,27 +292,12 @@ export default function Browse(props: BrowseProps) {
           </button>
         )}
 
-        <div className="cat-row" style={{ marginBottom: 12 }}>
-          <button
-            className={`cat-chip ${!category ? 'active' : ''}`}
-            aria-pressed={!category}
-            onClick={() => patch({ category: undefined, minCapacity: undefined, hourly: false })}
-          >
-            <span className="cat-ico"><Icon name="sliders" size={26} /></span>
-            All
-          </button>
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              className={`cat-chip ${category === c.id ? 'active' : ''}`}
-              aria-pressed={category === c.id}
-              onClick={() => patch({ category: category === c.id ? undefined : c.id })}
-            >
-              <span className="cat-ico" aria-hidden="true"><DeptMark id={c.id} size={44} /></span>
-              {c.name}
-            </button>
-          ))}
-        </div>
+        <DeptRow
+          active={category}
+          style={{ marginBottom: 12 }}
+          onPick={(id) => patch({ category: category === id ? undefined : id })}
+          onClear={() => patch({ category: undefined, minCapacity: undefined, hourly: false })}
+        />
 
         {/* A date filter that quietly removes half the department reads as a thin
             catalogue. Naming what it hid — and offering the gear back — keeps the

@@ -37,7 +37,7 @@ claiming an item, re-verify it in the code.
 
 ### Layout, hierarchy & clarity
 11. [x] Long vertical scroll of ~8 sections with no way to jump — add sticky sub-nav / section anchors. *(home jump bar, deployed)*
-12. [ ] Departments row duplicated between Home and Browse — unify into one component so they never drift.
+12. [x] Departments row duplicated between Home and Browse — unify into one component so they never drift.
 13. [ ] Section headers mix `<h2>` with-icon and without — standardize to one icon+title+subtitle+link pattern.
 14. [x] "tap a vendor to explore their storefront" instructional copy is a smell — make the card afford tapping visually.
 15. [x] Kit cards show `<s>` full price then discounted, but no "per day" clarity — label it "bundle/day".
