@@ -531,7 +531,25 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 }
 .filter-chip:active { transform: scale(0.95); }
 .filter-chip.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-select.filter-chip { appearance: none; }
+/* A sort control that looks exactly like a toggle chip is a control nobody opens.
+   `appearance: none` removed the one thing that said "this is a menu", so the arrow
+   is drawn back on — and min-height goes to 44px, the size a thumb actually hits.
+   The arrow is a background image rather than a pseudo-element because `::after`
+   does not render on a <select> in any browser. It is spelled out twice, once per
+   theme, because a data URI cannot read a custom property. */
+select.filter-chip {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 44px;
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23222222' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5.6 9.2 6.4 6.4 6.4-6.4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 14px 14px;
+}
+:root[data-theme='dark'] select.filter-chip {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f2efec' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5.6 9.2 6.4 6.4 6.4-6.4'/%3E%3C/svg%3E");
+}
 
 /* Removable chip: the label and the X are separate hit targets so a mis-tap on
    the X doesn't run the search, and a tap on the label never deletes it. */

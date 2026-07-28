@@ -151,7 +151,7 @@ claiming an item, re-verify it in the code.
 40. [x] Compare modal calls `getItem(id)` ~8× per column per render — resolve items once.
 
 ### Accessibility & UX
-41. [ ] `<select>` filters styled as chips lose native affordance on some Android WebViews — verify tappable and legible.
+41. [x] `<select>` filters styled as chips lose native affordance on some Android WebViews — verify tappable and legible.
 42. [x] Filter chips toggle on click but have no `aria-pressed`.
 43. [x] Back button calls `history.back()` — if Browse is the entry (deep link), back may leave the app. Fall back to Home.
 44. [x] Compare tray is fixed at bottom and can cover the last row — add bottom padding when tray is up.
