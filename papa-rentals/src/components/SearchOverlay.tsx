@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CATEGORIES, ITEMS } from '../data/catalog'
+import { CATEGORIES, ITEMS, deptFromPrice } from '../data/catalog'
 import { useNav } from '../nav'
 import { useStore } from '../store'
-import { buzz, highlightMatch, money, searchRank } from '../utils'
+import { buzz, highlightMatch, money, savedLabel, searchRank } from '../utils'
 import { ItemArt, RatingCompact } from './ui'
-import { Icon } from './icons'
+import { DeptMark, Icon } from './icons'
 
 function Marked({ text, q }: { text: string; q: string }) {
   return (
@@ -26,6 +26,9 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    // Closing search dropped focus on the body, so the next Tab restarted from the
+    // top of the page instead of the search button you just came from.
+    const previous = document.activeElement as HTMLElement | null
     inputRef.current?.focus()
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -34,6 +37,7 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
     return () => {
       document.body.style.overflow = prev
       window.removeEventListener('keydown', onKey)
+      previous?.focus?.()
     }
   }, [onClose])
 
@@ -92,12 +96,54 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
       <div className="search-overlay-body">
         {!q.trim() ? (
           <>
+            {/* Saved searches live on Home too, but the overlay is where someone
+                who came here to search actually is — repeating them costs one row
+                and saves retyping a query they already told us they care about. */}
+            {state.savedSearches.length > 0 && (
+              <>
+                <h4>Saved searches</h4>
+                <div className="chip-cloud">
+                  {state.savedSearches.map((s) => (
+                    <button
+                      key={s.id}
+                      className="filter-chip chip-ico"
+                      onClick={() => {
+                        buzz()
+                        onClose()
+                        go({ name: 'browse', query: s.q, category: s.category, maxPrice: s.maxPrice })
+                      }}
+                    >
+                      <Icon name="star" size={14} /> {savedLabel(s)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
             {state.recentSearches.length > 0 && (
               <>
-                <h4>Recent searches</h4>
+                <div className="search-sec-head">
+                  <h4>Recent searches</h4>
+                  <button
+                    className="link-btn"
+                    onClick={() => { buzz(); dispatch({ type: 'CLEAR_RECENT_SEARCHES' }) }}
+                  >
+                    Clear
+                  </button>
+                </div>
                 <div className="chip-cloud">
                   {state.recentSearches.map((r) => (
-                    <button key={r} className="filter-chip chip-ico" onClick={() => submit(r)}><Icon name="clock" size={14} /> {r}</button>
+                    // A recents list you can't prune keeps a mistyped query in
+                    // front of you for six searches. Each chip carries its own X.
+                    <span key={r} className="filter-chip chip-ico chip-removable">
+                      <button className="chip-main" onClick={() => submit(r)}><Icon name="clock" size={14} /> {r}</button>
+                      <button
+                        className="chip-x"
+                        aria-label={`Remove ${r} from recent searches`}
+                        onClick={() => { buzz(); dispatch({ type: 'REMOVE_RECENT_SEARCH', q: r }) }}
+                      >
+                        <Icon name="x" size={12} />
+                      </button>
+                    </span>
                   ))}
                 </div>
               </>
@@ -111,9 +157,14 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
             <h4>Departments</h4>
             {CATEGORIES.map((c) => (
               <button key={c.id} className="sug-row" onClick={() => { buzz(); onClose(); go({ name: 'browse', category: c.id }) }}>
-                <span className="sug-cat-ico" style={{ background: c.gradient }}><Icon name={c.icon} size={22} /></span>
+                <span className="sug-cat-ico"><DeptMark id={c.id} size={42} /></span>
                 <span className="sug-title">{c.name}</span>
-                <span className="sug-meta"><Icon name="chevron-right" size={16} /></span>
+                {/* Same helper Home's chips use — two screens quoting different
+                    entry prices for one department is worse than quoting none. */}
+                <span className="sug-meta">
+                  {deptFromPrice(c.id) !== undefined && <>from {money(deptFromPrice(c.id) as number)} </>}
+                  <Icon name="chevron-right" size={16} />
+                </span>
               </button>
             ))}
           </>
@@ -121,7 +172,7 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
           <>
             {results.cats.map((c) => (
               <button key={c.id} className="sug-row" onClick={() => { buzz(); onClose(); go({ name: 'browse', category: c.id }) }}>
-                <span className="sug-cat-ico" style={{ background: c.gradient }}><Icon name={c.icon} size={22} /></span>
+                <span className="sug-cat-ico"><DeptMark id={c.id} size={42} /></span>
                 <span className="sug-title"><Marked text={c.name} q={q} /></span>
                 <span className="sug-meta">department</span>
               </button>

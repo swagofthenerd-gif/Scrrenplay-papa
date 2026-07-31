@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { getCategory, getOwner } from '../data/catalog'
 import type { Item } from '../types'
 import { buzz, dealActive, dealEndsAt, fmtCountdown, money } from '../utils'
 import { PhotoGallery, SmartImage } from './SmartImage'
 import { Icon, STAR_PATH } from './icons'
+import type { IconName } from './icons'
 
 /* ---------------- stars: SVG with fractional fill ---------------- */
 function Star({ frac, size }: { frac: number; size: number }) {
@@ -43,6 +44,39 @@ export function Badge({ children, tone = 'default' }: { children: ReactNode; ton
   return <span className={`badge badge-${tone}`}>{children}</span>
 }
 
+/* ---------------- "list your own gear" prompt ---------------- */
+/* Two of these live in the app — one under Home's vendor list, one above the
+   studios grid in Browse — and they'd drifted apart in layout while saying the
+   same thing. The wording and icon stay per-placement on purpose (a renter
+   browsing studios should be offered the studio pitch, not a generic one), but
+   the structure is shared so the next tweak can't land on only one of them. */
+export function ListingPromo({
+  icon,
+  title,
+  blurb,
+  cta,
+  onClick,
+  style,
+}: {
+  icon: IconName
+  title: string
+  blurb: string
+  cta: string
+  onClick: () => void
+  style?: CSSProperties
+}) {
+  return (
+    <div className="kit-card promo-card" style={style}>
+      <span className="promo-ico"><Icon name={icon} size={25} /></span>
+      <div className="promo-body">
+        <b>{title}</b>
+        <div className="muted small">{blurb}</div>
+      </div>
+      <button className="btn btn-primary btn-sm" onClick={onClick}>{cta}</button>
+    </div>
+  )
+}
+
 /* ---------------- live flash-deal countdown ---------------- */
 export function DealCountdown({ itemId, prefix }: { itemId: string; prefix?: ReactNode }) {
   const [, force] = useState(0)
@@ -77,11 +111,40 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
     }
   }, [])
 
-  // close on Escape (desktop niceness)
+  /* Escape closes, and Tab stays inside the sheet. Without the trap, focus walked
+     straight out into the page behind — which is still fully rendered — so a
+     keyboard user could "leave" an open sheet and land on controls they can't see. */
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const previous = document.activeElement as HTMLElement | null
+    const sheet = sheetRef.current
+    const focusables = () =>
+      Array.from(
+        sheet?.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') ?? []
+      ).filter((el) => !el.hasAttribute('disabled'))
+
+    focusables()[0]?.focus()
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return onClose()
+      if (e.key !== 'Tab') return
+      const list = focusables()
+      if (list.length === 0) return
+      const first = list[0]
+      const last = list[list.length - 1]
+      const active = document.activeElement
+      if (e.shiftKey && (active === first || !sheet?.contains(active))) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      previous?.focus?.()
+    }
   }, [onClose])
 
   function onTouchStart(e: React.TouchEvent) {
@@ -120,6 +183,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         role="dialog"
+        aria-modal="true"
         aria-label={title}
       >
         <div className="sheet-grip" aria-hidden="true" />
@@ -165,7 +229,7 @@ export function ItemArt({ item, size = 'card' }: { item: Item; size?: 'card' | '
   return (
     <div className={`item-art art-${size}`} style={{ background: cat.gradient }} role="img" aria-label={item.name}>
       {glyph}
-      {item.image && <SmartImage src={item.image} alt="" fallback={null} />}
+      {item.image && <SmartImage src={item.image} alt="" fallback={null} box={size} />}
       {ribbon}
     </div>
   )
@@ -229,7 +293,14 @@ export function ItemCard({
   return (
     <div {...stagger} onClick={onOpen}>
       <ItemArt item={item} />
-      {item.instantBook && <div className="photo-badge"><Icon name="bolt" size={11} /> Instant</div>}
+      {/* Absence of an "Instant" badge is not a signal a renter can read — it looks
+          identical to a card that simply has no badge. Saying "Approval" instead
+          sets the expectation that booking this one involves a wait. */}
+      {item.instantBook ? (
+        <div className="photo-badge"><Icon name="bolt" size={11} /> Instant</div>
+      ) : (
+        <div className="photo-badge badge-approval"><Icon name="hourglass" size={11} /> Approval</div>
+      )}
       <button
         className={`wish-btn ${wishlisted ? 'on' : ''}`}
         onClick={(e) => {
@@ -237,6 +308,7 @@ export function ItemCard({
           buzz()
           onToggleWish()
         }}
+        aria-pressed={wishlisted}
         aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
       >
         <Icon name={wishlisted ? 'heart-filled' : 'heart'} size={18} />
@@ -246,7 +318,13 @@ export function ItemCard({
         <div className="item-card-meta">
           <RatingCompact rating={item.rating} count={item.ratingCount} />
           <span className="muted small owner-inline">
-            · {owner.verified && <Icon name="check" size={11} className="ic-verified" />}{owner.name}
+            {/* A bare tick means nothing to a first-time renter and nothing at all
+                to a screen reader — say what it certifies. */}
+            · {owner.verified && (
+              <span title="Verified vendor" aria-label="Verified vendor" role="img">
+                <Icon name="check" size={11} className="ic-verified" />
+              </span>
+            )}{owner.name}
           </span>
         </div>
         <div className="item-card-price">

@@ -1,4 +1,4 @@
-import type { Category, Item, Kit, Owner, TransportOption } from '../types'
+import type { Category, CategoryId, Item, Kit, Owner, TransportOption } from '../types'
 import { ITEM_IMAGES, img } from './images'
 
 // booked ranges are generated relative to "today" so the demo always has realistic availability
@@ -278,6 +278,19 @@ for (const item of ITEMS) {
   }
 }
 
+/* When each listing joined the catalogue. Without it "Trending" can only rank
+   all-time rental counts, which pins the same eight items to the page forever —
+   a vendor who listed last week can never break in no matter how well they do.
+   Seeded relative to load rather than hard-coded, so a demo opened next year
+   doesn't claim its newest gear is eighteen months old. Real listings posted
+   through the app carry their own timestamp and don't come through here. */
+const DAY_MS = 86400000
+ITEMS.forEach((item, idx) => {
+  // Catalogue order doubles as recency order (index 0 is the newest), spread a
+  // week apart across ~6 months so the ranking is stable within a session.
+  item.listedAt = Date.now() - (idx * 7 + 3) * DAY_MS
+})
+
 export const KITS: Kit[] = [
   {
     id: 'k1', name: 'Indie Feature Starter', icon: 'backpack', itemIds: ['i3', 'i5', 'i6', 'i8'], percentOff: 18,
@@ -389,4 +402,17 @@ export function getItem(id: string): Item {
 
 export function getCategory(id: string): Category {
   return CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[0]
+}
+
+/* Cheapest live listing in a department. Tapping a department chip blind is a
+   coin flip — a renter with Rs 4,000 for the day has no idea whether Drones is
+   even in reach until they've loaded the grid and scrolled it. Showing the
+   entry price up front turns the chip row into a budget filter.
+   Lives here, next to the catalog, so Home and the search overlay can never
+   quote two different numbers for the same department. */
+export function deptFromPrice(id: CategoryId): number | undefined {
+  const prices = [...ITEMS, ...USER_ITEMS]
+    .filter((i) => i.category === id && !i.paused)
+    .map((i) => i.pricePerDay)
+  return prices.length ? Math.min(...prices) : undefined
 }

@@ -14,7 +14,7 @@ import { Avatar, Icon } from '../components/icons'
 
 const TIME_SLOTS = ['06:00', '09:00', '12:00', '15:00', '18:00']
 
-export default function ItemDetail({ id }: { id: string }) {
+export default function ItemDetail({ id, from, to }: { id: string; from?: string; to?: string }) {
   const item = getItem(id)
   const owner = getOwner(item.ownerId)
   const { go, back, toast } = useNav()
@@ -24,10 +24,16 @@ export default function ItemDetail({ id }: { id: string }) {
     dispatch({ type: 'VIEW_ITEM', itemId: id })
   }, [id, dispatch])
 
-  const [startDate, setStartDate] = useState(todayISO(2))
-  const [endDate, setEndDate] = useState(todayISO(3))
+  const watchingAvail = state.availAlerts.some((a) => a.itemId === id)
+  const watchingPrice = state.priceAlerts.some((a) => a.itemId === id)
+
+  /* If Browse was filtered to a shoot window, that window is the answer to
+     "what dates" — retyping it here was the most repeated act in the flow. */
+  const [startDate, setStartDate] = useState(from ?? todayISO(2))
+  const [endDate, setEndDate] = useState(to ?? todayISO(3))
   const [pickupTime, setPickupTime] = useState('09:00')
   const [qty, setQty] = useState(1)
+  const [starFilter, setStarFilter] = useState<number | null>(null)
   const [unit, setUnit] = useState<RentalUnit>('day')
   const [hours, setHours] = useState(4)
   const [insurance, setInsurance] = useState(item.insuranceRequired || item.deposit >= 100000)
@@ -56,6 +62,7 @@ export default function ItemDetail({ id }: { id: string }) {
   const conflict = findConflict(id, { start: startDate, end: effEnd }, state.orders, state.cart)
   const nextFree = conflict ? nextAvailable(id, effEnd, duration === 0 ? 1 : days, state.orders, state.cart) : null
   const invalidRange = unit === 'day' && endDate < startDate
+  const shownReviews = starFilter == null ? item.reviews : item.reviews.filter((rv) => Math.round(rv.rating) === starFilter)
 
   const wishlisted = state.wishlist.includes(id)
   const thread = state.chats[owner.id]
@@ -63,6 +70,15 @@ export default function ItemDetail({ id }: { id: string }) {
 
   // similarity-ranked: tags + category adjacency + price band + quality
   const alsoRented = useMemo(() => similarItems(id, state, 6), [id, state])
+
+  /* A meaningfully cheaper alternative that is rated just as well. Shown once,
+     quietly — the point is to save the renter money, not to upsell. */
+  const cheaper = useMemo(() => {
+    const c = alsoRented
+      .filter((i) => i.pricePerDay <= item.pricePerDay * 0.8 && i.rating >= item.rating - 0.2)
+      .sort((a, b) => a.pricePerDay - b.pricePerDay)[0]
+    return c ?? null
+  }, [alsoRented, item.pricePerDay, item.rating])
 
   const histo = ratingHistogram(item.rating, item.ratingCount)
   const myReviews = state.myReviews[id] ?? []
@@ -80,7 +96,7 @@ export default function ItemDetail({ id }: { id: string }) {
     dispatch({
       type: 'ADD_TO_CART',
       booking: {
-        itemId: id, startDate, endDate: effEnd, pickupTime, qty, unit, hours,
+        id: uid(), itemId: id, startDate, endDate: effEnd, pickupTime, qty, unit, hours,
         insurance: item.insuranceRequired ? true : insurance, operator, transport, rate, negotiated,
       },
     })
@@ -122,11 +138,14 @@ export default function ItemDetail({ id }: { id: string }) {
                 >
                   <Icon name="arrow-up-right" size={16} />
                 </button>
+                {/* "Toggle wishlist" reads identically whether the heart is on or off,
+                    so a screen reader user couldn't tell which way the tap would go. */}
                 <button
                   className="icon-btn"
                   style={wishlisted ? { color: 'var(--red)' } : undefined}
                   onClick={() => { buzz(); dispatch({ type: 'TOGGLE_WISHLIST', itemId: id }) }}
-                  aria-label="Toggle wishlist"
+                  aria-pressed={wishlisted}
+                  aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
                 >
                   {wishlisted ? <Icon name="heart-filled" size={16} /> : <Icon name="heart" size={16} />}
                 </button>
@@ -205,7 +224,31 @@ export default function ItemDetail({ id }: { id: string }) {
                 <p style={{ margin: '6px 0 0' }}>{rv.text}</p>
               </div>
             ))}
-            {item.reviews.map((rv) => (
+            {/* Filtering by star is how people check whether the 1-star reviews
+                are about the gear or about a late delivery. */}
+            <div className="filter-row" style={{ margin: '4px 0 10px' }}>
+              <button className={`filter-chip ${starFilter == null ? 'active' : ''}`} aria-pressed={starFilter == null} onClick={() => setStarFilter(null)}>
+                All {item.reviews.length}
+              </button>
+              {[5, 4, 3, 2, 1].map((s) => {
+                const n = item.reviews.filter((rv) => Math.round(rv.rating) === s).length
+                if (n === 0) return null
+                return (
+                  <button
+                    key={s}
+                    className={`filter-chip chip-ico ${starFilter === s ? 'active' : ''}`}
+                    aria-pressed={starFilter === s}
+                    onClick={() => setStarFilter(starFilter === s ? null : s)}
+                  >
+                    {s} <Icon name="star" size={12} /> {n}
+                  </button>
+                )
+              })}
+            </div>
+            {shownReviews.length === 0 && (
+              <p className="muted small">No {starFilter}-star reviews yet.</p>
+            )}
+            {shownReviews.map((rv) => (
               <div className="review" key={rv.id}>
                 <div className="review-head">
                   <b>{rv.author}</b>
@@ -268,6 +311,12 @@ export default function ItemDetail({ id }: { id: string }) {
               )}
             </div>
 
+            {invalidRange && (
+              <div className="conflict-note" role="alert">
+                <Icon name="warning" size={14} /> The return date is before the start date — pick a later return.
+              </div>
+            )}
+
             <div className="field" style={{ marginTop: 10 }}>
               {transport === 'pickup' ? 'Pickup time' : 'Delivery slot'}
               <div className="slot-row">
@@ -305,10 +354,17 @@ export default function ItemDetail({ id }: { id: string }) {
                   }
                 }}>{fmtDate(nextFree)} — tap to apply</button></>}
                 {' · '}
-                <button onClick={() => {
-                  dispatch({ type: 'ADD_AVAIL_ALERT', itemId: id })
-                  toast('We’ll notify you the moment it frees up')
-                }}><Icon name="bell" size={14} /> Notify me</button>
+                {/* Tapping "Notify me" twice used to silently do nothing — the
+                    reducer de-dupes — so say it's already set instead. */}
+                {watchingAvail ? (
+                  <span><Icon name="check-circle" size={14} /> We’ll tell you when it frees up</span>
+                ) : (
+                  <button onClick={() => {
+                    buzz()
+                    dispatch({ type: 'ADD_AVAIL_ALERT', itemId: id })
+                    toast('We’ll notify you the moment it frees up')
+                  }}><Icon name="bell" size={14} /> Notify me</button>
+                )}
               </div>
             ) : (
               <p className="muted small" style={{ margin: '10px 0 0' }}>
@@ -316,6 +372,21 @@ export default function ItemDetail({ id }: { id: string }) {
                 {unit === 'day' && (days >= 7 ? ' · weekly rate (20% off)' : days >= 3 ? ' · 3+ day rate (10% off)' : '')}
               </p>
             )}
+
+            {/* Renters who won't pay today's rate had no way to say so — they
+                just left. A watch turns that into a reason to come back. */}
+            <button
+              className="link-btn"
+              style={{ margin: '10px 0 0' }}
+              aria-pressed={watchingPrice}
+              onClick={() => {
+                buzz()
+                dispatch({ type: 'TOGGLE_PRICE_ALERT', itemId: id })
+                toast(watchingPrice ? 'Price watch removed' : `Watching — we’ll ping you if it drops below ${money(recommendedRate(id, 1))}/day`)
+              }}
+            >
+              <Icon name={watchingPrice ? 'bell-off' : 'bell'} size={14} /> {watchingPrice ? 'Stop watching the price' : 'Notify me if the price drops'}
+            </button>
 
             <label className="toggle-row" style={item.insuranceRequired ? { opacity: 0.9 } : undefined}>
               <input
@@ -326,7 +397,14 @@ export default function ItemDetail({ id }: { id: string }) {
               />
               <span>
                 <b><Icon name="shield" size={14} /> Papa Damage Protection</b> — {Math.round(INSURANCE_RATE * 100)}% of rental. Covers accidental damage up to full value.
-                {item.insuranceRequired && <b style={{ color: 'var(--accent-dark)' }}> Required for this item.</b>}
+                {item.insuranceRequired && (
+                  <b style={{ color: 'var(--accent-dark)' }}>
+                    {' '}Required by the vendor on this item — it carries a {money(item.deposit)} deposit.
+                  </b>
+                )}
+                {!item.insuranceRequired && item.deposit >= 100000 && (
+                  <span className="muted"> Pre-ticked because the deposit is {money(item.deposit)}; you can remove it.</span>
+                )}
               </span>
             </label>
             <label className="toggle-row">
@@ -375,6 +453,12 @@ export default function ItemDetail({ id }: { id: string }) {
               <div className="price-line"><span>Deposit (hold only — released after return)</span><b>{money(item.deposit * qty)}</b></div>
               <div className="price-line total"><span>Est. charge</span><span>{money(sub + insuranceFee + operatorFee + transportFee)}</span></div>
             </div>
+
+            {cheaper && (
+              <button className="link-btn" style={{ marginTop: 8 }} onClick={() => go({ name: 'item', id: cheaper.id })}>
+                <Icon name="coins" size={13} /> {cheaper.name} rents for {money(cheaper.pricePerDay)}/day — {Math.round((1 - cheaper.pricePerDay / item.pricePerDay) * 100)}% less, rated {cheaper.rating.toFixed(1)}
+              </button>
+            )}
 
             <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={addToCart} disabled={Boolean(conflict) || invalidRange}>
               {conflict ? <><Icon name="ban" size={14} /> Unavailable for these dates</> : item.instantBook ? <><Icon name="bolt" size={14} /> Add to cart — instant book</> : 'Add to cart — request booking'}
@@ -625,6 +709,7 @@ function OfferModal({ itemId, unit, recommended, onClose }: { itemId: string; un
 /* ---------------- chat: typing indicator, read receipts, replies survive closing ---------------- */
 function ChatModal({ ownerId, ownerName, itemName, onClose }: { ownerId: string; ownerName: string; itemName: string; onClose: () => void }) {
   const { state, dispatch } = useStore()
+  const { go } = useNav()
   const [text, setText] = useState('')
   const boxRef = useRef<HTMLDivElement>(null)
   const thread = state.chats[ownerId]
@@ -660,6 +745,7 @@ function ChatModal({ ownerId, ownerName, itemName, onClose }: { ownerId: string;
           return (
             <div key={m.id} className={`chat-msg ${m.from}`}>
               {m.text}
+              <span className="stamp">{m.time}</span>
               {m.from === 'me' && <span className="ticks">{delivered ? <><Icon name="check" size={12} /><Icon name="check" size={12} /></> : <Icon name="check" size={12} />}</span>}
             </div>
           )
@@ -677,6 +763,14 @@ function ChatModal({ ownerId, ownerName, itemName, onClose }: { ownerId: string;
         />
         <button className="btn btn-primary btn-sm" onClick={send}>Send</button>
       </div>
+      {/* This sheet only ever shows the thread for the listing you're on. Once a
+          conversation has history, the sheet is the wrong place to read it back —
+          the full thread has the day headings and the rest of what you discussed. */}
+      {msgs.length > 0 && (
+        <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={() => { onClose(); go({ name: 'inbox', ownerId }) }}>
+          <Icon name="chat" size={14} /> Open full conversation
+        </button>
+      )}
     </Modal>
   )
 }

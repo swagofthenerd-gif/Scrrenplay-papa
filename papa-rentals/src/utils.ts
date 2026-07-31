@@ -1,8 +1,15 @@
-import { CURRENCY, PROMO_CODES, TRANSPORT_OPTIONS, getItem, getOwner } from './data/catalog'
-import type { Booking, DateRange, Item, OfferStatus, Order } from './types'
+import { CATEGORIES, CURRENCY, PROMO_CODES, TRANSPORT_OPTIONS, getItem, getOwner } from './data/catalog'
+import type { Booking, DateRange, Item, OfferStatus, Order, SavedSearch } from './types'
 
 export function money(n: number): string {
   return `${CURRENCY} ${Math.round(n).toLocaleString('en-PK')}`
+}
+
+/* A saved search is a query + optional department + price cap; render it as one
+   readable line so the chip says what it will actually re-run. */
+export function savedLabel(s: SavedSearch): string {
+  const base = s.q || CATEGORIES.find((c) => c.id === s.category)?.name || 'All gear'
+  return s.maxPrice ? `${base} · under ${money(s.maxPrice)}` : base
 }
 
 /* ---------------- dates (local-time correct, not UTC) ---------------- */
@@ -23,6 +30,16 @@ export function daysBetween(start: string, end: string): number {
   const e = new Date(end + 'T00:00:00')
   const diff = Math.round((e.getTime() - s.getTime()) / 86400000)
   return Math.max(1, diff + 1) // inclusive of both days, minimum 1 day
+}
+
+/* Move a booking to a new start date without changing how long it runs.
+   Deliberately not daysBetween — that returns billing days (inclusive, floored
+   at 1), so using it here would stretch every line by a day each time. */
+export function shiftBooking(b: Booking, start: string): Booking {
+  const span = Math.max(0, Math.round((new Date(b.endDate).getTime() - new Date(b.startDate).getTime()) / 86400000))
+  const end = new Date(start + 'T00:00:00')
+  end.setDate(end.getDate() + span)
+  return { ...b, startDate: start, endDate: b.unit === 'hour' ? start : toISO(end) }
 }
 
 export function fmtDate(iso: string): string {
@@ -402,10 +419,84 @@ ${fee('PapaPoints redeemed', order.pointsUsed, true)}${fee('Wallet credit', orde
 </table>
 <p><small>Papa Rentals (Pvt) Ltd · support@paparentals.pk · This deposit is an authorization hold, not a charge.</small></p>
 </body></html>`
-  const blob = new Blob([html], { type: 'text/html' })
+  // Blob downloads are blocked inside the Android WebView wrapper, so fall back to
+  // rendering the receipt in a new document the user can share or print.
   const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `papa-receipt-${order.id}.html`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 5000)
+  if (typeof a.download === 'string') {
+    try {
+      const blob = new Blob([html], { type: 'text/html' })
+      a.href = URL.createObjectURL(blob)
+      a.download = `papa-receipt-${order.id}.html`
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000)
+      return
+    } catch {
+      /* fall through to the inline renderer */
+    }
+  }
+  const w = window.open('', '_blank')
+  if (w) {
+    w.document.write(html)
+    w.document.close()
+    return
+  }
+  // last resort: replace the current document (WebView with popups disabled)
+  document.open()
+  document.write(html)
+  document.close()
+}
+
+/**
+ * Closest catalog word to a query that found nothing — the "did you mean" term.
+ * Only vocabulary that actually appears in item names and tags is offered, so
+ * accepting the suggestion can never lead to a second empty page.
+ */
+export function didYouMean(query: string, pool: Item[]): string | null {
+  const q = query.toLowerCase().trim()
+  if (q.length < 4) return null
+  const vocab = new Set<string>()
+  for (const i of pool) {
+    for (const w of `${i.name} ${i.tags.join(' ')}`.toLowerCase().split(/[^a-z0-9]+/)) {
+      if (w.length >= 4) vocab.add(w)
+    }
+  }
+  /* fuzzyMatch is an AND across query words, so the page is empty because of the
+     one word that landed nowhere — not the longest one. Suggest a fix for that
+     word, or there is nothing useful to say. */
+  const words = q.split(/\s+/).filter((w) => w.length >= 4)
+  const qw = words.find((w) => !pool.some((i) => fuzzyMatch(`${i.name} ${i.tags.join(' ')} ${i.category}`, w)))
+  if (!qw) return null
+  let best: string | null = null
+  let bestD = Infinity
+  for (const w of vocab) {
+    const d = editDistance(w, qw)
+    if (d < bestD) { bestD = d; best = w }
+  }
+  /* editDistance saturates at 3 — it returns 3 for "nothing like it" as readily
+     as for a genuine three-edit typo, so 3 is never trustworthy here. Staying
+     strictly under the cap is what keeps "sennhaizr" from suggesting "arri". */
+  const limit = Math.min(2, Math.max(1, Math.floor(qw.length / 3)))
+  if (!best || bestD === 0 || bestD > limit) return null
+  // Return the whole corrected query, not the bare word — swapping one word out
+  // of "sony camrea rig" should keep the rest of what was typed.
+  return q.split(/\s+/).map((w) => (w === qw ? best : w)).join(' ')
+}
+
+/** Tags shared by enough of the current results to be worth offering as a narrowing chip. */
+export function refineTags(list: Item[], query: string, max = 5): string[] {
+  if (list.length < 4) return []
+  const q = query.toLowerCase()
+  const counts = new Map<string, number>()
+  for (const i of list) {
+    for (const t of new Set(i.tags.map((t) => t.toLowerCase()))) {
+      if (q.includes(t)) continue // already in the query — narrowing by it changes nothing
+      counts.set(t, (counts.get(t) ?? 0) + 1)
+    }
+  }
+  return [...counts.entries()]
+    // A tag on every result narrows nothing; a tag on one result is noise.
+    .filter(([, n]) => n >= 2 && n < list.length)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, max)
+    .map(([t]) => t)
 }

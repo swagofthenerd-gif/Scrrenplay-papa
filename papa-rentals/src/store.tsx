@@ -3,9 +3,9 @@ import type { ReactNode } from 'react'
 import { DRIVER_POOL, PROMO_CODES, RENTER_POOL, getItem, getOwner, syncUserListings } from './data/catalog'
 import type {
   Address, AppNotification, AppState, Booking, ChatMessage, ChatThread,
-  Item, Offer, Order, OrderStatus, OwnerBooking, Review, UserReport,
+  CategoryId, Item, LedgerEntry, Offer, Order, OrderStatus, OwnerBooking, Review, SavedCard, SavedSearch, UserReport,
 } from './types'
-import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, todayISO, uid } from './utils'
+import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, money, recommendedRate, todayISO, uid } from './utils'
 import type { IconName } from './components/icons'
 import type { TotalsInput } from './utils'
 
@@ -21,6 +21,10 @@ const initialState: AppState = {
   notifications: [],
   walletBalance: 5000, // welcome credit
   points: 120,
+  ledger: [
+    { id: 'l-welcome', at: Date.now(), kind: 'wallet', amount: 5000, label: 'Welcome credit', cash: false },
+    { id: 'l-signup', at: Date.now(), kind: 'points', amount: 120, label: 'Sign-up bonus' },
+  ],
   myReviews: {},
   reports: [],
   addresses: [
@@ -28,7 +32,10 @@ const initialState: AppState = {
     { id: 'a2', label: 'Home base', icon: 'home', detail: 'House 12, Street 4, DHA Phase 3, Lahore' },
   ],
   selectedAddressId: 'a1',
+  cards: [{ id: 'c1', brand: 'Visa', last4: '4291', expiry: '09/28' }],
+  selectedCardId: 'c1',
   recentSearches: [],
+  savedSearches: [],
   recentlyViewed: [],
   blockedOwners: [],
   promoCodesUsed: [],
@@ -36,6 +43,7 @@ const initialState: AppState = {
   ownerBookings: [],
   claims: [],
   availAlerts: [],
+  priceAlerts: [],
   referralRedeemed: false,
 }
 
@@ -45,9 +53,11 @@ export interface PlaceOrderOpts extends TotalsInput {
 }
 
 type Action =
-  | { type: 'SET_PROFILE'; name: string; city: string }
+  | { type: 'SET_PROFILE'; name: string; city: string; onboarded?: boolean }
   | { type: 'ADD_TO_CART'; booking: Booking }
-  | { type: 'REMOVE_FROM_CART'; index: number }
+  | { type: 'UPDATE_CART_LINE'; lineId: string; patch: Partial<Booking> }
+  | { type: 'REMOVE_FROM_CART'; lineId: string }
+  | { type: 'RESTORE_CART_LINE'; booking: Booking; index: number }
   | { type: 'CLEAR_CART' }
   | { type: 'TOGGLE_WISHLIST'; itemId: string }
   | { type: 'PLACE_ORDER'; opts: PlaceOrderOpts }
@@ -60,10 +70,19 @@ type Action =
   | { type: 'ADD_CHAT'; ownerId: string; message: ChatMessage }
   | { type: 'READ_CHAT'; ownerId: string }
   | { type: 'REPORT'; report: UserReport; orderId?: string; block?: string }
+  | { type: 'UNBLOCK_OWNER'; ownerId: string }
   | { type: 'ADD_WALLET'; amount: number }
   | { type: 'ADD_ADDRESS'; address: Address }
   | { type: 'SELECT_ADDRESS'; id: string }
+  | { type: 'SET_ADDRESS_GEO'; id: string; geo?: { lat: number; lng: number } }
+  | { type: 'ADD_CARD'; card: SavedCard }
+  | { type: 'REMOVE_CARD'; id: string }
+  | { type: 'SELECT_CARD'; id: string }
   | { type: 'ADD_RECENT_SEARCH'; q: string }
+  | { type: 'REMOVE_RECENT_SEARCH'; q: string }
+  | { type: 'CLEAR_RECENT_SEARCHES' }
+  | { type: 'SAVE_SEARCH'; q: string; category?: CategoryId; maxPrice?: number }
+  | { type: 'REMOVE_SAVED_SEARCH'; id: string }
   | { type: 'VIEW_ITEM'; itemId: string }
   | { type: 'READ_NOTIFICATIONS' }
   | { type: 'ADD_LISTING'; item: Item }
@@ -73,6 +92,7 @@ type Action =
   | { type: 'DECLINE_OWNER_BOOKING'; id: string }
   | { type: 'FILE_CLAIM'; orderId: string; itemName: string; reason: string; amount: number }
   | { type: 'ADD_AVAIL_ALERT'; itemId: string }
+  | { type: 'TOGGLE_PRICE_ALERT'; itemId: string }
   | { type: 'REDEEM_REFERRAL'; code: string }
   | { type: 'TICK'; now: number }
 
@@ -84,11 +104,22 @@ function notify(state: AppState, n: Omit<AppNotification, 'id' | 'at' | 'read'>)
 
 type NotifSpec = Omit<AppNotification, 'id' | 'at' | 'read'>
 
-/** One step forward on the order timeline — used by the manual button AND the auto-advance heartbeat. */
+/** Prepend ledger rows, skipping no-op movements so history stays readable. */
+function record(state: AppState, entries: Omit<LedgerEntry, 'id' | 'at'>[]): LedgerEntry[] {
+  const rows = entries
+    .filter((e) => e.amount !== 0)
+    .map((e) => ({ id: uid(), at: Date.now(), ...e }))
+  return rows.length ? [...rows, ...state.ledger].slice(0, 200) : state.ledger
+}
+
+/** One step forward on the order timeline — used by the manual button AND the auto-advance heartbeat.
+    Notifications here name a specific order, so they link straight to it: the Orders
+    list splits across Active/Completed tabs, and a "complete" alert landed on the
+    tab that no longer holds the order it was about. */
 function stepOrderForward(o: Order): { order: Order; notifs: NotifSpec[] } {
   const notifs: NotifSpec[] = []
   if (o.status === 'requested') {
-    notifs.push({ icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: '#/orders' })
+    notifs.push({ icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
     return { order: { ...o, status: 'confirmed', approveAt: undefined, autoAdvanceAt: Date.now() + 30000 }, notifs }
   }
   const idx = STATUS_FLOW.indexOf(o.status)
@@ -98,11 +129,11 @@ function stepOrderForward(o: Order): { order: Order; notifs: NotifSpec[] } {
   if (next === 'in_transit' && !o.driver) {
     const d = DRIVER_POOL[Math.floor(Math.random() * DRIVER_POOL.length)]
     patch = { ...patch, driver: { ...d, pin: String(1000 + Math.floor(Math.random() * 9000)) } }
-    notifs.push({ icon: 'van', title: `${o.id} is on the way`, body: `${d.name} is driving your gear over. Handover PIN inside.`, link: '#/orders' })
+    notifs.push({ icon: 'van', title: `${o.id} is on the way`, body: `${d.name} is driving your gear over. Handover PIN inside.`, link: `#/order/${o.id}` })
   }
   if (next === 'completed') {
     patch = { ...patch, depositReleased: true }
-    notifs.push({ icon: 'flag-checkered', title: `${o.id} complete — deposit hold released`, body: 'Rate your experience while it’s fresh!', link: '#/orders' })
+    notifs.push({ icon: 'flag-checkered', title: `${o.id} complete — deposit hold released`, body: 'Rate your experience while it’s fresh!', link: `#/order/${o.id}` })
   }
   return { order: { ...o, ...patch }, notifs }
 }
@@ -140,12 +171,19 @@ const OWNER_REPLIES = [
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_PROFILE':
-      return { ...state, profile: { name: action.name, city: action.city, onboarded: true } }
+      return { ...state, profile: { name: action.name, city: action.city, onboarded: action.onboarded ?? true } }
 
     case 'ADD_TO_CART':
-      return { ...state, cart: [...state.cart, action.booking] }
+      return { ...state, cart: [...state.cart, { ...action.booking, id: action.booking.id || uid() }] }
+    case 'UPDATE_CART_LINE':
+      return { ...state, cart: state.cart.map((b) => (b.id === action.lineId ? { ...b, ...action.patch } : b)) }
     case 'REMOVE_FROM_CART':
-      return { ...state, cart: state.cart.filter((_, i) => i !== action.index) }
+      return { ...state, cart: state.cart.filter((b) => b.id !== action.lineId) }
+    case 'RESTORE_CART_LINE': {
+      const cart = [...state.cart]
+      cart.splice(Math.min(action.index, cart.length), 0, action.booking)
+      return { ...state, cart }
+    }
     case 'CLEAR_CART':
       return { ...state, cart: [] }
 
@@ -203,13 +241,18 @@ function reducer(state: AppState, action: Action): AppState {
         orders: [order, ...state.orders],
         walletBalance: state.walletBalance - t.walletUsed,
         points: state.points - t.pointsUsed + pointsEarned,
+        ledger: record(state, [
+          { kind: 'wallet', amount: -t.walletUsed, label: `Paid towards ${order.id}`, orderId: order.id },
+          { kind: 'points', amount: -t.pointsUsed, label: `Redeemed on ${order.id}`, orderId: order.id },
+          { kind: 'points', amount: pointsEarned, label: `Earned on ${order.id}`, orderId: order.id },
+        ]),
         promoCodesUsed: order.promoCode && PROMO_CODES[order.promoCode]?.singleUse
           ? [...state.promoCodesUsed, order.promoCode]
           : state.promoCodesUsed,
         freeVanPerkMonth: t.usedVanPerk ? todayISO().slice(0, 7) : state.freeVanPerkMonth,
         notifications: notify(state, needsApproval
-          ? { icon: 'hourglass', title: `Booking ${order.id} requested`, body: 'Waiting for owner approval — usually a few minutes.', link: '#/orders' }
-          : { icon: 'check-circle', title: `Order ${order.id} confirmed`, body: 'Gear is being reserved for your dates.', link: '#/orders' }),
+          ? { icon: 'hourglass', title: `Booking ${order.id} requested`, body: 'Waiting for owner approval — usually a few minutes.', link: `#/order/${order.id}` }
+          : { icon: 'check-circle', title: `Order ${order.id} confirmed`, body: 'Gear is being reserved for your dates.', link: `#/order/${order.id}` }),
       }
     }
 
@@ -239,10 +282,14 @@ function reducer(state: AppState, action: Action): AppState {
         ),
         walletBalance: state.walletBalance + refund,
         points: state.points + o.pointsUsed - o.pointsEarned,
+        ledger: record(state, [
+          { kind: 'wallet', amount: refund, label: fee > 0 ? `Refund for ${o.id} (less ${fee.toLocaleString()} fee)` : `Refund for ${o.id}`, cash: true, orderId: o.id },
+          { kind: 'points', amount: o.pointsUsed - o.pointsEarned, label: `Points reversed on ${o.id}`, orderId: o.id },
+        ]),
         notifications: notify(state, {
           icon: 'undo', title: `${o.id} cancelled`,
           body: fee > 0 ? `Refunded ${refund.toLocaleString()} to wallet (10% late-cancel fee applied).` : `Fully refunded to your wallet. Deposit hold released.`,
-          link: '#/orders',
+          link: `#/order/${o.id}`,
         }),
       }
     }
@@ -264,13 +311,18 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         walletBalance: state.walletBalance - fromWallet,
+        /* An extension took money out of the wallet and left no trace in the
+           ledger, so the balance dropped with nothing to explain it. */
+        ledger: record(state, [
+          { kind: 'wallet', amount: -fromWallet, label: `Extended ${o.id} by ${action.days} day${action.days > 1 ? 's' : ''}`, orderId: o.id },
+        ]),
         orders: state.orders.map((x) =>
           x.id === o.id ? { ...x, lines, total: x.total + cost, extendedDays: (x.extendedDays ?? 0) + action.days } : x
         ),
         notifications: notify(state, {
           icon: 'calendar', title: `${o.id} extended by ${action.days} day${action.days > 1 ? 's' : ''}`,
           body: fromWallet >= cost ? `Rs ${cost.toLocaleString()} paid from wallet.` : `Rs ${cost.toLocaleString()} charged (Rs ${fromWallet.toLocaleString()} from wallet).`,
-          link: '#/orders',
+          link: `#/order/${o.id}`,
         }),
       }
     }
@@ -337,6 +389,9 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, chats: { ...state.chats, [action.ownerId]: { ...thread, unread: 0 } } }
     }
 
+    case 'UNBLOCK_OWNER':
+      return { ...state, blockedOwners: state.blockedOwners.filter((id) => id !== action.ownerId) }
+
     case 'REPORT':
       return {
         ...state,
@@ -352,18 +407,63 @@ function reducer(state: AppState, action: Action): AppState {
       }
 
     case 'ADD_WALLET':
-      return { ...state, walletBalance: state.walletBalance + action.amount }
+      return {
+        ...state,
+        walletBalance: state.walletBalance + action.amount,
+        ledger: record(state, [{ kind: 'wallet', amount: action.amount, label: 'Top-up', cash: true }]),
+      }
 
     case 'ADD_ADDRESS':
       return { ...state, addresses: [...state.addresses, action.address], selectedAddressId: action.address.id }
     case 'SELECT_ADDRESS':
       return { ...state, selectedAddressId: action.id }
 
+    case 'SET_ADDRESS_GEO':
+      return {
+        ...state,
+        addresses: state.addresses.map((a) => (a.id === action.id ? { ...a, geo: action.geo } : a)),
+      }
+
+    case 'ADD_CARD':
+      return { ...state, cards: [...state.cards, action.card], selectedCardId: action.card.id }
+    case 'REMOVE_CARD': {
+      const cards = state.cards.filter((c) => c.id !== action.id)
+      // never leave the selection pointing at a card that no longer exists
+      return { ...state, cards, selectedCardId: state.selectedCardId === action.id ? cards[0]?.id ?? '' : state.selectedCardId }
+    }
+    case 'SELECT_CARD':
+      return { ...state, selectedCardId: action.id }
+
     case 'ADD_RECENT_SEARCH': {
       const q = action.q.trim()
       if (!q) return state
       return { ...state, recentSearches: [q, ...state.recentSearches.filter((x) => x.toLowerCase() !== q.toLowerCase())].slice(0, 6) }
     }
+
+    case 'REMOVE_RECENT_SEARCH':
+      return { ...state, recentSearches: state.recentSearches.filter((x) => x !== action.q) }
+
+    case 'CLEAR_RECENT_SEARCHES':
+      return { ...state, recentSearches: [] }
+
+    case 'SAVE_SEARCH': {
+      const q = action.q.trim()
+      // "All lighting under 20k" is a real saved search with no typed words in it,
+      // so a category alone is enough — only a search with nothing at all is a no-op.
+      if (!q && !action.category) return state
+      // Same query + same category is the same search — re-saving just refreshes it.
+      const dupe = (s: SavedSearch) => s.q.toLowerCase() === q.toLowerCase() && s.category === action.category
+      return {
+        ...state,
+        savedSearches: [
+          { id: uid(), q, category: action.category, maxPrice: action.maxPrice, createdAt: Date.now() },
+          ...state.savedSearches.filter((s) => !dupe(s)),
+        ].slice(0, 8),
+      }
+    }
+
+    case 'REMOVE_SAVED_SEARCH':
+      return { ...state, savedSearches: state.savedSearches.filter((s) => s.id !== action.id) }
 
     case 'VIEW_ITEM':
       if (state.recentlyViewed[0] === action.itemId) return state
@@ -374,7 +474,10 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, notifications: state.notifications.map((n) => (n.read ? n : { ...n, read: true })) }
 
     case 'ADD_LISTING': {
-      const myListings = [action.item, ...state.myListings]
+      // Stamped here rather than in the form, so every path into the catalogue
+      // gets a date — "New this week" skips undated listings, and a vendor's
+      // first post is exactly the one that deserves to show up there.
+      const myListings = [{ ...action.item, listedAt: action.item.listedAt ?? Date.now() }, ...state.myListings]
       syncUserListings(myListings)
       return {
         ...state,
@@ -428,6 +531,15 @@ function reducer(state: AppState, action: Action): AppState {
       }
     }
 
+    case 'TOGGLE_PRICE_ALERT': {
+      const existing = state.priceAlerts.find((a) => a.itemId === action.itemId)
+      if (existing) return { ...state, priceAlerts: state.priceAlerts.filter((a) => a !== existing) }
+      return {
+        ...state,
+        priceAlerts: [...state.priceAlerts, { id: uid(), itemId: action.itemId, price: recommendedRate(action.itemId, 1) }],
+      }
+    }
+
     case 'ADD_AVAIL_ALERT': {
       if (state.availAlerts.some((a) => a.itemId === action.itemId)) return state
       return { ...state, availAlerts: [...state.availAlerts, { id: uid(), itemId: action.itemId, notifyAt: Date.now() + 25000 }] }
@@ -439,6 +551,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         referralRedeemed: true,
         walletBalance: state.walletBalance + 500,
+        ledger: record(state, [{ kind: 'wallet', amount: 500, label: `Referral ${action.code.trim().toUpperCase()}`, cash: false }]),
         notifications: notify(state, { icon: 'gift', title: 'Referral applied — Rs 500 added', body: 'Your friend gets Rs 500 too. Shukriya!' }),
       }
     }
@@ -493,8 +606,14 @@ function reducer(state: AppState, action: Action): AppState {
             at: now,
           }
           chats[ownerId] = { messages: [...t.messages, reply], unread: t.unread + 1, typingUntil: undefined, pendingReplyAt: undefined }
+          /* Linking to Profile dropped you a screen short of the reply you just
+             tapped. Inbox is where the thread actually is. getOwner falls back to
+             the first vendor for unknown ids, which named support after a stranger. */
           notifications = notify({ ...next, notifications }, {
-            icon: 'chat', title: `${getOwner(ownerId).name} replied`, body: reply.text, link: '#/profile',
+            icon: 'chat',
+            title: `${ownerId === 'support' ? 'Papa Support' : getOwner(ownerId).name} replied`,
+            body: reply.text,
+            link: '#/inbox',
           })
         }
         next = { ...next, chats, notifications }
@@ -507,7 +626,7 @@ function reducer(state: AppState, action: Action): AppState {
         let notifications = next.notifications
         const orders = next.orders.map((o) => {
           if (!dueOrders.includes(o)) return o
-          notifications = notify({ ...next, notifications }, { icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: '#/orders' })
+          notifications = notify({ ...next, notifications }, { icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
           return { ...o, status: 'confirmed' as OrderStatus, approveAt: undefined, autoAdvanceAt: now + 25000 }
         })
         next = { ...next, orders, notifications }
@@ -588,6 +707,7 @@ function reducer(state: AppState, action: Action): AppState {
         changed = true
         let notifications = next.notifications
         let walletBalance = next.walletBalance
+        let ledger = next.ledger
         let myListings = next.myListings
         const ownerBookings = next.ownerBookings.map((b) => {
           if (!hostDue.includes(b)) return b
@@ -601,13 +721,16 @@ function reducer(state: AppState, action: Action): AppState {
           }
           const payout = Math.round(b.total * 0.9)
           walletBalance += payout
+          // Payouts and approved claims both moved the balance silently; the wallet
+          // history is the only place a host can reconcile what they were paid for.
+          ledger = record({ ...next, ledger }, [{ kind: 'wallet', amount: payout, label: `Payout — ${b.renterName}'s booking`, cash: true }])
           notifications = notify({ ...next, notifications }, {
             icon: 'coins', title: `Payout received: Rs ${payout.toLocaleString()}`,
             body: `${b.renterName}'s booking — 90% of Rs ${b.total.toLocaleString()}, straight to your wallet.`, link: '#/dashboard',
           })
           return { ...b, status: 'paid_out' as const, payoutAt: undefined }
         })
-        next = { ...next, ownerBookings, walletBalance, myListings, notifications }
+        next = { ...next, ownerBookings, walletBalance, ledger, myListings, notifications }
       }
 
       // 7. damage claims: filed to reviewing to approved (credited to wallet)
@@ -618,17 +741,19 @@ function reducer(state: AppState, action: Action): AppState {
         changed = true
         let notifications = next.notifications
         let walletBalance = next.walletBalance
+        let ledger = next.ledger
         const claims = next.claims.map((c) => {
           if (!claimsDue.includes(c)) return c
           if (c.status === 'filed') return { ...c, status: 'reviewing' as const }
           walletBalance += c.amount
+          ledger = record({ ...next, ledger }, [{ kind: 'wallet', amount: c.amount, label: `Claim approved — ${c.itemName}`, cash: false, orderId: c.orderId }])
           notifications = notify({ ...next, notifications }, {
             icon: 'check-circle', title: `Claim approved: Rs ${c.amount.toLocaleString()}`,
             body: `${c.itemName} — credited to your wallet. Sorry that happened!`, link: '#/support',
           })
           return { ...c, status: 'approved' as const }
         })
-        next = { ...next, claims, walletBalance, notifications }
+        next = { ...next, claims, walletBalance, ledger, notifications }
       }
 
       // 8. availability alerts
@@ -647,6 +772,22 @@ function reducer(state: AppState, action: Action): AppState {
         next = { ...next, availAlerts: next.availAlerts.filter((a) => !alertsDue.includes(a)), notifications }
       }
 
+      // 8b. price-drop watches — fire once, when the item actually gets cheaper
+      const dropped = next.priceAlerts.filter((a) => recommendedRate(a.itemId, 1) < a.price)
+      if (dropped.length) {
+        changed = true
+        let notifications = next.notifications
+        for (const a of dropped) {
+          const item = getItem(a.itemId)
+          notifications = notify({ ...next, notifications }, {
+            icon: 'coins', title: `Price drop on ${item.name}`,
+            body: `Now ${money(recommendedRate(a.itemId, 1))}/day, down from ${money(a.price)}.`,
+            link: `#/item/${a.itemId}`,
+          })
+        }
+        next = { ...next, priceAlerts: next.priceAlerts.filter((a) => !dropped.includes(a)), notifications }
+      }
+
       // 9. shoot-day reminders the day before your start date
       const remindDue = next.orders.filter(
         (o) => !o.reminded && ['confirmed', 'preparing'].includes(o.status) && o.lines.some((l) => l.startDate <= todayISO(1))
@@ -658,7 +799,7 @@ function reducer(state: AppState, action: Action): AppState {
           if (!remindDue.includes(o)) return o
           notifications = notify({ ...next, notifications }, {
             icon: 'clapperboard', title: `Shoot day soon — ${o.id}`,
-            body: 'Gear arrives at your slot time. Charge your batteries and sleep well!', link: '#/orders',
+            body: 'Gear arrives at your slot time. Charge your batteries and sleep well!', link: `#/order/${o.id}`,
           })
           return { ...o, reminded: true }
         })
@@ -704,6 +845,11 @@ const LEGACY_SPACE: Record<string, IconName> = {
 }
 
 function migrate(s: any): any {
+  // cart lines gained stable ids; backfill so older saved carts stay editable
+  const withLineId = (b: any) => (b?.id ? b : { ...b, id: uid() })
+  if (Array.isArray(s.cart)) s.cart = s.cart.map(withLineId)
+  if (Array.isArray(s.orders))
+    s.orders = s.orders.map((o: any) => (Array.isArray(o.lines) ? { ...o, lines: o.lines.map(withLineId) } : o))
   if (Array.isArray(s.notifications))
     s.notifications = s.notifications.map((n: any) =>
       n.icon ? n : { ...n, icon: LEGACY_NOTIF[n.emoji] ?? 'bell', emoji: undefined })
@@ -716,6 +862,12 @@ function migrate(s: any): any {
       icon: a.icon ?? (a.label?.includes('🎬') ? 'clapperboard' : a.label?.includes('🏠') ? 'home' : 'pin'),
       label: typeof a.label === 'string' ? a.label.replace(EMOJI_RE, '').trim() : a.label,
     }))
+  /* Saved before cards existed: without this the payment panel renders an empty
+     list and "deposit held on your card" points at nothing. */
+  if (!Array.isArray(s.cards)) {
+    s.cards = [{ id: 'c1', brand: 'Visa', last4: '4291', expiry: '09/28' }]
+    s.selectedCardId = 'c1'
+  }
   return s
 }
 

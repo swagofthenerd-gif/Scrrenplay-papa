@@ -4,7 +4,10 @@ import { useNav } from '../nav'
 import { useStore } from '../store'
 import { buzz, dealActive, money } from '../utils'
 import { Icon } from './icons'
-import { SCENE_W, SCENE_H, STATION_X, SceneDefs, SceneBackground, SceneStations } from './StudioScene'
+import {
+  SCENE_W, SCENE_H, STATION_X, PANEL as STATION_PANEL, PANEL_TOP as STATION_PANEL_TOP,
+  SceneDefs, SceneBackground, SceneStations,
+} from './StudioScene'
 
 /*
  * StudioHero — the "walk the studio" storyboard.
@@ -19,6 +22,15 @@ import { SCENE_W, SCENE_H, STATION_X, SceneDefs, SceneBackground, SceneStations 
  * wobble via one shared displacement filter per layer, cross-hatch shading,
  * grease-pencil orange highlights, panel captions like "SC 03 · CU — LIGHTING".
  */
+
+/* One fixed tagline only ever sells one thing. Rotating them means a returning
+   renter eventually reads all four reasons to stay. */
+const VALUE_PROPS: { icon: React.ComponentProps<typeof Icon>['name']; label: string }[] = [
+  { icon: 'handshake', label: 'Offer your price' },
+  { icon: 'shield', label: 'Damage protection included' },
+  { icon: 'truck', label: 'Delivered to set' },
+  { icon: 'check-circle', label: 'Verified vendors only' },
+]
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
@@ -35,8 +47,18 @@ export default function StudioHero() {
   const midRef = useRef<SVGSVGElement>(null)
   const bgRef = useRef<SVGSVGElement>(null)
   const spotRef = useRef<HTMLDivElement>(null)
+  const wideRef = useRef<HTMLDivElement>(null)
   const artRef = useRef<HTMLDivElement>(null)
   const [frame, setFrame] = useState(0)
+  const [prop, setProp] = useState(0)
+
+  /* Rotation pauses under prefers-reduced-motion — a tagline swapping itself out
+     mid-read is exactly the kind of motion that setting exists to stop. */
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const t = setInterval(() => setProp((p) => (p + 1) % VALUE_PROPS.length), 4000)
+    return () => clearInterval(t)
+  }, [])
 
   // live per-category stats: count, from-price, live deal
   const stats = useMemo(() => {
@@ -66,8 +88,9 @@ export default function StudioHero() {
     const mid = midRef.current
     const bg = bgRef.current
     const spot = spotRef.current
+    const wide = wideRef.current
     const art = artRef.current
-    if (!track || !mid || !bg || !spot || !art) return
+    if (!track || !mid || !bg || !spot || !wide || !art) return
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let raf = 0
 
@@ -80,9 +103,11 @@ export default function StudioHero() {
       const f = Math.max(0, track.scrollLeft / W)
       const n = STATION_X.length - 1
 
-      // A close-up frames one station (360 units) across the panel; the wide
-      // shot pulls back to take in roughly three stations of the set.
-      const sClose = 1.24 // the station should command the frame
+      // A close-up frames one board (300 units square) in the panel; the wide
+      // shot pulls back to take in roughly three stations of the set. The board
+      // has to fit on both axes, so the scale is capped by width as well —
+      // otherwise a tall narrow viewport crops the frame off the sides.
+      const sClose = Math.min(1.24, W / (348 * k), (H * 0.92) / (STATION_PANEL * k))
       const sWide = Math.max(0.62, Math.min(0.9, W / (830 * k)))
 
       let s: number
@@ -92,29 +117,37 @@ export default function StudioHero() {
         const t = easeInOut(clamp01(f))
         s = lerp(sWide, sClose, t)
         cx = lerp(STATION_X[0], STATION_X[1], t)
-        anchor = lerp(0.93, 0.88, t)
+        anchor = lerp(0.72, 0.5, t)
       } else {
         const i = Math.min(n - 1, Math.floor(f))
         const t = easeInOut(clamp01(f - i))
         s = sClose
         cx = lerp(STATION_X[i], STATION_X[Math.min(n, i + 1)], t)
-        anchor = 0.88
+        anchor = 0.5
       }
 
       const settle = f < 0.5 ? 0 : 1 - Math.min(1, Math.abs(f - Math.round(f)) * 2.2)
       const dolly = reduced ? 1 : 1 + 0.045 * settle
-      const FLOOR = 380 // the scene's floor line, kept pinned in frame
+      // the boards' centre line — pinned in frame, since a board hangs in the
+      // middle of the shot rather than standing on the floor
+      const PIVOT = STATION_PANEL_TOP + STATION_PANEL / 2
 
-      // pin (cx, FLOOR) to (W/2, H*anchor) — origin 0 0 keeps the maths honest
+      // pin (cx, PIVOT) to (W/2, H*anchor) — origin 0 0 keeps the maths honest
       const place = (scale: number, par: number) => {
         const sc = scale * dolly
         const tx = W / 2 - cx * k * sc * par
-        const ty = H * anchor - FLOOR * k * sc
+        const ty = H * anchor - PIVOT * k * sc
         return `translate(${tx}px, ${ty}px) scale(${sc})`
       }
       mid.style.transform = place(s, 1)
       bg.style.transform = place(Math.max(s, 0.72), reduced ? 1 : 0.55)
       spot.style.opacity = String(0.8 * settle)
+
+      // the establishing shot holds the frame, then dissolves as the camera
+      // pushes past it into the first station — gone well before frame 1
+      const wf = 1 - clamp01(f * 1.45)
+      wide.style.opacity = String(wf)
+      wide.style.transform = reduced ? 'none' : `scale(${1 + 0.12 * (1 - wf)})`
 
       const active = Math.round(f)
       setFrame((prev) => (prev === active ? prev : active))
@@ -167,6 +200,12 @@ export default function StudioHero() {
           <svg ref={midRef} className="studio-layer" viewBox={`0 0 ${SCENE_W} ${SCENE_H}`} style={svgStyle} aria-hidden="true">
             <SceneStations />
           </svg>
+          <div
+            ref={wideRef}
+            className="studio-wide"
+            aria-hidden="true"
+            style={{ backgroundImage: `url(${import.meta.env.BASE_URL}scene/wide.webp)` }}
+          />
           <div ref={spotRef} className="studio-spot" aria-hidden="true" />
           <div className="studio-panel" aria-hidden="true">
             <i /><i /><i /><i />
@@ -185,7 +224,7 @@ export default function StudioHero() {
                 <div className="studio-offers">
                   {bestOff > 0 && <span className="studio-tag deal"><Icon name="bolt" size={12} /> Up to {bestOff}% off today</span>}
                   {totalDeals > 0 && <span className="studio-tag"><Icon name="ticket" size={12} /> {totalDeals} live deals</span>}
-                  <span className="studio-tag"><Icon name="handshake" size={12} /> Offer your price</span>
+                  <span className="studio-tag"><Icon name={VALUE_PROPS[prop].icon} size={12} /> {VALUE_PROPS[prop].label}</span>
                 </div>
               </div>
             </button>
@@ -201,8 +240,12 @@ export default function StudioHero() {
           ))}
         </div>
 
-        {/* caption strip — the pencil slug line under every storyboard panel */}
-        <div className="studio-caption">
+        {/*
+          Slug line. A storyboard artist writes the scene number on the panel
+          itself, not on a strip bolted underneath it — so this sits inside the
+          frame, bottom-left, on a scrap of paper laid over the drawing.
+        */}
+        <div className="studio-slug">
           <div className="studio-sc">
             SC {String(frame + 1).padStart(2, '0')} · {active ? `CU — ${active.cat.name.toUpperCase()}` : 'WIDE — THE STUDIO'}
           </div>
@@ -218,7 +261,11 @@ export default function StudioHero() {
                   <span className="studio-tag deal"><Icon name="bolt" size={11} /> {active.deals} deal{active.deals > 1 ? 's' : ''}</span>
                 )}
               </div>
-              <div className="studio-caption-cta">Tap the frame to open {active.cat.name} <Icon name="arrow-right" size={12} /></div>
+              {/* A real button, not a hint — the frame is still tappable, but
+                  "tap the frame" is not something a first-time renter tries. */}
+              <button className="studio-caption-cta" onClick={() => go({ name: 'browse', category: active.cat.id })}>
+                Open {active.cat.name} <Icon name="arrow-right" size={12} />
+              </button>
             </>
           ) : (
             <>
@@ -226,7 +273,9 @@ export default function StudioHero() {
                 <b>The studio</b>
                 <span className="muted">{CATEGORIES.length} departments · every rentable on one set</span>
               </div>
-              <div className="studio-caption-cta">Scroll to walk the set <Icon name="arrow-right" size={12} /></div>
+              <button className="studio-caption-cta" onClick={() => go({ name: 'browse' })}>
+                Browse all gear <Icon name="arrow-right" size={12} />
+              </button>
             </>
           )}
         </div>

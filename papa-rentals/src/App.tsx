@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavContext, useHashRouter, useNav } from './nav'
+import { NavContext, browseTabView, useHashRouter, useNav } from './nav'
 import { StoreProvider, useStore } from './store'
 import { buzz, fmtTimeAgo } from './utils'
 import { getItem } from './data/catalog'
@@ -9,6 +9,7 @@ import SearchOverlay from './components/SearchOverlay'
 import ListSpace from './views/ListSpace'
 import HostDashboard from './views/HostDashboard'
 import Support from './views/Support'
+import Services from './views/Services'
 import Home from './views/Home'
 import Browse from './views/Browse'
 import ItemDetail from './views/ItemDetail'
@@ -16,6 +17,10 @@ import VendorView from './views/VendorView'
 import CartView from './views/CartView'
 import OrdersView from './views/OrdersView'
 import ProfileView from './views/ProfileView'
+import WalletView from './views/WalletView'
+import SettingsView from './views/SettingsView'
+import InboxView from './views/InboxView'
+import OrderDetailView from './views/OrderDetailView'
 
 /* ---------------- search entry: Airbnb-style pill opening the overlay ---------------- */
 function SearchPill({ onOpen }: { onOpen: () => void }) {
@@ -132,7 +137,7 @@ function Shell() {
 
   const activeOrders = state.orders.filter((o) => !['completed', 'cancelled'].includes(o.status)).length
   const unreadNotifs = state.notifications.filter((n) => !n.read).length
-  const viewKey = view.name === 'item' ? `item-${view.id}` : view.name === 'vendor' ? `vendor-${view.id}` : view.name
+  const viewKey = view.name === 'item' ? `item-${view.id}` : view.name === 'vendor' ? `vendor-${view.id}` : view.name === 'order' ? `order-${view.id}` : view.name
 
   return (
     <NavContext.Provider value={{ view, go, back, toast }}>
@@ -155,36 +160,41 @@ function Shell() {
 
         <main className="view" key={viewKey}>
           {view.name === 'home' && <Home />}
-          {view.name === 'browse' && (
-            <Browse category={view.category} query={view.query} dealsOnly={view.dealsOnly} wishlistOnly={view.wishlistOnly} />
-          )}
-          {view.name === 'item' && <ItemDetail id={view.id} />}
+          {/* Spread, not a hand-listed set: every filter added to the route was
+              one more prop to forget here, and minPrice/maxKm already were. */}
+          {view.name === 'browse' && <Browse {...view} />}
+          {view.name === 'item' && <ItemDetail id={view.id} from={view.from} to={view.to} />}
           {view.name === 'vendor' && <VendorView id={view.id} />}
           {view.name === 'cart' && <CartView />}
           {view.name === 'orders' && <OrdersView />}
           {view.name === 'profile' && <ProfileView />}
           {view.name === 'post' && <ListSpace />}
           {view.name === 'dashboard' && <HostDashboard />}
-          {view.name === 'support' && <Support />}
+          {view.name === 'support' && <Support orderId={view.orderId} />}
+          {view.name === 'services' && <Services />}
+          {view.name === 'wallet' && <WalletView />}
+          {view.name === 'settings' && <SettingsView />}
+          {view.name === 'inbox' && <InboxView ownerId={view.ownerId} />}
+          {view.name === 'order' && <OrderDetailView id={view.id} />}
         </main>
       </div>
 
       <nav className="bottom-nav">
-        <button className={view.name === 'home' ? 'active' : ''} onClick={() => go({ name: 'home' })}>
+        <button className={view.name === 'home' || view.name === 'services' ? 'active' : ''} onClick={() => go({ name: 'home' })}>
           <span className="nav-ico"><Icon name="home" /></span>Home
         </button>
-        <button className={view.name === 'browse' || view.name === 'item' ? 'active' : ''} onClick={() => go({ name: 'browse' })}>
+        <button className={view.name === 'browse' || view.name === 'item' ? 'active' : ''} onClick={() => go(browseTabView())}>
           <span className="nav-ico"><Icon name="search" /></span>Browse
         </button>
         <button className={view.name === 'cart' ? 'active' : ''} onClick={() => go({ name: 'cart' })}>
           <span className="nav-ico"><Icon name="cart" /></span>Cart
           {state.cart.length > 0 && <span className="dot">{state.cart.length}</span>}
         </button>
-        <button className={view.name === 'orders' ? 'active' : ''} onClick={() => go({ name: 'orders' })}>
+        <button className={['orders', 'order'].includes(view.name) ? 'active' : ''} onClick={() => go({ name: 'orders' })}>
           <span className="nav-ico"><Icon name="box" /></span>Orders
           {activeOrders > 0 && <span className="dot">{activeOrders}</span>}
         </button>
-        <button className={['profile', 'post', 'dashboard', 'support'].includes(view.name) ? 'active' : ''} onClick={() => go({ name: 'profile' })}>
+        <button className={['profile', 'post', 'dashboard', 'support', 'wallet', 'settings', 'inbox'].includes(view.name) ? 'active' : ''} onClick={() => go({ name: 'profile' })}>
           <span className="nav-ico"><Icon name="user" /></span>Profile
         </button>
       </nav>

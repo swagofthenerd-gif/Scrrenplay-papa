@@ -96,13 +96,20 @@ export default function HostDashboard() {
 }
 
 function RequestCard({ booking: b, onAct }: { booking: OwnerBooking; onAct: (accepted: boolean) => void }) {
+  const { go } = useNav()
   const listing = getItem(b.listingId)
   const dur = b.unit === 'hour' ? b.hours : undefined
   const baseRate = b.unit === 'hour' ? Math.round(listing.pricePerDay / 6) : listing.pricePerDay
   const isOffer = b.rate < baseRate
   return (
     <div style={{ borderTop: '1px solid var(--line)', padding: '12px 0' }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      {/* Deciding on a request means checking your own rate, dates and photos, and
+          the listing was named but not reachable — the host had to leave, find it
+          in their listings, and come back with the answer. */}
+      <button
+        style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', textAlign: 'left', background: 'none', border: 0, padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit' }}
+        onClick={() => go({ name: 'item', id: listing.id })}
+      >
         <ItemArt item={listing} size="thumb" />
         <div style={{ flex: 1, minWidth: 0 }}>
           <b style={{ fontSize: 14 }}>{b.renterName}</b> <Stars value={b.renterRating} size={11} /> <span className="muted small">{b.renterRating}</span>
@@ -118,7 +125,7 @@ function RequestCard({ booking: b, onAct }: { booking: OwnerBooking; onAct: (acc
             <span className="muted small"> · you get {money(Math.round(b.total * 0.9))}</span>
           </div>
         </div>
-      </div>
+      </button>
       <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
         <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => onAct(true)}><Icon name="check" size={14} /> Accept</button>
         <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => onAct(false)}><Icon name="x" size={14} /> Decline</button>
@@ -128,9 +135,13 @@ function RequestCard({ booking: b, onAct }: { booking: OwnerBooking; onAct: (acc
 }
 
 function BookingRow({ booking: b, badge }: { booking: OwnerBooking; badge: React.ReactNode }) {
+  const { go } = useNav()
   const listing = getItem(b.listingId)
   return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'center', borderTop: '1px solid var(--line)', padding: '10px 0', fontSize: 13 }}>
+    <button
+      onClick={() => go({ name: 'item', id: listing.id })}
+      style={{ display: 'flex', gap: 10, alignItems: 'center', borderTop: '1px solid var(--line)', padding: '10px 0', fontSize: 13, width: '100%', textAlign: 'left', background: 'none', borderLeft: 0, borderRight: 0, borderBottom: 0, cursor: 'pointer', font: 'inherit', color: 'inherit' }}
+    >
       <ItemArt item={listing} size="thumb" />
       <div style={{ flex: 1, minWidth: 0 }}>
         <b>{b.renterName}</b> · {listing.name}
@@ -139,6 +150,6 @@ function BookingRow({ booking: b, badge }: { booking: OwnerBooking; badge: React
         </div>
       </div>
       {badge}
-    </div>
+    </button>
   )
 }

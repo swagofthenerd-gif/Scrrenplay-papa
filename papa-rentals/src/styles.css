@@ -19,6 +19,9 @@
   --card-2: #f6f3ee;
   --green: #16a34a;
   --green-soft: #eafcf1;
+  /* --green on --green-soft is only 3.09:1 — below AA at badge text sizes.
+     A darker ink on the same tint reaches 4.7:1 without changing the palette. */
+  --green-ink: #15803d;
   --purple: #7c3aed;
   --purple-soft: #f3ecfe;
   --red: #dc2626;
@@ -77,6 +80,7 @@
     --card-2: #2b2620;
     --green: #34d074;
     --green-soft: #12301d;
+    --green-ink: #5fe094; /* light ink on the dark tint — the inverse problem */
     --purple: #a78bfa;
     --purple-soft: #2a2140;
     --red: #f87171;
@@ -121,7 +125,10 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 .h-ico { vertical-align: -0.18em; margin-right: 1px; color: var(--accent); }
 .chip-ico, .row-ico { display: inline-flex; align-items: center; gap: 6px; }
 .cmp-name { display: inline-flex; align-items: center; gap: 6px; }
-.owner-inline { display: inline-flex; align-items: center; gap: 3px; }
+/* "Frame & Fable Co." wrapped to three lines on a narrow card and pushed the
+   rating out of line. The name truncates; the rating never moves. */
+.owner-inline { display: inline-flex; align-items: center; gap: 3px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-card-meta .rating-compact { flex: none; }
 .ic-verified { color: var(--green); }
 .ic-green { color: var(--green); }
 .ic-amber { color: #f59e0b; }
@@ -304,9 +311,18 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 /* ---------- Badges & stars ---------- */
 .badge {
   display: inline-block; font-size: 11px; font-weight: 700; border-radius: var(--r-pill);
-  padding: 3px 9px; background: var(--accent-soft); color: var(--accent-dark); margin-left: 6px;
+  padding: 2px 9px; background: var(--accent-soft); color: var(--accent-dark); margin-left: 6px;
+  /* Every tint sits around 1.1:1 against the card it's on, so at 11px a badge read
+     as loose coloured text with no shape — "Save 18%" looked like a stray label
+     rather than a pill. The ink passes AA on the tint, so borrowing it at partial
+     strength draws a boundary that clears the 3:1 bar for non-text UI without
+     inventing a new colour per tone. Padding drops 1px so the border doesn't
+     change the badge's height. */
+  border: 1px solid color-mix(in srgb, currentColor 80%, transparent);
 }
-.badge-green { background: var(--green-soft); color: var(--green); }
+/* --green on --green-soft is only 3.09:1 — below AA for badge-sized text.
+   A darker green on the same tint gets to 4.7:1 without changing the palette. */
+.badge-green { background: var(--green-soft); color: var(--green-ink); }
 .badge-orange { background: var(--accent-soft); color: var(--accent-dark); }
 .badge-purple { background: var(--purple-soft); color: var(--purple); }
 .badge-red { background: var(--red-soft); color: var(--red); }
@@ -347,6 +363,31 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
   color: #fff;
 }
 .cat-chip.active { border-color: var(--accent); background: var(--accent-soft); }
+/* Sits under the department name, quieter than it — a budget hint, not a claim.
+   Line-height is pinned so a chip with no live listings (no hint) stays the
+   same height as its neighbours instead of shortening the row. */
+/* ---------- Rail scroll arrows (pointer devices only) ---------- */
+.rail-track { position: relative; }
+.rail-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 34px; height: 34px; border-radius: var(--r-pill); cursor: pointer;
+  display: none; align-items: center; justify-content: center;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line); box-shadow: var(--shadow-md);
+}
+.rail-arrow.prev { left: 2px; }
+.rail-arrow.next { right: 2px; }
+.rail-arrow:active { transform: translateY(-50%) scale(0.92); }
+/* Only where there's a real cursor — on a touch screen these are dead weight
+   sitting on top of the cards you're trying to swipe. */
+@media (hover: hover) and (pointer: fine) {
+  .rail-arrow { display: flex; }
+}
+
+.cat-chip .cat-from {
+  font-size: 10px; font-weight: 600; color: var(--muted); line-height: 12px; margin-top: -3px;
+  white-space: nowrap;
+}
 
 /* ---------- Hero ---------- */
 .hero {
@@ -376,7 +417,42 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 @media (max-width: 480px) { .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
 .h-scroll { display: flex; gap: 12px; overflow-x: auto; padding: 2px 2px 10px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .h-scroll::-webkit-scrollbar { display: none; }
+/* Home stacks a dozen rails. Skip paint for the ones below the fold — same
+   trick as .order-card, and find-in-page still works. */
+.h-scroll { content-visibility: auto; contain-intrinsic-size: auto 250px; }
 .h-scroll .item-card { min-width: 200px; max-width: 220px; flex: none; }
+
+/* jump bar: sticks below the topbar so any rail is one tap away */
+.jump-bar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+  padding: 8px 16px; background: var(--bg); border-bottom: 1px solid var(--line);
+}
+.jump-bar::-webkit-scrollbar { display: none; }
+.jump-bar .slot-chip { flex: none; }
+
+/* in-rail filters: same chip row, scrolls sideways rather than wrapping into
+   a two-line block that pushes the cards off the fold */
+.rail-filters { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 0 16px 10px; }
+.rail-filters::-webkit-scrollbar { display: none; }
+.rail-filters .slot-chip { flex: none; }
+
+/* saved search = chip + its own remove target, so deleting one never means
+   accidentally running it */
+.saved-search { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.saved-search-x {
+  display: grid; place-items: center; width: 28px; height: 28px;
+  background: none; border: 0; color: var(--muted); cursor: pointer; border-radius: 50%;
+}
+.saved-search-x:active { background: var(--line); }
+
+.card-skeleton {
+  min-width: 200px; height: 230px; flex: none; border-radius: var(--r-lg);
+  background: linear-gradient(90deg, var(--card) 25%, var(--line) 50%, var(--card) 75%);
+  background-size: 400% 100%;
+  animation: skeleton-slide 1.2s ease-in-out infinite;
+}
+@keyframes skeleton-slide { to { background-position: -200% 0; } }
 .item-card {
   background: var(--card); border-radius: var(--r-lg); overflow: hidden; cursor: pointer;
   box-shadow: var(--shadow-sm); position: relative;
@@ -400,7 +476,13 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
   background: rgba(255, 255, 255, 0.92); color: #1c1917; font-size: 11px; font-weight: 700;
   border-radius: var(--r-pill); padding: 4px 10px; box-shadow: var(--shadow-xs);
 }
-@media (prefers-color-scheme: dark) { .photo-badge { background: rgba(24, 20, 16, 0.85); color: #f2efec; } }
+/* Approval is the quieter of the two — it is information, not a selling point,
+   so it recedes rather than competing with the Instant badge across a grid. */
+.photo-badge.badge-approval { background: rgba(255, 255, 255, 0.78); color: #57534e; font-weight: 600; }
+@media (prefers-color-scheme: dark) {
+  .photo-badge { background: rgba(24, 20, 16, 0.85); color: #f2efec; }
+  .photo-badge.badge-approval { background: rgba(24, 20, 16, 0.7); color: #b8b1aa; }
+}
 
 /* swipeable gallery */
 .gallery { position: relative; border-radius: var(--r-xl); overflow: hidden; }
@@ -448,6 +530,22 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 .filter-chip:active { transform: scale(0.95); }
 .filter-chip.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 select.filter-chip { appearance: none; }
+
+/* Removable chip: the label and the X are separate hit targets so a mis-tap on
+   the X doesn't run the search, and a tap on the label never deletes it. */
+.filter-chip.chip-removable { display: inline-flex; align-items: center; gap: 2px; padding: 0 4px 0 0; overflow: hidden; }
+.chip-removable .chip-main {
+  border: 0; background: none; font: inherit; color: inherit; cursor: pointer;
+  padding: 10px 6px 10px 15px; display: inline-flex; align-items: center; gap: 6px;
+}
+.chip-removable .chip-x {
+  border: 0; background: none; color: var(--muted); cursor: pointer; display: inline-flex;
+  align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%;
+}
+.chip-removable .chip-x:active { background: var(--line); }
+
+.search-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.search-sec-head h4 { margin-bottom: 0; }
 
 /* ---------- Detail page ---------- */
 .detail-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 22px; margin-top: 18px; align-items: start; }
@@ -557,6 +655,13 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .price-line { display: flex; justify-content: space-between; margin: 5px 0; gap: 10px; }
 .price-line.total { font-weight: 800; font-size: 16px; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
 .price-line .free, .price-line .credit { color: var(--green); font-weight: 700; }
+/* Money coming off the bill should be noticed, not just rendered. */
+.price-line .free, .price-line .credit { animation: saving-flash .5s ease-out; }
+@keyframes saving-flash {
+  0% { transform: scale(1); opacity: .35; }
+  40% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
 .conflict-note {
   background: var(--red-soft); color: var(--red); border-radius: var(--r-sm); padding: 11px 13px;
   font-size: 13px; font-weight: 600; margin-top: 10px;
@@ -587,8 +692,13 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .histo .bar i { display: block; height: 100%; background: var(--star); border-radius: var(--r-pill); transition: width 0.7s var(--ease-out); }
 
 /* ---------- Cart ---------- */
-.cart-line { display: flex; gap: 12px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--line); }
+/* Always wrap: the social-proof note and the inline editor are full-width rows,
+   and without wrapping they compete with the info column for the same line. */
+.cart-line { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--line); }
 .cart-line-info { flex: 1; min-width: 0; }
+/* Price + row actions keep their own width so the details never squeeze them
+   into a one-word-per-line column on a 360px phone. */
+.cart-line-actions { flex: none; text-align: right; min-width: 96px; }
 .promo-row { display: flex; gap: 8px; margin-top: 12px; }
 .promo-row input {
   flex: 1; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-sm);
@@ -611,7 +721,9 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .empty-state .big { display: flex; justify-content: center; color: var(--muted); margin-bottom: 6px; }
 
 /* ---------- Orders / timeline ---------- */
-.order-card { background: var(--card); border-radius: var(--r-lg); padding: 16px; box-shadow: var(--shadow-sm); margin-top: 12px; }
+/* Long order histories: skip layout, paint and animation for cards that are off
+   screen. Cheaper than a virtual list and it keeps in-page search working. */
+.order-card { background: var(--card); border-radius: var(--r-lg); padding: 16px; box-shadow: var(--shadow-sm); margin-top: 12px; content-visibility: auto; contain-intrinsic-size: auto 420px; }
 .order-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
 .timeline { display: flex; margin: 16px 0 6px; }
 .timeline .step { flex: 1; text-align: center; position: relative; font-size: 10.5px; color: var(--muted); }
@@ -656,6 +768,8 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .chat-msg.me { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 5px; }
 .chat-msg.me .ticks { font-size: 10px; opacity: 0.85; margin-left: 6px; }
 .chat-msg.owner { align-self: flex-start; background: var(--card-2); border-bottom-left-radius: 5px; }
+.chat-msg .stamp { font-size: 10px; opacity: 0.7; margin-left: 8px; white-space: nowrap; }
+.chat-day { align-self: center; font-size: 11px; color: var(--muted); background: var(--card-2); padding: 2px 10px; border-radius: 999px; margin: 6px 0 2px; }
 .typing { align-self: flex-start; color: var(--muted); font-size: 12px; padding: 2px 6px; }
 .typing i { animation: blink 1s infinite; font-style: normal; }
 @keyframes blink { 50% { opacity: 0.3; } }
@@ -745,6 +859,10 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--accent-soft); color: var(--accent-dark);
 }
+/* min-width:0 is what lets the blurb wrap instead of shoving the CTA off the
+   card — a flex item defaults to its content width, and the copy is long. */
+.promo-body { flex: 1; min-width: 0; }
+.promo-body b { font-size: 14px; }
 
 /* ---------- FAQ ---------- */
 .faq-q {
@@ -761,8 +879,10 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-lg); animation: slideup 0.3s var(--ease-spring);
 }
 .compare-tray .btn { min-height: 38px; padding: 8px 14px; }
+/* Stacked under the heart, not beside it: side by side the pair ran into the
+   Instant/Approval badge on a 360px screen — 13px of measured overlap. */
 .cmp-btn {
-  position: absolute; top: 10px; right: 54px; z-index: 3; border: none; cursor: pointer;
+  position: absolute; top: 54px; right: 10px; z-index: 3; border: none; cursor: pointer;
   background: rgba(255, 255, 255, 0.92); border-radius: var(--r-pill); width: 38px; height: 38px; color: #6f6a63;
   display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-xs);
   transition: transform var(--dur-fast) var(--ease-out);
@@ -779,7 +899,17 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   height: 0; color: var(--muted); font-size: 13px; font-weight: 700; transition: height var(--dur-fast) ease;
 }
 .ptr.active { height: 48px; }
+/* While the finger is down the inline height is authoritative and updates every
+   touchmove — a transition here would chase each frame and lag the thumb. It comes
+   back on release so the strip snaps closed (or open into "Refreshing…") smoothly. */
+.ptr.dragging { transition: none; }
 .ptr .spin { display: inline-block; animation: spin 0.8s linear infinite; margin-right: 8px; }
+/* The spinner only means anything once it's actually fetching; spinning it during
+   the drag reads as "already loading" before you've committed to the gesture. */
+.ptr:not(.active) .spin { animation: none; opacity: 0.5; }
+@media (prefers-reduced-motion: reduce) {
+  .ptr .spin { animation: none; }
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- Onboarding ---------- */
@@ -797,6 +927,13 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left;
   background: none; border: none; cursor: pointer; padding: 0; color: var(--ink);
 }
+/* Replaces the "tap a vendor to explore their storefront" hint that used to sit
+   in the section subtitle: the chevron slides and the row dips on press, so the
+   card says it's tappable instead of the copy saying it. */
+.vendor-head { transition: transform var(--dur-fast) var(--ease-out); }
+.vendor-head:active { transform: scale(0.985); }
+.vendor-head .vendor-chev { transition: transform var(--dur-fast) var(--ease-out); }
+.vendor-head:hover .vendor-chev { transform: translateX(3px); }
 .vendor-head-main { flex: 1; min-width: 0; }
 .vendor-name-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .vendor-name { font-size: 15.5px; letter-spacing: -0.2px; }
@@ -880,12 +1017,20 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   background: #f6f0e4; /* storyboard paper — stays paper in dark mode by design */
   border: 1px solid #e2d9c6;
 }
-.studio-art { position: absolute; left: 0; right: 0; top: 0; bottom: 96px; overflow: hidden; }
+/* the drawing fills the whole panel now — the slug is written on it, not under it */
+.studio-art { position: absolute; inset: 0; overflow: hidden; }
 .studio-layer {
   position: absolute; left: 0; top: 0; height: 100%; width: auto; max-width: none;
   will-change: transform; transform-origin: 0 0; pointer-events: none;
 }
 .studio-layer.back { opacity: 0.62; }
+/* the establishing wide shot: one drawn set, shown only on frame 0 and
+   dissolved away as the camera pushes in on the first station */
+.studio-wide {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background-position: center 62%; background-size: cover; background-repeat: no-repeat;
+  will-change: opacity, transform; transform-origin: 50% 70%;
+}
 /* paper grain */
 .studio-stage::before {
   content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 2; opacity: 0.5;
@@ -914,14 +1059,23 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 }
 .studio-track::-webkit-scrollbar { display: none; }
 .studio-slide { flex: none; width: 100%; height: 100%; scroll-snap-align: center; overflow: hidden; }
-.studio-tap { width: 100%; height: 100%; background: none; border: none; cursor: pointer; padding: 0; display: block; text-align: left; }
+/* Buttons vertically centre their content in the UA stylesheet no matter what
+   `display` says, which pushed the title block into the middle of the frame.
+   Flex with an explicit start alignment is the only way to pin it top-left. */
+.studio-tap {
+  width: 100%; height: 100%; background: none; border: none; cursor: pointer; padding: 0;
+  display: flex; align-items: flex-start; justify-content: flex-start; text-align: left;
+}
 
-/* wide-shot title block */
-.studio-title { position: relative; padding: 14px 18px 0; max-width: 330px; }
-/* a paper wash that fades downward: copy stays crisp, the set shows below */
+/* wide-shot title block — tucked into the top-left corner of the frame */
+/* 15.5em resolved against the 16px parent, not the clamped h1, so the copy was
+   squeezed into four lines and the tags stacked one per row */
+.studio-title { position: relative; padding: 18px 18px 0; max-width: min(320px, 80%); }
+/* A soft paper bloom sized to the copy, not a full-width band: it lifts the
+   words off the drawing without reading as a header bar pasted over the art. */
 .studio-title::before {
-  content: ''; position: absolute; left: -22px; right: -400px; top: -14px; bottom: -34px; z-index: -1;
-  background: linear-gradient(to bottom, rgba(249, 244, 233, 0.97) 0%, rgba(249, 244, 233, 0.9) 55%, rgba(249, 244, 233, 0) 100%);
+  content: ''; position: absolute; left: -14px; right: -30px; top: -10px; bottom: -26px; z-index: -1;
+  background: radial-gradient(120% 100% at 8% 26%, rgba(249, 244, 233, 0.94) 0%, rgba(249, 244, 233, 0.72) 46%, rgba(249, 244, 233, 0) 100%);
 }
 .studio-sc {
   font-size: 10.5px; font-weight: 800; letter-spacing: 2.4px; color: #6b6357; text-transform: uppercase;
@@ -939,22 +1093,28 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .studio-tag.deal { background: #fff1e8; color: var(--accent-dark); border-color: rgba(255, 107, 44, 0.4); transform: rotate(1deg); }
 .studio-hint { margin-top: 12px; font-size: 12px; font-weight: 700; color: #6b6357; display: flex; align-items: center; gap: 5px; }
 
-/* settled-station caption */
-.studio-caption {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 96px; z-index: 6; pointer-events: none;
-  background: #fffdf6; border-top: 1.5px solid rgba(65, 59, 51, 0.4);
-  padding: 9px 18px 10px; display: flex; flex-direction: column; justify-content: center;
+/* settled-station slug, written on the panel itself */
+.studio-slug {
+  position: absolute; left: 20px; bottom: 20px; right: 20px; max-width: 300px; z-index: 6; pointer-events: none;
+  background: rgba(255, 253, 246, 0.9); border: 1.2px solid rgba(65, 59, 51, 0.34);
+  border-radius: 3px; padding: 7px 11px 9px; transform: rotate(-0.5deg);
+  box-shadow: 0 2px 8px rgba(60, 48, 30, 0.13);
 }
 /* the pencil rule a director writes the slug on */
-.studio-caption::after {
-  content: ''; position: absolute; left: 18px; right: 18px; top: 30px; height: 1px;
+.studio-slug::after {
+  content: ''; position: absolute; left: 11px; right: 11px; top: 25px; height: 1px;
   background: rgba(65, 59, 51, 0.16);
 }
 
 .studio-caption-main { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin-top: 2px; color: #3b352d; }
 .studio-caption-main b { font-size: 16px; letter-spacing: -0.2px; color: #2e2921; }
 .studio-caption-main .muted { color: #6b6357; font-size: 12.5px; font-weight: 600; }
-.studio-caption-cta { font-size: 11.5px; font-weight: 700; color: var(--accent-dark); display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+.studio-caption-cta {
+  font-size: 11.5px; font-weight: 700; color: var(--accent-dark);
+  display: flex; align-items: center; gap: 4px; margin-top: 4px;
+  background: none; border: 0; padding: 4px 0; cursor: pointer; font-family: inherit;
+}
+.studio-caption-cta:active { opacity: .6; }
 
 /* filmstrip */
 .studio-strip {
@@ -990,3 +1150,117 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .svc-title { font-size: 14px; letter-spacing: -0.1px; display: block; }
 .svc-body { font-size: 12.5px; line-height: 1.45; margin-top: 3px; }
 .svc-chev { color: var(--muted); align-self: center; flex: none; }
+
+/* the collapsed row on the home page — one card standing in for the whole list */
+.svc-collapsed {
+  display: flex; align-items: flex-start; gap: 12px; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 15px;
+  box-shadow: var(--shadow-xs); cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.svc-collapsed:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.svc-collapsed:active { transform: scale(0.99); }
+.svc-peek { display: flex; align-items: center; gap: 7px; margin-top: 9px; color: var(--muted); }
+.svc-peek > span { display: flex; }
+.svc-peek-more { font-size: 11.5px; font-weight: 700; letter-spacing: 0.2px; }
+
+/* Department marks are drawings, not glyphs. A tinted pill behind them read as
+   a sticker pasted onto the card, so there is no tile at all — the ink sits
+   straight on the card surface and preserveAspectRatio does the centring. */
+.dept-mark { display: block; }
+.cat-ico, .sug-cat-ico {
+  background: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  /* the paths are filled with currentColor, so the box owns the ink colour —
+     the inherited white would render them invisible */
+  color: var(--text) !important;
+}
+
+/* Rail scroll affordance — a hint that there is more to the right. */
+.rail-more { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: -4px; opacity: 0.7; }
+.h-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 10px; }
+
+/* Social-proof strip: real catalogue totals, not marketing filler. */
+.proof-band { display: flex; gap: 18px; padding: 10px 14px; margin: 10px 0 2px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.proof-band b { font-size: 15px; }
+/* Refresh feedback: dim the content that is about to change. */
+.is-refreshing .section { opacity: 0.55; transition: opacity 0.2s ease; }
+
+/* Compact results: one listing per row for scanning long result sets. */
+.dense-list { display: flex; flex-direction: column; gap: 8px; }
+.dense-list .item-card { display: flex; flex-direction: row; align-items: center; gap: 10px; min-width: 0; }
+.dense-list .item-card .item-art { width: 72px; height: 56px; flex: none; }
+/* Keep the last row of results clear of the floating compare tray. */
+.compare-tray ~ * { pointer-events: auto; }
+body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
+
+/* Sticky checkout bar: the total should never be more than a thumb away. */
+.pay-bar {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: calc(62px + max(8px, env(safe-area-inset-bottom)));
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -6px 18px rgb(0 0 0 / 8%);
+}
+.pay-bar b { font-size: 17px; }
+/* Keep the last panel clear of the bar. */
+.view:has(.pay-bar) { padding-bottom: 96px; }
+@media (min-width: 900px) { .pay-bar { display: none; } }
+
+/* filter chip count: the sheet button has to say how much is hidden inside it,
+   otherwise a filtered list looks identical to an unfiltered one */
+.filter-count {
+  display: inline-grid; place-items: center; min-width: 17px; height: 17px;
+  margin-left: 4px; padding: 0 4px; border-radius: 9px;
+  background: #fff; color: #111; font-size: 11px; font-weight: 700; line-height: 1;
+}
+
+/* filters sheet */
+.sheet-group { margin-bottom: 20px; }
+.sheet-label { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.sheet-actions { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+
+/* dual-handle range: both inputs stack on one track, and only the thumbs take
+   pointer events so the lower handle stays grabbable under the upper one */
+.range-pair { position: relative; height: 34px; }
+.range-pair input[type='range'] {
+  position: absolute; left: 0; right: 0; top: 6px; height: 22px; width: 100%; margin: 0;
+  -webkit-appearance: none; appearance: none;
+  background: none; pointer-events: none; outline: none;
+}
+/* the input spans the whole track, so a default focus ring draws a box around
+   the entire row — put the ring on the thumb, where the focus actually is */
+.range-pair input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--accent-soft), 0 1px 3px rgba(0,0,0,.3); }
+.range-pair input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--accent-soft); }
+.range-pair input[type='range']::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px; background: var(--line);
+}
+.range-pair input[type='range']::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line); }
+.range-pair input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; pointer-events: auto;
+  width: 22px; height: 22px; margin-top: -9px; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  background: var(--accent); border: 2px solid var(--card); cursor: pointer;
+}
+.range-pair input[type='range']::-moz-range-thumb {
+  pointer-events: auto; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--card); cursor: pointer;
+}
+
+/* Date range inside the filter sheet. Two fields side by side so the range
+   reads as one control, each still a full-height tap target. */
+.date-pair { display: flex; gap: 10px; }
+.date-field { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.date-field input {
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  border-radius: var(--r-md); padding: 10px 12px; font: inherit; font-size: 14px; min-height: 44px; width: 100%;
+}
