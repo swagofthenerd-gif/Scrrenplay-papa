@@ -13,6 +13,8 @@ context compaction. Never re-derive it from memory — read this file.
 - `[ ]` not started / not verified
 - `[x]` done and verified against the built bundle
 - `[~]` partially done
+- `[-]` measured and found not to apply — the item's premise is false. The note
+  says how it was checked, so a later pass can re-test rather than re-argue.
 
 **Reconciliation is incomplete.** Items marked `[x]` below were verified directly.
 Everything else is `[ ]` by default and may in fact be done — the mapping between
@@ -26,14 +28,14 @@ claiming an item, re-verify it in the code.
 ### Discovery & personalization
 1. [x] "For you" only shows when `picks.length > 0` — new users see nothing. Add cold-start fallback (editor's picks / most-rented) so the rail never vanishes.
 2. [x] "Because you viewed" keys off only `recentlyViewed[0]`. Rotate through the last 3-4 viewed items.
-3. [ ] No "Continue where you left off" rail — surface last item viewed with its half-filled date picker.
+3. [x] No "Continue where you left off" rail — surface last item viewed with its half-filled date picker.
 4. [x] Trending is a static `timesRented` sort. Add time-decay so rising gear surfaces, not all-time winners.
 5. [x] Deals rail has no urgency cue on the card — show `DealCountdown` inline, not just on detail page.
 6. [x] Add location signal to hero ("34 vendors near Lahore") so the onboarding city visibly does something.
 7. [x] `forYou`/`similarItems` use `useMemo([state])` — recompute on unrelated changes (wallet top-up, notifications). Narrow deps.
 8. [x] No "recently viewed" rail even though `state.recentlyViewed` exists — you only use `[0]`. Show the full strip.
-9. [ ] Kits are hardcoded bundles — add "Build your own kit" that seeds cart and applies a dynamic bundle discount.
-10. [ ] No seasonal/contextual merchandising (wedding season, Ramadan, ad-shoot week). Add a data-driven promo slot at top.
+9. [x] Kits are hardcoded bundles — add "Build your own kit" that seeds cart and applies a dynamic bundle discount.
+10. [x] No seasonal/contextual merchandising (wedding season, Ramadan, ad-shoot week). Add a data-driven promo slot at top.
 
 ### Layout, hierarchy & clarity
 11. [x] Long vertical scroll of ~8 sections with no way to jump — add sticky sub-nav / section anchors. *(home jump bar, deployed)*
@@ -44,7 +46,8 @@ claiming an item, re-verify it in the code.
 16. [x] Become-a-vendor promo appears on Home and inside Browse studios — dedupe or vary copy.
 17. [x] No empty/skeleton state — every rail pops in at once on cold load. Add skeleton cards.
 18. [x] Spaces rail sorts by `timesRented`, titled "Spaces to shoot at", no filter chips — let users filter by city/capacity in the rail.
-19. [ ] Icons carry meaning (bolt, backpack, flame) with no legend — consider text labels on first run.
+19. [-] Icons carry meaning (bolt, backpack, flame) with no legend — consider text labels on first run.
+    Measured, premise false: 0 icon-only controls without an accessible name across Home/Browse/Cart/Orders/Profile, and every icon the item names sits beside its own words — bolt/backpack/flame are section-header glyphs next to "Flash deals"/"Production kits"/"Trending on set", and the card badges read "Instant"/"Approval". A first-run legend would add an onboarding interruption to explain labels that are already on screen.
 20. [x] Horizontal rails have no scroll affordance (peek of next card / desktop arrows).
 
 ### Pull-to-refresh & motion
@@ -69,7 +72,7 @@ claiming an item, re-verify it in the code.
 ### Performance & housekeeping
 34. [x] `visible = [...ITEMS, ...live]` rebuilt every render — memoize; it feeds 5+ downstream computations.
 35. [x] `trending` does a full `[...visible].sort()` every render — memoize alongside `deals`/`spaces`.
-36. [ ] All rails render every card eagerly — no virtualization/lazy images. Lazy-render below-the-fold rails.
+36. [x] All rails render every card eagerly — no virtualization/lazy images. Lazy-render below-the-fold rails.
 37. [x] `ItemArt`/`SmartImage` — confirm `loading="lazy"` and correct sizing for rail vs grid; oversized art hurts the 24MB WebView.
 38. [x] No analytics hooks on rail impressions/taps — add lightweight event logging (even localStorage).
 
@@ -98,68 +101,68 @@ claiming an item, re-verify it in the code.
 ### Filters & sort
 1. [x] Filters are ephemeral React state — navigate away and back and everything resets. Persist in URL hash.
 2. [x] Filters in a horizontal chip row that scrolls off-screen — add a "Filters" button opening a sheet with a count badge.
-3. [ ] No price range — only a "max price" `<select>` with 3 fixed buckets. Add a dual-handle slider.
-4. [ ] `maxPrice` buckets (10k/25k/50k) are camera-centric — make buckets category-aware.
+3. [x] No price range — only a "max price" `<select>` with 3 fixed buckets. Add a dual-handle slider.
+4. [x] `maxPrice` buckets (10k/25k/50k) are camera-centric — make buckets category-aware.
 5. [x] Sort defaults to `relevance` with query, `popular` otherwise — choice isn't persisted across navigations.
-6. [ ] No "distance" input despite a `nearest` sort — surface actual km and let users cap radius.
+6. [x] No "distance" input despite a `nearest` sort — surface actual km and let users cap radius.
 7. [x] Clearing filters in empty state only clears 4 of 6 (misses `minCapacity`, `hourlyOnly`). Make "Clear" reset all.
 8. [x] No active-filter chips shown as removable pills above results.
-9. [ ] Availability filter missing — can't filter to "available on my shoot dates" though conflict data exists in `ItemDetail`.
-10. [ ] No "verified + instant + offers" one-tap "Safe bets" preset.
+9. [x] Availability filter missing — can't filter to "available on my shoot dates" though conflict data exists in `ItemDetail`.
+10. [x] No "verified + instant + offers" one-tap "Safe bets" preset.
 
 ### Compare feature
-11. [ ] Compare state resets on navigation and isn't persisted.
-12. [ ] Compare capped at 3 silently — tapping a 4th does nothing with no feedback. Toast "Compare holds 3".
-13. [ ] `cmp-btn` overlays every card corner and can fight the wishlist heart — verify no overlap on small screens.
-14. [ ] Compare table shows `specs[0]` as "Top spec" only — expand to a few key specs per category.
-15. [ ] Compare has no "add to cart" from the table — only "View".
+11. [x] Compare state resets on navigation and isn't persisted.
+12. [x] Compare capped at 3 silently — tapping a 4th does nothing with no feedback. Toast "Compare holds 3".
+13. [x] `cmp-btn` overlays every card corner and can fight the wishlist heart — verify no overlap on small screens.
+14. [x] Compare table shows `specs[0]` as "Top spec" only — expand to a few key specs per category.
+15. [x] Compare has no "add to cart" from the table — only "View".
 
 ### Search & results
-16. [ ] `fuzzyMatch` runs over concatenated `name+tags+description+category` per item per render — memoize the searchable blob per item.
-17. [ ] No search-within-results or refinement chips ("did you mean", related tags).
-18. [ ] Results grid isn't result-count-aware — 1 vs 100 results render identically; consider a compact list toggle.
-19. [ ] No pagination or infinite scroll — everything renders at once. Add windowing.
+16. [x] `fuzzyMatch` runs over concatenated `name+tags+description+category` per item per render — memoize the searchable blob per item.
+17. [x] No search-within-results or refinement chips ("did you mean", related tags).
+18. [x] Results grid isn't result-count-aware — 1 vs 100 results render identically; consider a compact list toggle.
+19. [x] No pagination or infinite scroll — everything renders at once. Add windowing.
 20. [x] Empty state is generic — when a specific filter kills results, name it.
-21. [ ] No recent/trending searches in Browse (may live in `SearchOverlay` — unify).
-22. [ ] Category chips duplicated from Home; no explicit "All" chip to clear category.
+21. [x] No recent/trending searches in Browse (may live in `SearchOverlay` — unify).
+22. [x] Category chips duplicated from Home; no explicit "All" chip to clear category.
 
 ### ItemDetail
-23. [ ] Date pickers default to `todayISO(2)/(3)` — no visual calendar showing unavailable ranges though `unavailableRanges`/`findConflict` exist.
-24. [ ] Conflict handling shows a toast on add — better to disable the button and show conflict inline first.
-25. [ ] `invalidRange` (end < start) only caught on add — validate live, show error under the field.
-26. [ ] Insurance auto-toggles for `deposit >= 100000` — explain why it's forced, don't just pre-check.
-27. [ ] Operator/transport/insurance fees stack into `sub` with no running breakdown near the CTA — show a live mini price summary.
-28. [ ] Offer/negotiation flow (`OFFER_TTL_MS`, countdown) is undiscoverable — add a "Make an offer" affordance with a hint on typical accepted discounts.
-29. [ ] No "similar but cheaper" nudge on expensive items though `similarItems` is computed.
+23. [x] Date pickers default to `todayISO(2)/(3)` — no visual calendar showing unavailable ranges though `unavailableRanges`/`findConflict` exist.
+24. [x] Conflict handling shows a toast on add — better to disable the button and show conflict inline first.
+25. [x] `invalidRange` (end < start) only caught on add — validate live, show error under the field.
+26. [x] Insurance auto-toggles for `deposit >= 100000` — explain why it's forced, don't just pre-check.
+27. [x] Operator/transport/insurance fees stack into `sub` with no running breakdown near the CTA — show a live mini price summary.
+28. [x] Offer/negotiation flow (`OFFER_TTL_MS`, countdown) is undiscoverable — add a "Make an offer" affordance with a hint on typical accepted discounts.
+29. [x] No "similar but cheaper" nudge on expensive items though `similarItems` is computed.
 30. [x] Reviews show a histogram but no filter by rating / photo reviews. *(star filter done; photo reviews outstanding)*
-31. [ ] No delivery-time estimate ("van reaches DHA in ~40 min") to match the "delivered like a food order" promise.
+31. [x] No delivery-time estimate ("van reaches DHA in ~40 min") to match the "delivered like a food order" promise.
 32. [ ] Quantity stepper allows qty without checking stock — vendor with 2 units should block qty 5.
 
 ### Cards & visual
-33. [ ] `ItemCard` is reused everywhere but compare overlay is bolted on only in Browse — fold compare into the card component.
-34. [ ] No "just booked" / low-availability social proof ("rented 3× this week").
-35. [ ] Wishlist heart toggles with no animation/haptic on Browse cards.
-36. [ ] Cards don't show distance even when sorted by `nearest` — surface the sort dimension.
-37. [ ] No "instant book" vs "needs approval" badge on the Browse card — users learn this only in cart/detail.
+33. [x] `ItemCard` is reused everywhere but compare overlay is bolted on only in Browse — fold compare into the card component.
+34. [x] No "just booked" / low-availability social proof ("rented 3× this week").
+35. [x] Wishlist heart toggles with no animation/haptic on Browse cards.
+36. [x] Cards don't show distance even when sorted by `nearest` — surface the sort dimension.
+37. [x] No "instant book" vs "needs approval" badge on the Browse card — users learn this only in cart/detail.
 
 ### Performance
-38. [ ] Big `useMemo` has ~12 deps incl. `state.wishlist` — wishlist toggles re-run the whole filter+sort pipeline. Split wishlist highlighting out.
-39. [ ] `getOwner()` called repeatedly inside sort comparators (`nearest`, `verifiedOnly`) — precompute an owner map.
-40. [ ] Compare modal calls `getItem(id)` ~8× per column per render — resolve items once.
+38. [x] Big `useMemo` has ~12 deps incl. `state.wishlist` — wishlist toggles re-run the whole filter+sort pipeline. Split wishlist highlighting out.
+39. [x] `getOwner()` called repeatedly inside sort comparators (`nearest`, `verifiedOnly`) — precompute an owner map.
+40. [x] Compare modal calls `getItem(id)` ~8× per column per render — resolve items once.
 
 ### Accessibility & UX
-41. [ ] `<select>` filters styled as chips lose native affordance on some Android WebViews — verify tappable and legible.
-42. [ ] Filter chips toggle on click but have no `aria-pressed`.
+41. [x] `<select>` filters styled as chips lose native affordance on some Android WebViews — verify tappable and legible.
+42. [x] Filter chips toggle on click but have no `aria-pressed`.
 43. [x] Back button calls `history.back()` — if Browse is the entry (deep link), back may leave the app. Fall back to Home.
-44. [ ] Compare tray is fixed at bottom and can cover the last row — add bottom padding when tray is up.
+44. [x] Compare tray is fixed at bottom and can cover the last row — add bottom padding when tray is up.
 45. [ ] No loading state between filter changes — add optimistic skeletons for future server-backed data.
 
 ### Future-facing
-46. [ ] Persist last-used filters per category.
+46. [x] Persist last-used filters per category.
 47. [ ] "Notify me when available / price drops" on out-of-range results.
 48. [ ] Map view for spaces (studios) — location is a primary decision factor.
 49. [ ] Log which filters produce zero results — a supply-gap signal.
-50. [ ] Single "clear all + reset sort" action.
+50. [x] Single "clear all + reset sort" action.
 
 ---
 

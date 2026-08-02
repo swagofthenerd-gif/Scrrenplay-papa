@@ -101,6 +101,18 @@ export function dealActive(itemId: string): boolean {
 export const INSURANCE_RATE = 0.08
 export const OPERATOR_FEE_PER_DAY = 6000
 export const SERVICE_FEE_RATE = 0.05
+
+/* A kit you assemble yourself earns the same kind of discount the curated kits
+   carry, on the same logic: one booking, one delivery, one pickup. The top rung
+   stops at 18% so a hand-built kit can match the best curated one but never
+   undercut it — otherwise the curated kits become the worse deal by definition. */
+export function bundleDiscount(count: number): number {
+  if (count >= 5) return 18
+  if (count === 4) return 15
+  if (count === 3) return 10
+  if (count === 2) return 5
+  return 0
+}
 export const POINTS_PER_100 = 1 // earn 1 PapaPoint per Rs 100; redeem 1 point = Rs 1
 export const GOLD_POINTS = 2000
 export const SILVER_POINTS = 500
@@ -153,6 +165,31 @@ export function unavailableRanges(itemId: string, orders: Order[], cart: Booking
     if (l.itemId === itemId) out.push({ start: l.startDate, end: l.endDate })
   }
   return out
+}
+
+/* Honest scarcity. The tempting line on a card is "rented 3× this week", but the
+   only demand number in the model is a lifetime total, and inventing a weekly
+   figure from it would be a claim the data cannot support. What IS true and
+   checkable is how much of the next fortnight is already spoken for — the same
+   ranges the date picker refuses to book. Returns null when nothing about the
+   item is urgent, because a badge on every card is a badge on none. */
+const SCARCE_WINDOW_DAYS = 14
+/* Two, measured rather than guessed: across the catalogue seventeen of twenty-four
+   items have nothing booked in the fortnight and only five have two days or more,
+   so this marks the busy fifth instead of decorating everything. */
+const SCARCE_MIN_BOOKED = 2
+
+export function scarcityNote(itemId: string, orders: Order[], cart: Booking[]): string | null {
+  const ranges = unavailableRanges(itemId, orders, cart)
+  if (!ranges.length) return null
+  let booked = 0
+  for (let i = 0; i < SCARCE_WINDOW_DAYS; i++) {
+    const iso = todayISO(i)
+    if (ranges.some((r) => rangesOverlap({ start: iso, end: iso }, r))) booked++
+  }
+  if (booked < SCARCE_MIN_BOOKED) return null
+  if (booked >= SCARCE_WINDOW_DAYS) return 'Fully booked for two weeks'
+  return `Booked ${booked} of the next ${SCARCE_WINDOW_DAYS} days`
 }
 
 export function findConflict(itemId: string, range: DateRange, orders: Order[], cart: Booking[]): DateRange | null {

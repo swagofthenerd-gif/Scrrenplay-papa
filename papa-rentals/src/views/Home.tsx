@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ITEMS, KITS, getItem, getOwner } from '../data/catalog'
+import { CATEGORIES, ITEMS, KITS, getItem, getOwner } from '../data/catalog'
+import { activePromo } from '../data/promos'
 import { useNav } from '../nav'
 import { forYou, similarItems } from '../recs'
 import { vendors } from '../vendors'
 import { useStore } from '../store'
-import { buzz, dealActive, dealEndsAt, fmtCountdown, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
-import { Badge, ItemArt, ItemCard, ListingPromo } from '../components/ui'
+import { buzz, bundleDiscount, daysBetween, dealActive, dealEndsAt, fmtCountdown, fmtDate, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
+import { Badge, ItemArt, ItemCard, ListingPromo, Modal } from '../components/ui'
 import { DeptRow } from '../components/DeptRow'
-import { SectionHeader } from '../components/primitives'
+import { Chip, SectionHeader } from '../components/primitives'
+import { Deferred } from '../components/Deferred'
 import { Icon, type IconName } from '../components/icons'
 import { VendorCard } from '../components/VendorCard'
 import StudioHero from '../components/StudioHero'
@@ -155,6 +157,21 @@ const JUMPS: { id: string; label: string; icon: React.ComponentProps<typeof Icon
   { id: 'trending', label: 'Trending', icon: 'flame' },
 ]
 
+/* Jumping into the lazily-rendered tail lands you short: the smooth scroll starts
+   against reserved placeholders, and the sections it passes on the way mount and
+   grow while it's still travelling, pushing the target further down. So we settle,
+   then correct — a second scroll once the section is real puts its header where
+   the first one promised. The correction is cheap when nothing moved, because
+   scrollIntoView on an already-aligned element is a no-op. */
+function jumpTo(id: string) {
+  const el = document.getElementById(id)
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  window.setTimeout(() => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, 700)
+}
+
 function JumpBar() {
   return (
     <nav className="jump-bar" aria-label="Jump to a section">
@@ -164,7 +181,7 @@ function JumpBar() {
           className="slot-chip"
           onClick={() => {
             buzz()
-            document.getElementById(j.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            jumpTo(j.id)
           }}
         >
           <Icon name={j.icon} size={13} /> {j.label}
@@ -205,7 +222,29 @@ export default function Home() {
      the page instead of playing a spinner for 700ms and lying about it. */
   const [shuffle, setShuffle] = useState(0)
   const [kitDate, setKitDate] = useState(todayISO(2))
+  const [builderOpen, setBuilderOpen] = useState(false)
+  const [builderCat, setBuilderCat] = useState<string>('all')
+  const [builderIds, setBuilderIds] = useState<string[]>([])
   const pullStart = useRef<number | null>(null)
+
+  const builderChoices = useMemo(
+    () => ITEMS.filter((i) => (builderCat === 'all' || i.category === builderCat) && !state.blockedOwners.includes(i.ownerId)),
+    [builderCat, state.blockedOwners]
+  )
+  /* Resolved from the picked ids rather than from the filtered list, so switching
+     the category chip never silently drops something already in the kit. */
+  const builderItems = useMemo(
+    () => builderIds.map((id) => ITEMS.find((i) => i.id === id)).filter((i): i is Item => Boolean(i)),
+    [builderIds]
+  )
+  /* Recomputed per render off today's date: the app can sit open past midnight
+     on a phone that never gets closed, and a promo whose season ended overnight
+     should stop claiming it's on. */
+  const promo = activePromo(todayISO(0))
+
+  const builderFull = builderItems.reduce((s, i) => s + i.pricePerDay, 0)
+  const builderDiscount = bundleDiscount(builderItems.length)
+  const builderPrice = Math.round(builderFull * (1 - builderDiscount / 100))
 
   /* These handlers only observe the gesture — none of them calls preventDefault, so
      it doesn't matter that React attaches touchmove passively: native scrolling and
@@ -286,6 +325,18 @@ export default function Home() {
   const recentlyViewed = useMemo(
     () => state.recentlyViewed.map(getItem).filter((i) => !state.blockedOwners.includes(i.ownerId)),
     [state.recentlyViewed, state.blockedOwners]
+  )
+
+  /* Resolved against the catalogue rather than through getItem, which falls back
+     to ITEMS[0] for an unknown id — a draft on a listing that has since been
+     deleted would otherwise offer to resume a booking on an unrelated camera. */
+  const drafts = useMemo(
+    () =>
+      state.bookingDrafts
+        .map((d) => ({ ...d, item: ITEMS.find((i) => i.id === d.itemId) }))
+        .filter((d): d is typeof d & { item: Item } => Boolean(d.item) && !state.blockedOwners.includes(d.item!.ownerId))
+        .slice(0, 3),
+    [state.bookingDrafts, state.blockedOwners]
   )
 
   /* Depend on the slices `forYou`/`similarItems` actually read, not on `state`.
@@ -413,6 +464,23 @@ export default function Home() {
         <div><b>{proof.shoots.toLocaleString('en-GB')}</b><span className="muted small"> shoots supplied</span></div>
       </div>
 
+      {/* Above the jump bar because it's the one thing on this page that's only
+          true this month. Nothing renders out of season — an empty slot beats a
+          banner for a season that ended. */}
+      {promo && (
+        <button
+          className="season-promo"
+          onClick={() => { buzz(); go({ name: 'browse', ...promo.target }) }}
+        >
+          <Icon name={promo.icon} size={22} className="season-promo-ico" />
+          <span className="season-promo-text">
+            <span className="season-promo-title">{promo.title}</span>
+            <span className="muted small">{promo.blurb}</span>
+          </span>
+          <span className="season-promo-cta">{promo.cta} <Icon name="arrow-right" size={13} /></span>
+        </button>
+      )}
+
       <JumpBar />
 
       {state.walletBalance > 0 && (
@@ -539,6 +607,13 @@ export default function Home() {
                 <div>
                   <s className="muted small">{money(full)}</s> <b>{money(price)}</b><span className="muted"> bundle /day · {kitItems.length} items</span>
                 </div>
+                {/* Two actions, not one. "Add kit" commits four bookings from a
+                    one-line blurb; anyone who wants to know what is actually in the
+                    box had no way to find out without adding it and reading the cart. */}
+                <div className="kit-actions">
+                <button className="btn btn-outline btn-sm" onClick={() => { buzz(); go({ name: 'kit', id: kit.id }) }}>
+                  See what's inside
+                </button>
                 <button
                   className="btn btn-primary btn-sm"
                   onClick={() => {
@@ -568,11 +643,99 @@ export default function Home() {
                 >
                   Add kit to cart
                 </button>
+                </div>
               </div>
             )
           })}
+
+          {/* The three curated kits cover three kinds of shoot. Everyone else was
+              being told the bundle rate exists and then given no way to earn it. */}
+          <div className="kit-card kit-card-build">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="plus" size={18} /> Build your own kit</h3>
+              <Badge tone="purple">Save up to 18%</Badge>
+            </div>
+            <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+              Pick the gear your shoot actually needs. The more you bundle, the bigger the discount — 2 items 5%, 3 items 10%, 4 items 15%, 5 or more 18%.
+            </p>
+            <button className="btn btn-outline btn-sm" onClick={() => { buzz(); setBuilderOpen(true) }}>
+              Start building
+            </button>
+          </div>
         </div>
       </div>
+
+      {builderOpen && (
+        <Modal title="Build your own kit" onClose={() => setBuilderOpen(false)}>
+          <label className="muted small" style={{ display: 'block', marginBottom: 10 }}>
+            Shoot date{' '}
+            <input type="date" value={kitDate} min={todayISO(0)} onChange={(e) => setKitDate(e.target.value)} style={{ marginLeft: 6 }} />
+          </label>
+          <div className="rail-filters" style={{ marginBottom: 10 }}>
+            <Chip active={builderCat === 'all'} onClick={() => setBuilderCat('all')}>All</Chip>
+            {CATEGORIES.map((c) => (
+              <Chip key={c.id} active={builderCat === c.id} onClick={() => setBuilderCat(c.id)}>{c.name}</Chip>
+            ))}
+          </div>
+          <div className="builder-list">
+            {builderChoices.map((i) => {
+              const picked = builderIds.includes(i.id)
+              return (
+                <button
+                  key={i.id}
+                  className={`builder-row ${picked ? 'picked' : ''}`}
+                  aria-pressed={picked}
+                  onClick={() => {
+                    buzz()
+                    setBuilderIds((prev) => (prev.includes(i.id) ? prev.filter((x) => x !== i.id) : [...prev, i.id]))
+                  }}
+                >
+                  <ItemArt item={i} size="thumb" />
+                  <span className="builder-info">
+                    <span className="builder-name">{i.name}</span>
+                    <span className="muted small">{money(i.pricePerDay)}/day</span>
+                  </span>
+                  <Icon name={picked ? 'check' : 'plus'} size={16} />
+                </button>
+              )
+            })}
+          </div>
+          {/* The number that decides whether to add one more item has to be on
+              screen while you're deciding, not on a confirmation after. */}
+          <div className="builder-summary">
+            <div>
+              <b>{builderIds.length} item{builderIds.length === 1 ? '' : 's'}</b>
+              {builderDiscount > 0
+                ? <span className="muted"> · <s>{money(builderFull)}</s> {money(builderPrice)} /day · save {builderDiscount}%</span>
+                : <span className="muted"> · add {2 - builderIds.length} more for 5% off</span>}
+            </div>
+            <button
+              className="btn btn-primary btn-sm"
+              disabled={builderIds.length < 2}
+              onClick={() => {
+                buzz()
+                builderItems.forEach((i) =>
+                  dispatch({
+                    type: 'ADD_TO_CART',
+                    booking: {
+                      id: uid(), itemId: i.id, startDate: kitDate, endDate: kitDate,
+                      pickupTime: '09:00', qty: 1, unit: 'day', hours: 4,
+                      insurance: true, operator: false, transport: 'van',
+                      rate: Math.round(i.pricePerDay * (1 - builderDiscount / 100)),
+                      negotiated: false,
+                    },
+                  })
+                )
+                toast(`Your kit of ${builderItems.length} added · ${builderDiscount}% off`)
+                setBuilderIds([])
+                setBuilderOpen(false)
+              }}
+            >
+              Add kit to cart
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* ---- Then the vendors, foodpanda-style storefront cards ---- */}
       <div className="section" id="vendors">
@@ -599,6 +762,37 @@ export default function Home() {
       </div>
 
       {/* ---- Hybrid discovery tail ---- */}
+      {/* Above "Recently viewed" on purpose: a half-filled booking is a stronger
+          intent than a glance, and it's the one thing on this page you lose by
+          leaving. Tapping through restores the exact window via the route's
+          from/to, so the date picker is already filled in on arrival. */}
+      {drafts.length > 0 && (
+        <div className="section" id="resume">
+          <SectionHeader icon="clock" title="Pick up where you left off" sub="Dates you chose but never booked" />
+          <div className="resume-list">
+            {drafts.map((d) => {
+              const nights = daysBetween(d.startDate, d.endDate)
+              return (
+                <button
+                  key={d.itemId}
+                  className="resume-card"
+                  onClick={() => { buzz(); go({ name: 'item', id: d.itemId, from: d.startDate, to: d.endDate }) }}
+                >
+                  <ItemArt item={d.item} size="thumb" />
+                  <span className="resume-info">
+                    <span className="resume-name">{d.item.name}</span>
+                    <span className="resume-dates">
+                      <Icon name="calendar" size={12} /> {fmtDate(d.startDate)} – {fmtDate(d.endDate)} · {nights} day{nights > 1 ? 's' : ''}
+                    </span>
+                  </span>
+                  <span className="resume-go">Resume <Icon name="arrow-right" size={13} /></span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {recentlyViewed.length > 0 && (
         <Rail
           id="recent"
@@ -622,32 +816,49 @@ export default function Home() {
         </Rail>
       )}
 
+      {/* Everything from here down starts at least two screens low, and rendering
+          every card in all seven sections on first paint is what made the home
+          screen hitch before it appeared on the WebView this ships in. Each one
+          mounts a screen ahead of the scroll; the placeholder holds its height and
+          its id so the jump bar still reaches a section that hasn't rendered. */}
+
       {/* Title and subtitle both used to over-promise: the rail is ranked by
           listing date, so it's "recent", and some of it has been booked. */}
       {justListed.length > 0 && (
-        <Rail id="new" title="Recently listed" icon="bulb" sub="The newest gear on Papa Rentals">
-          {justListed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-        </Rail>
+        <Deferred id="new">
+          <Rail id="new" title="Recently listed" icon="bulb" sub="The newest gear on Papa Rentals">
+            {justListed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </Rail>
+        </Deferred>
       )}
 
       {coldStart.length > 0 && (
-        <Rail id="starters" title="Popular starters" icon="sparkles" sub="Highest-rated gear in every department">
-          {coldStart.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-        </Rail>
+        <Deferred id="starters">
+          <Rail id="starters" title="Popular starters" icon="sparkles" sub="Highest-rated gear in every department">
+            {coldStart.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </Rail>
+        </Deferred>
       )}
 
       {nearLastShoot.length > 0 && (
-        <Rail id="nearby" title="Near your last shoot" icon="pin" sub={`Vendors around ${lastShootArea}`}>
-          {nearLastShoot.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-        </Rail>
+        <Deferred id="nearby">
+          <Rail id="nearby" title="Near your last shoot" icon="pin" sub={`Vendors around ${lastShootArea}`}>
+            {nearLastShoot.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </Rail>
+        </Deferred>
       )}
 
       {seed && becauseViewed.length > 0 && (
-        <Rail id="because" title="Because you viewed" icon="target" sub={seed.name}>
-          {becauseViewed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-        </Rail>
+        <Deferred id="because">
+          <Rail id="because" title="Because you viewed" icon="target" sub={seed.name}>
+            {becauseViewed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </Rail>
+        </Deferred>
       )}
 
+      {/* Taller reservation than the plain rails: this one carries a filter row of
+          space-type chips above its track. */}
+      <Deferred id="spaces" minHeight={320}>
       <Rail
         id="spaces"
         title="Spaces to shoot at"
@@ -679,19 +890,25 @@ export default function Home() {
       >
         {shownSpaces.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
       </Rail>
+      </Deferred>
 
       {hiddenGems.length > 0 && (
-        <Rail id="gems" title="Hidden gems" icon="gift" sub="4.5+ stars, under 12 bookings so far">
-          {hiddenGems.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
-        </Rail>
+        <Deferred id="gems">
+          <Rail id="gems" title="Hidden gems" icon="gift" sub="4.5+ stars, under 12 bookings so far">
+            {hiddenGems.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </Rail>
+        </Deferred>
       )}
 
-      <div className="section" id="trending">
-        <SectionHeader icon="flame" title="Trending on set" sub="What crews in your city booked most this week" />
-        <div className="grid">
-          {trending.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+      {/* A grid, not a rail — it wraps to several rows, so it reserves more. */}
+      <Deferred id="trending" minHeight={520}>
+        <div className="section" id="trending">
+          <SectionHeader icon="flame" title="Trending on set" sub="What crews in your city booked most this week" />
+          <div className="grid">
+            {trending.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
+          </div>
         </div>
-      </div>
+      </Deferred>
     </div>
   )
 }

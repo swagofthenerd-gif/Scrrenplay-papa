@@ -14,6 +14,7 @@ import Home from './views/Home'
 import Browse from './views/Browse'
 import ItemDetail from './views/ItemDetail'
 import VendorView from './views/VendorView'
+import KitDetail from './views/KitDetail'
 import CartView from './views/CartView'
 import OrdersView from './views/OrdersView'
 import ProfileView from './views/ProfileView'
@@ -31,6 +32,32 @@ function SearchPill({ onOpen }: { onOpen: () => void }) {
         <span className="sp-label">Search cameras, lights, spaces…</span>
       </button>
     </div>
+  )
+}
+
+/* ---------------- light / dark ---------------- */
+function ThemeToggle() {
+  const { state, dispatch } = useStore()
+  /* Read from the DOM rather than from state, because on first launch state has
+     no theme at all — the boot script in index.html has already resolved the
+     system preference into the attribute, and that is the only place the real
+     current answer lives until someone presses this button. */
+  const dark = state.theme
+    ? state.theme === 'dark'
+    : typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark'
+  return (
+    <button
+      className="icon-btn"
+      onClick={() => {
+        buzz()
+        dispatch({ type: 'SET_THEME', theme: dark ? 'light' : 'dark' })
+      }}
+      aria-pressed={dark}
+      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={dark ? 'Light mode' : 'Dark mode'}
+    >
+      <Icon name={dark ? 'sun' : 'moon'} />
+    </button>
   )
 }
 
@@ -149,6 +176,7 @@ function Shell() {
           </div>
           <SearchPill onOpen={() => setSearchOpen(true)} />
           <div className="topbar-actions">
+            <ThemeToggle />
             <button className="icon-btn" onClick={() => setNotifOpen(true)} aria-label={`Notifications, ${unreadNotifs} unread`}>
               <Icon name="bell" />{unreadNotifs > 0 && <span className="dot">{unreadNotifs}</span>}
             </button>
@@ -165,6 +193,7 @@ function Shell() {
           {view.name === 'browse' && <Browse {...view} />}
           {view.name === 'item' && <ItemDetail id={view.id} from={view.from} to={view.to} />}
           {view.name === 'vendor' && <VendorView id={view.id} />}
+          {view.name === 'kit' && <KitDetail id={view.id} />}
           {view.name === 'cart' && <CartView />}
           {view.name === 'orders' && <OrdersView />}
           {view.name === 'profile' && <ProfileView />}

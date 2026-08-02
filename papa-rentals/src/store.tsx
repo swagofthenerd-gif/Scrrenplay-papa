@@ -35,8 +35,10 @@ const initialState: AppState = {
   cards: [{ id: 'c1', brand: 'Visa', last4: '4291', expiry: '09/28' }],
   selectedCardId: 'c1',
   recentSearches: [],
+  unmetSearches: [],
   savedSearches: [],
   recentlyViewed: [],
+  bookingDrafts: [],
   blockedOwners: [],
   promoCodesUsed: [],
   myListings: [],
@@ -79,11 +81,14 @@ type Action =
   | { type: 'REMOVE_CARD'; id: string }
   | { type: 'SELECT_CARD'; id: string }
   | { type: 'ADD_RECENT_SEARCH'; q: string }
+  | { type: 'RECORD_UNMET_SEARCH'; q: string; category?: CategoryId }
   | { type: 'REMOVE_RECENT_SEARCH'; q: string }
   | { type: 'CLEAR_RECENT_SEARCHES' }
   | { type: 'SAVE_SEARCH'; q: string; category?: CategoryId; maxPrice?: number }
   | { type: 'REMOVE_SAVED_SEARCH'; id: string }
   | { type: 'VIEW_ITEM'; itemId: string }
+  | { type: 'SAVE_BOOKING_DRAFT'; itemId: string; startDate: string; endDate: string }
+  | { type: 'SET_THEME'; theme: 'light' | 'dark' }
   | { type: 'READ_NOTIFICATIONS' }
   | { type: 'ADD_LISTING'; item: Item }
   | { type: 'TOGGLE_LISTING_PAUSE'; itemId: string }
@@ -174,7 +179,14 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, profile: { name: action.name, city: action.city, onboarded: action.onboarded ?? true } }
 
     case 'ADD_TO_CART':
-      return { ...state, cart: [...state.cart, { ...action.booking, id: action.booking.id || uid() }] }
+      return {
+        ...state,
+        cart: [...state.cart, { ...action.booking, id: action.booking.id || uid() }],
+        /* The draft existed to get you back to an unfinished booking. Once it's
+           in the cart the cart is the place to resume, so keeping the draft
+           would offer the same job twice, in two places, with two answers. */
+        bookingDrafts: state.bookingDrafts.filter((d) => d.itemId !== action.booking.itemId),
+      }
     case 'UPDATE_CART_LINE':
       return { ...state, cart: state.cart.map((b) => (b.id === action.lineId ? { ...b, ...action.patch } : b)) }
     case 'REMOVE_FROM_CART':
@@ -440,6 +452,19 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, recentSearches: [q, ...state.recentSearches.filter((x) => x.toLowerCase() !== q.toLowerCase())].slice(0, 6) }
     }
 
+    case 'RECORD_UNMET_SEARCH': {
+      const q = action.q.trim().toLowerCase()
+      /* Two characters is a half-typed word, not a request for anything. Without
+         this the list fills with the prefixes of searches that later succeeded. */
+      if (q.length < 3) return state
+      const prior = state.unmetSearches.find((u) => u.q === q && u.category === action.category)
+      const rest = state.unmetSearches.filter((u) => u !== prior)
+      const next = { q, category: action.category, count: (prior?.count ?? 0) + 1, lastAt: Date.now() }
+      /* Sorted by count so the panel that reads this shows the real gaps first,
+         and capped so a demo session cannot grow the saved state without bound. */
+      return { ...state, unmetSearches: [next, ...rest].sort((a, b) => b.count - a.count).slice(0, 20) }
+    }
+
     case 'REMOVE_RECENT_SEARCH':
       return { ...state, recentSearches: state.recentSearches.filter((x) => x !== action.q) }
 
@@ -468,6 +493,25 @@ function reducer(state: AppState, action: Action): AppState {
     case 'VIEW_ITEM':
       if (state.recentlyViewed[0] === action.itemId) return state
       return { ...state, recentlyViewed: [action.itemId, ...state.recentlyViewed.filter((x) => x !== action.itemId)].slice(0, 8) }
+
+    case 'SET_THEME':
+      /* The attribute is written here rather than in an effect so the paint and
+         the state change land together; an effect runs after render, which shows
+         one frame of the old palette on a slow phone. */
+      document.documentElement.setAttribute('data-theme', action.theme)
+      return { ...state, theme: action.theme }
+
+    case 'SAVE_BOOKING_DRAFT': {
+      const prev = state.bookingDrafts.find((d) => d.itemId === action.itemId)
+      // Re-storing identical dates on every keystroke would rewrite localStorage
+      // and re-render every subscriber for no change.
+      if (prev && prev.startDate === action.startDate && prev.endDate === action.endDate) return state
+      const draft = { itemId: action.itemId, startDate: action.startDate, endDate: action.endDate, savedAt: Date.now() }
+      return {
+        ...state,
+        bookingDrafts: [draft, ...state.bookingDrafts.filter((d) => d.itemId !== action.itemId)].slice(0, 4),
+      }
+    }
 
     case 'READ_NOTIFICATIONS':
       if (!state.notifications.some((n) => !n.read)) return state

@@ -28,6 +28,7 @@ export type View =
     }
   | { name: 'item'; id: string; from?: string; to?: string }
   | { name: 'vendor'; id: string }
+  | { name: 'kit'; id: string }
   | { name: 'cart' }
   | { name: 'orders' }
   | { name: 'profile' }
@@ -47,6 +48,7 @@ export function viewToHash(v: View): string {
        pre-set to the shoot the renter already told us about. */
     case 'item': return `#/item/${v.id}${v.from && v.to ? `?from=${v.from}&to=${v.to}` : ''}`
     case 'vendor': return `#/vendor/${v.id}`
+    case 'kit': return `#/kit/${v.id}`
     case 'cart': return '#/cart'
     case 'orders': return '#/orders'
     case 'profile': return '#/profile'
@@ -91,6 +93,7 @@ export function parseHash(hash: string): View {
     return { name: 'item', id: seg[1], from: p.get('from') || undefined, to: p.get('to') || undefined }
   }
   if (seg[0] === 'vendor' && seg[1]) return { name: 'vendor', id: seg[1] }
+  if (seg[0] === 'kit' && seg[1]) return { name: 'kit', id: seg[1] }
   if (seg[0] === 'cart') return { name: 'cart' }
   if (seg[0] === 'orders') return { name: 'orders' }
   if (seg[0] === 'profile') return { name: 'profile' }

@@ -96,14 +96,28 @@ export default function Browse(props: BrowseProps) {
     return m
   }, [pool])
 
+  /* getOwner is a linear scan of OWNERS. Resolving it here means one lookup per
+     item instead of one per filter pass plus one per comparator call — `nearest`
+     alone used to call it O(n log n) times on every keystroke. */
+  const owners = useMemo(() => new Map(pool.map((i) => [i.id, getOwner(i.ownerId)])), [pool])
+
+  /* Only the wishlist-only view reads the wishlist, but the pipeline below used
+     to depend on state.wishlist directly, so tapping a heart on any card
+     re-filtered and re-sorted the whole catalogue to produce an identical list.
+     Collapsed to a key, the heart is free unless you are browsing the wishlist. */
+  const wishKey = wishlistOnly ? state.wishlist.join(',') : ''
+
   const result = useMemo(() => {
     let list = pool
     if (category) list = list.filter((i) => i.category === category)
     if (dealsOnly) list = list.filter((i) => dealActive(i.id))
-    if (wishlistOnly) list = list.filter((i) => state.wishlist.includes(i.id))
+    if (wishlistOnly) {
+      const wish = new Set(wishKey ? wishKey.split(',') : [])
+      list = list.filter((i) => wish.has(i.id))
+    }
     // typo-tolerant: "alexia" still finds the Alexa
     if (query) list = list.filter((i) => fuzzyMatch(haystacks.get(i.id) ?? i.name, query))
-    if (verifiedOnly) list = list.filter((i) => getOwner(i.ownerId).verified)
+    if (verifiedOnly) list = list.filter((i) => owners.get(i.id)?.verified)
     if (instantOnly) list = list.filter((i) => i.instantBook)
     if (offersOnly) list = list.filter((i) => i.offersAccepted)
     if (minPrice) list = list.filter((i) => i.pricePerDay >= minPrice)
@@ -112,7 +126,7 @@ export default function Browse(props: BrowseProps) {
     if (hourlyOnly) list = list.filter((i) => i.hourly)
     /* Sorting by nearest still lists a lens 40 km away at the bottom. Capping the
        radius is what actually answers "what can I pick up today". */
-    if (maxKm) list = list.filter((i) => getOwner(i.ownerId).distanceKm <= maxKm)
+    if (maxKm) list = list.filter((i) => (owners.get(i.id)?.distanceKm ?? Infinity) <= maxKm)
     /* "Is it free the week I shoot" is the question every other filter is a
        proxy for. Checking it here beats opening ten items to find out. */
     let busy = 0
@@ -122,7 +136,7 @@ export default function Browse(props: BrowseProps) {
       busy = before - list.length
     }
     // distance is looked up once per item, not once per comparator call
-    const dist = new Map<string, number>(list.map((i) => [i.id, getOwner(i.ownerId).distanceKm]))
+    const dist = new Map<string, number>(list.map((i) => [i.id, owners.get(i.id)?.distanceKm ?? 0]))
     const sorted = [...list]
     switch (sort) {
       case 'relevance':
@@ -137,7 +151,7 @@ export default function Browse(props: BrowseProps) {
       default: sorted.sort((a, b) => b.timesRented - a.timesRented)
     }
     return { sorted, busy }
-  }, [pool, haystacks, category, query, dealsOnly, wishlistOnly, sort, verifiedOnly, instantOnly, offersOnly, minPrice, maxPrice, minCapacity, maxKm, hourlyOnly, dateFrom, dateTo, state.orders, state.cart, state.wishlist])
+  }, [pool, haystacks, owners, category, query, dealsOnly, wishlistOnly, wishKey, sort, verifiedOnly, instantOnly, offersOnly, minPrice, maxPrice, minCapacity, maxKm, hourlyOnly, dateFrom, dateTo, state.orders, state.cart])
   const items = result.sorted
   const busyOnDates = result.busy
 
@@ -204,7 +218,31 @@ export default function Browse(props: BrowseProps) {
     setRemembered(saved && Object.values(saved).some(Boolean) ? saved : null)
   }, [memoryKey, hasCurrent])
 
+  /* Filtered against the catalogue, not just listed. Offering a recent search as
+     the escape route from a dead end and landing the person in a second dead end
+     is worse than offering nothing — and the current query is excluded because
+     that is the search they are already stuck inside. */
+  const priorSearches = useMemo(
+    () =>
+      state.recentSearches
+        .filter((r) => r.toLowerCase() !== (query ?? '').toLowerCase() && ITEMS.some((i) => fuzzyMatch(i.name, r)))
+        .slice(0, 4),
+    [state.recentSearches, query],
+  )
+
   useEffect(() => setShown(PAGE), [items])
+
+  /* A search with no results is the only place the app learns about gear it does
+     not carry. Recorded only when the query itself is what emptied the list —
+     if filters are active the zero is about the filters, and blaming the search
+     term would send hosts chasing demand that is already on the shelf. */
+  useEffect(() => {
+    if (items.length > 0 || !query || hasCurrent || Boolean(dateFrom && dateTo)) return
+    const t = setTimeout(() => dispatch({ type: 'RECORD_UNMET_SEARCH', q: query, category }), 1200)
+    /* Delayed, because the query updates per keystroke: without this, "ronin"
+       would also file "ron" and "roni" as unmet demand. */
+    return () => clearTimeout(t)
+  }, [items.length, query, category, hasCurrent, dateFrom, dateTo, dispatch])
 
   /* Active filters, as removable pills — so you can always see and undo what's narrowing the list. */
   const pills: { label: string; clear: Partial<BrowseProps> }[] = []
@@ -446,32 +484,37 @@ export default function Browse(props: BrowseProps) {
                 Clear all {activeFilters} filters
               </button>
             )}
+            {/* Recents live in the search overlay, which is one tap away — but a
+                dead end is exactly where nobody wants to reopen a search box and
+                retype. These are searches that already returned something for this
+                person, so they are a way back out rather than another guess. */}
+            {priorSearches.length > 0 && (
+              <div className="empty-recents">
+                <div className="muted small">Or go back to a search that worked:</div>
+                <div className="filter-row" style={{ justifyContent: 'center' }}>
+                  {priorSearches.map((r) => (
+                    <button key={r} className="filter-chip chip-ico" onClick={() => { buzz(); patch({ query: r }) }}>
+                      <Icon name="clock" size={12} /> {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className={dense ? 'dense-list' : 'grid'}>
             {items.slice(0, shown).map((item, idx) => (
-              <div key={item.id} style={{ position: 'relative' }}>
-                <ItemCard
-                  item={item}
-                  index={idx}
-                  onOpen={() => go({ name: 'item', id: item.id, from: dateFrom, to: dateTo })}
-                  wishlisted={state.wishlist.includes(item.id)}
-                  onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
-                />
-                <button
-                  className={`cmp-btn ${compare.includes(item.id) ? 'on' : ''}`}
-                  aria-label={compare.includes(item.id) ? `Remove ${item.name} from compare` : `Compare ${item.name}`}
-                  aria-pressed={compare.includes(item.id)}
-                  onClick={() => toggleCompare(item)}
-                >
-                  <Icon name="scale" size={16} />
-                </button>
-                {sort === 'nearest' && (
-                  <span className="muted small" style={{ display: 'block', marginTop: 2 }}>
-                    {getOwner(item.ownerId).distanceKm} km away
-                  </span>
-                )}
-              </div>
+              <ItemCard
+                key={item.id}
+                item={item}
+                index={idx}
+                onOpen={() => go({ name: 'item', id: item.id, from: dateFrom, to: dateTo })}
+                wishlisted={state.wishlist.includes(item.id)}
+                onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: item.id })}
+                compared={compare.includes(item.id)}
+                onToggleCompare={() => toggleCompare(item)}
+                footNote={sort === 'nearest' ? `${owners.get(item.id)?.distanceKm ?? getOwner(item.ownerId).distanceKm} km away` : undefined}
+              />
             ))}
           </div>
         )}

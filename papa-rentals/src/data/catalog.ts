@@ -295,14 +295,23 @@ export const KITS: Kit[] = [
   {
     id: 'k1', name: 'Indie Feature Starter', icon: 'backpack', itemIds: ['i3', 'i5', 'i6', 'i8'], percentOff: 18,
     blurb: 'Camera, glass, key light and sound — everything a first feature needs.',
+    bestFor: 'A small narrative crew shooting dialogue over several weeks — one camera, one key light, and sound you will not have to fix in post.',
+    notIncluded: ['Tripod or fluid head', 'Media cards and card reader', 'Batteries beyond the two supplied', 'Grip stands and flags'],
+    crewNote: 'Built to be run by two or three people. Nothing here needs a dedicated technician.',
   },
   {
     id: 'k2', name: 'Music Video Heat Pack', icon: 'flame', itemIds: ['i2', 'i7', 'i10'], percentOff: 15,
     blurb: 'FX6, Astera tubes and a Ronin 2. Instant vibes, zero excuses.',
+    bestFor: 'One or two day music video and fashion shoots that live on movement and colour rather than dialogue.',
+    notIncluded: ['Audio — this kit records none', 'Haze or smoke machine', 'Generator for location power', 'Follow focus and monitor'],
+    crewNote: 'The Ronin 2 assumes a dedicated operator. Add one from Services if you do not have a gimbal op.',
   },
   {
     id: 'k3', name: 'Commercial Day Bundle', icon: 'briefcase', itemIds: ['i1', 'i4', 'i15', 'i20'], percentOff: 12,
     blurb: 'Alexa, Cookes, a loaded grip truck and video village. Client-ready.',
+    bestFor: 'Brand and agency days where a client is watching the monitor and the schedule has no room to improvise.',
+    notIncluded: ['Camera crew and grips', 'Location and permits', 'Catering and set dressing', 'Data wrangler and drives'],
+    crewNote: 'The grip truck arrives with two crew. Camera department is yours to book separately.',
   },
 ]
 

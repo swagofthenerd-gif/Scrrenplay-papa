@@ -99,6 +99,15 @@ export interface Kit {
   itemIds: string[]
   percentOff: number
   blurb: string
+  /* The kit page has to answer "is this the one for me", and a list of item
+     names does not answer it — two kits can share a camera and suit completely
+     different shoots. These are the questions people actually ask before
+     booking a bundle they cannot inspect first. */
+  bestFor?: string
+  /** Named plainly, because the expensive surprise is what a kit quietly leaves out. */
+  notIncluded?: string[]
+  /** Whether the price assumes someone who knows how to rig it. */
+  crewNote?: string
 }
 
 export type TransportId = 'pickup' | 'van' | 'truck'
@@ -282,6 +291,17 @@ export interface PriceAlert {
 
 /** A search worth coming back to. Renters hunt the same gear every shoot cycle,
     and retyping "arri 300 daylight" every week is the friction that loses them. */
+/* A booking someone started shaping on an item page but never put in the cart.
+   Only the dates are kept: everything else on that page (qty, transport,
+   insurance) has a sensible default, but the dates are the one thing the person
+   actually thought about, and losing them means retyping the shoot window. */
+export interface BookingDraft {
+  itemId: string
+  startDate: string
+  endDate: string
+  savedAt: number
+}
+
 export interface SavedSearch {
   id: string
   q: string
@@ -289,6 +309,15 @@ export interface SavedSearch {
   /** Price ceiling to watch. Set means "tell me when something fits under this". */
   maxPrice?: number
   createdAt: number
+}
+
+/** A search that came back empty — one line of evidence that supply is missing. */
+export interface UnmetSearch {
+  q: string
+  category?: CategoryId
+  /** How many times it has been asked for, which is what separates noise from a gap. */
+  count: number
+  lastAt: number
 }
 
 export interface Address {
@@ -351,8 +380,18 @@ export interface AppState {
   cards: SavedCard[]
   selectedCardId: string
   recentSearches: string[]
+  /* Searches that returned nothing. Kept separately from recentSearches because
+     they mean the opposite thing: a recent search is a route back to something
+     that exists, an unmet one is gear this marketplace does not have. It is the
+     only demand signal in the app that isn't already a booking. */
+  unmetSearches: UnmetSearch[]
   savedSearches: SavedSearch[]
   recentlyViewed: string[]
+  bookingDrafts: BookingDraft[]
+  /* Undefined means "follow the phone". Only set once the person has actually
+     picked a side, so someone who never touches the toggle keeps tracking their
+     system setting instead of being frozen into whatever it was on first launch. */
+  theme?: 'light' | 'dark'
   blockedOwners: string[]
   promoCodesUsed: string[]
   myListings: Item[]

@@ -77,7 +77,7 @@ step = 'studio hero camera pan'
   const w = await page.evaluate(() => document.querySelector('.studio-track').clientWidth)
   await page.evaluate((w) => { document.querySelector('.studio-track').scrollLeft = w * 3 }, w)
   await page.waitForTimeout(700)
-  const cap = await page.locator('.studio-caption').innerText()
+  const cap = await page.locator('.studio-slug').innerText()
   ok('pan settles on the Lighting station', /LIGHTING/i.test(cap) && /Lighting/.test(cap))
   ok('caption shows live stats', /rental/.test(cap) && /from Rs/.test(cap))
   const activeIdx = await page.evaluate(() => [...document.querySelectorAll('.studio-stop')].findIndex((b) => b.classList.contains('active')))
@@ -89,7 +89,7 @@ step = 'studio hero camera pan'
   // filmstrip jump
   await page.click('.studio-stop >> nth=7')
   await page.waitForTimeout(800)
-  const cap2 = await page.locator('.studio-caption').innerText()
+  const cap2 = await page.locator('.studio-slug').innerText()
   ok('filmstrip jumps the camera', /TRANSPORT/i.test(cap2))
   await page.evaluate(() => { document.querySelector('.studio-track').scrollLeft = 0 })
   await page.waitForTimeout(500)

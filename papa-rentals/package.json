@@ -10,6 +10,9 @@
     "smoke": "node test/smoke.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { getCategory, getOwner } from '../data/catalog'
+import { useStore } from '../store'
 import type { Item } from '../types'
-import { buzz, dealActive, dealEndsAt, fmtCountdown, money } from '../utils'
+import { buzz, dealActive, dealEndsAt, fmtCountdown, money, scarcityNote } from '../utils'
 import { PhotoGallery, SmartImage } from './SmartImage'
 import { Icon, STAR_PATH } from './icons'
 import type { IconName } from './icons'
@@ -279,14 +280,32 @@ export function ItemCard({
   wishlisted,
   onToggleWish,
   index,
+  compared,
+  onToggleCompare,
+  footNote,
 }: {
   item: Item
   onOpen: () => void
   wishlisted: boolean
   onToggleWish: () => void
   index?: number
+  /* Compare used to be a button Browse positioned on top of the card from the
+     outside, which meant the card had no idea it was there: the overlay could
+     land on the wishlist heart, and no other screen could offer compare without
+     copying the same absolute-positioned hack. Passing the handler in keeps the
+     control inside the card that owns the layout, and omitting it renders
+     nothing — so every other grid is unchanged. */
+  compared?: boolean
+  onToggleCompare?: () => void
+  /** Context the grid knows and the card can't, e.g. distance when sorting by nearest. */
+  footNote?: ReactNode
 }) {
+  const { state } = useStore()
   const owner = getOwner(item.ownerId)
+  /* Read here rather than passed in as a prop: every grid on every screen renders
+     this card, and threading availability through all of them would mean the one
+     screen that forgot became the one where a fully-booked item looks free. */
+  const scarcity = scarcityNote(item.id, state.orders, state.cart)
   const hasDeal = dealActive(item.id)
   const dealPrice = hasDeal ? Math.round(item.pricePerDay * (1 - item.flashDeal!.percentOff / 100)) : null
   const stagger = index != null ? { className: 'item-card stagger', style: { ['--i' as string]: Math.min(index, 8) } } : { className: 'item-card' }
@@ -313,6 +332,19 @@ export function ItemCard({
       >
         <Icon name={wishlisted ? 'heart-filled' : 'heart'} size={18} />
       </button>
+      {onToggleCompare && (
+        <button
+          className={`cmp-btn ${compared ? 'on' : ''}`}
+          aria-label={compared ? `Remove ${item.name} from compare` : `Compare ${item.name}`}
+          aria-pressed={Boolean(compared)}
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleCompare()
+          }}
+        >
+          <Icon name="scale" size={16} />
+        </button>
+      )}
       <div className="item-card-body">
         <div className="item-card-title">{item.name}</div>
         <div className="item-card-meta">
@@ -338,6 +370,10 @@ export function ItemCard({
           <span className="muted"> /day</span>
           <span className="muted small"> · {owner.distanceKm} km</span>
         </div>
+        {scarcity && (
+          <div className="item-scarcity"><Icon name="clock" size={11} /> {scarcity}</div>
+        )}
+        {footNote && <div className="muted small item-footnote">{footNote}</div>}
       </div>
     </div>
   )
