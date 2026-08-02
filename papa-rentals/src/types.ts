@@ -311,6 +311,15 @@ export interface SavedSearch {
   createdAt: number
 }
 
+/** A search that came back empty — one line of evidence that supply is missing. */
+export interface UnmetSearch {
+  q: string
+  category?: CategoryId
+  /** How many times it has been asked for, which is what separates noise from a gap. */
+  count: number
+  lastAt: number
+}
+
 export interface Address {
   id: string
   label: string
@@ -371,6 +380,11 @@ export interface AppState {
   cards: SavedCard[]
   selectedCardId: string
   recentSearches: string[]
+  /* Searches that returned nothing. Kept separately from recentSearches because
+     they mean the opposite thing: a recent search is a route back to something
+     that exists, an unmet one is gear this marketplace does not have. It is the
+     only demand signal in the app that isn't already a booking. */
+  unmetSearches: UnmetSearch[]
   savedSearches: SavedSearch[]
   recentlyViewed: string[]
   bookingDrafts: BookingDraft[]

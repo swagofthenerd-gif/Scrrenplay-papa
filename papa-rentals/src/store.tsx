@@ -35,6 +35,7 @@ const initialState: AppState = {
   cards: [{ id: 'c1', brand: 'Visa', last4: '4291', expiry: '09/28' }],
   selectedCardId: 'c1',
   recentSearches: [],
+  unmetSearches: [],
   savedSearches: [],
   recentlyViewed: [],
   bookingDrafts: [],
@@ -80,6 +81,7 @@ type Action =
   | { type: 'REMOVE_CARD'; id: string }
   | { type: 'SELECT_CARD'; id: string }
   | { type: 'ADD_RECENT_SEARCH'; q: string }
+  | { type: 'RECORD_UNMET_SEARCH'; q: string; category?: CategoryId }
   | { type: 'REMOVE_RECENT_SEARCH'; q: string }
   | { type: 'CLEAR_RECENT_SEARCHES' }
   | { type: 'SAVE_SEARCH'; q: string; category?: CategoryId; maxPrice?: number }
@@ -448,6 +450,19 @@ function reducer(state: AppState, action: Action): AppState {
       const q = action.q.trim()
       if (!q) return state
       return { ...state, recentSearches: [q, ...state.recentSearches.filter((x) => x.toLowerCase() !== q.toLowerCase())].slice(0, 6) }
+    }
+
+    case 'RECORD_UNMET_SEARCH': {
+      const q = action.q.trim().toLowerCase()
+      /* Two characters is a half-typed word, not a request for anything. Without
+         this the list fills with the prefixes of searches that later succeeded. */
+      if (q.length < 3) return state
+      const prior = state.unmetSearches.find((u) => u.q === q && u.category === action.category)
+      const rest = state.unmetSearches.filter((u) => u !== prior)
+      const next = { q, category: action.category, count: (prior?.count ?? 0) + 1, lastAt: Date.now() }
+      /* Sorted by count so the panel that reads this shows the real gaps first,
+         and capped so a demo session cannot grow the saved state without bound. */
+      return { ...state, unmetSearches: [next, ...rest].sort((a, b) => b.count - a.count).slice(0, 20) }
     }
 
     case 'REMOVE_RECENT_SEARCH':

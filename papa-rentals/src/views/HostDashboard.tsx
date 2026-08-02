@@ -79,6 +79,26 @@ export default function HostDashboard() {
         </div>
       )}
 
+      {/* Every other number on this page is money that already moved. This is the
+          one that points forward: gear renters went looking for and did not find.
+          It is shown to hosts rather than buried in analytics because they are the
+          only people who can actually close the gap. */}
+      {state.unmetSearches.length > 0 && (
+        <div className="panel">
+          <h3 style={{ fontSize: 15 }}><Icon name="search" className="h-ico" size={15} /> Asked for, not available</h3>
+          <p className="muted small" style={{ marginTop: 0 }}>
+            Searches on Papa Rentals that came back empty. If you own any of this, it is already in demand.
+          </p>
+          <div className="filter-row" style={{ flexWrap: 'wrap', margin: '4px 0 0' }}>
+            {state.unmetSearches.slice(0, 8).map((u) => (
+              <span key={`${u.q}-${u.category ?? ''}`} className="filter-chip" style={{ cursor: 'default' }}>
+                {u.q}{u.count > 1 && <b style={{ color: 'var(--accent)' }}> ×{u.count}</b>}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {history.length > 0 && (
         <div className="panel">
           <h3 style={{ fontSize: 15 }}><Icon name="scroll" className="h-ico" size={15} /> History</h3>

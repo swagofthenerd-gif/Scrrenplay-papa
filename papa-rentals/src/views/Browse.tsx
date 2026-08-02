@@ -232,6 +232,18 @@ export default function Browse(props: BrowseProps) {
 
   useEffect(() => setShown(PAGE), [items])
 
+  /* A search with no results is the only place the app learns about gear it does
+     not carry. Recorded only when the query itself is what emptied the list —
+     if filters are active the zero is about the filters, and blaming the search
+     term would send hosts chasing demand that is already on the shelf. */
+  useEffect(() => {
+    if (items.length > 0 || !query || hasCurrent || Boolean(dateFrom && dateTo)) return
+    const t = setTimeout(() => dispatch({ type: 'RECORD_UNMET_SEARCH', q: query, category }), 1200)
+    /* Delayed, because the query updates per keystroke: without this, "ronin"
+       would also file "ron" and "roni" as unmet demand. */
+    return () => clearTimeout(t)
+  }, [items.length, query, category, hasCurrent, dateFrom, dateTo, dispatch])
+
   /* Active filters, as removable pills — so you can always see and undo what's narrowing the list. */
   const pills: { label: string; clear: Partial<BrowseProps> }[] = []
   if (verifiedOnly) pills.push({ label: 'Verified', clear: { verified: false } })
