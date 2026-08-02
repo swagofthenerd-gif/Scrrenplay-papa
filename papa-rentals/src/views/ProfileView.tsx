@@ -338,9 +338,10 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
 }
 
 function TopUpModal({ onClose }: { onClose: () => void }) {
-  const { dispatch } = useStore()
+  const { state, dispatch } = useStore()
   const { toast } = useNav()
   const [amount, setAmount] = useState(10000)
+  const card = state.cards.find((c) => c.id === state.selectedCardId) ?? state.cards[0]
 
   return (
     <Modal title="Top up your wallet" onClose={onClose}>
@@ -362,18 +363,30 @@ function TopUpModal({ onClose }: { onClose: () => void }) {
           onChange={(e) => setAmount(Math.max(0, Number(e.target.value) || 0))}
         />
       </label>
+      {card ? (
+        <div className="list-row" style={{ margin: '12px 0 0', gap: 10, cursor: 'default' }}>
+          <Icon name="card" size={16} />
+          <span style={{ flex: 1, minWidth: 0 }}>Charged to {card.brand} ···{card.last4}</span>
+          <span className="muted small">exp {card.expiry}</span>
+        </div>
+      ) : (
+        <p className="muted small" style={{ margin: '12px 0 0' }}>
+          Add a card at checkout to top up — top-ups move money from your card, not thin air.
+        </p>
+      )}
       <button
         className="btn btn-primary btn-block"
         style={{ marginTop: 14 }}
-        disabled={amount < 500}
+        disabled={amount < 500 || !card}
         onClick={() => {
+          if (!card) return
           buzz()
           dispatch({ type: 'ADD_WALLET', amount })
-          toast(`${money(amount)} added to wallet`)
+          toast(`${money(amount)} added — charged to ${card.brand} ···${card.last4}`)
           onClose()
         }}
       >
-        Add {money(amount)}
+        {card ? `Pay ${money(amount)} with ${card.brand} ···${card.last4}` : `Add ${money(amount)}`}
       </button>
     </Modal>
   )
