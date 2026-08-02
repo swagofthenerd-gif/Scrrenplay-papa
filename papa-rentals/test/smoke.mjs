@@ -153,6 +153,10 @@ await page.waitForTimeout(400)
 await page.click('.bottom-nav button >> nth=0')
 await page.waitForTimeout(500)
 ok('For you row appears after activity', await page.locator('text=For you').first().isVisible())
+// "Because you viewed" lives in a <Deferred> rail that only renders once scrolled
+// near, so bring it into view before asserting rather than reading a lazy blank.
+await page.locator('#because').scrollIntoViewIfNeeded().catch(() => {})
+await page.waitForTimeout(300)
 ok('Because you viewed row', await page.locator('text=Because you viewed').isVisible())
 await page.screenshot({ path: `${SHOTS}/05-home-personalized.png` })
 
@@ -164,7 +168,9 @@ ok('cross-sell present', await page.locator('text=Complete your setup').isVisibl
 await page.screenshot({ path: `${SHOTS}/06-cart.png` })
 
 step = 'notifications sheet dismiss'
-await page.click('.topbar .icon-btn >> nth=0')
+// Target by label, not position: the topbar gained a theme toggle (also .icon-btn)
+// ahead of this button, so a positional nth=0 now lands on the wrong control.
+await page.click('.topbar button[aria-label^="Notifications"]')
 await page.waitForSelector('.modal')
 ok('sheet grip present', await page.locator('.sheet-grip').isVisible())
 await page.click('.modal .icon-btn') // close button

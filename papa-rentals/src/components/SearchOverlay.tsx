@@ -85,7 +85,16 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
             placeholder="Search cameras, lights, spaces…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            onKeyDown={(e) => {
+              /* preventDefault matters: submit() closes the overlay, whose cleanup
+                 returns focus to the search pill button. Without this, the same
+                 Enter keystroke then natively activates that refocused button and
+                 reopens search over the results we just navigated to. */
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                submit()
+              }
+            }}
             aria-label="Search gear"
           />
           {q && <button className="clear-btn" onClick={() => setQ('')} aria-label="Clear search"><Icon name="x" size={15} /></button>}
