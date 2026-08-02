@@ -404,5 +404,10 @@ export interface AppState {
   availAlerts: AvailAlert[]
   priceAlerts: PriceAlert[]
   referralRedeemed: boolean
+  /** A redeemed referral whose Rs 500 hasn't been paid yet. Real referral
+      programs release the bonus on a qualifying action, not on code entry, so
+      an invented code can't be turned straight into wallet cash — the credit
+      lands when the user's first rental completes. */
+  referralPending: boolean
   freeVanPerkMonth?: string // YYYY-MM when the Silver free-delivery perk was last used
 }

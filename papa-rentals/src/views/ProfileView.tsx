@@ -172,12 +172,19 @@ export default function ProfileView() {
                   return
                 }
                 dispatch({ type: 'REDEEM_REFERRAL', code })
-                toast('Rs 500 added to your wallet')
+                toast('Rs 500 pending — credited after your first rental')
               }}
             >
               Redeem
             </button>
           </div>
+        </div>
+      )}
+      {state.referralPending && (
+        <div className="list-row" style={{ width: '100%', gap: 10, cursor: 'default' }}>
+          <Icon name="hourglass" size={16} />
+          <span style={{ flex: 1, minWidth: 0 }}>Referral bonus pending</span>
+          <span className="muted small">Rs 500 · unlocks on your first completed rental</span>
         </div>
       )}
       <button

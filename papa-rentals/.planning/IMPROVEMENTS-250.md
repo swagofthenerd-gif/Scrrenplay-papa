@@ -324,7 +324,7 @@ claiming an item, re-verify it in the code.
 
 ### Account & identity
 1. [ ] Profile is read-only — name/city set once in onboarding, never editable. Add "Edit profile".
-2. [ ] "ID Verified" badge always shown regardless of any verification — misleading.
+2. [x] "ID Verified" badge always shown regardless of any verification — misleading.
 3. [ ] No avatar upload — everyone gets a generated `Avatar`.
 4. [ ] No phone/email fields, yet orders imply contactability and COD implies a card on file.
 5. [ ] No logout / account / switch-account concept.
@@ -351,8 +351,8 @@ claiming an item, re-verify it in the code.
 20. [ ] Wishlist appears here and in Browse — ensure one canonical place.
 
 ### Referral
-21. [ ] Referral copies to clipboard, but `navigator.clipboard` often fails in Android WebView — add visible code + share-sheet fallback.
-22. [ ] Redeem box accepts any `PAPA-` code and instantly credits Rs 500 — no single-use enforcement beyond `referralRedeemed`. Exploitable.
+21. [x] Referral copies to clipboard, but `navigator.clipboard` often fails in Android WebView — add visible code + share-sheet fallback.
+22. [x] Redeem box accepts any `PAPA-` code and instantly credits Rs 500 — no single-use enforcement beyond `referralRedeemed`. Exploitable.
 23. [ ] No referral tracking ("3 friends joined, Rs 1,500 earned").
 24. [ ] Refer and redeem are separate — unify into one "Referrals" screen.
 
@@ -369,7 +369,7 @@ claiming an item, re-verify it in the code.
 
 ### Empty & first-run states
 32. [ ] A new user sees 0/0/0 tiles and lots of "None yet" — design a welcoming empty profile that guides first actions.
-33. [ ] `myRating` defaults to 5.0 with zero completed orders — "5.0 · 0 completed" implies a rating that doesn't exist. Show "New renter".
+33. [x] `myRating` defaults to 5.0 with zero completed orders — "5.0 · 0 completed" implies a rating that doesn't exist. Show "New renter".
 
 ### Visual & layout
 34. [ ] Many `list-row`s look identical whether tappable or not — give tappable rows a consistent chevron.
@@ -381,7 +381,7 @@ claiming an item, re-verify it in the code.
 38. [ ] Click-`div` `list-row`s aren't buttons — no keyboard/focus/role.
 39. [ ] Stat tiles convey meaning by icon — ensure number+label association is read correctly.
 40. [ ] Referral toast is the only copy feedback — add an inline "Copied ✓" state for screen readers.
-41. [ ] Progress bar has no `role="progressbar"` / aria values.
+41. [x] Progress bar has no `role="progressbar"` / aria values.
 
 ### Feedback & motion
 42. [ ] Top-up toast and balance count-up feel disconnected — animate the "+10,000" into the balance.
