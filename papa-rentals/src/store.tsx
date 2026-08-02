@@ -12,7 +12,7 @@ import type { TotalsInput } from './utils'
 const STORAGE_KEY = 'papa-rentals-v2'
 
 const initialState: AppState = {
-  profile: { name: '', city: 'Lahore', onboarded: false },
+  profile: { name: '', city: 'Lahore', onboarded: false, idVerified: false },
   cart: [],
   wishlist: [],
   orders: [],
@@ -56,6 +56,7 @@ export interface PlaceOrderOpts extends TotalsInput {
 
 type Action =
   | { type: 'SET_PROFILE'; name: string; city: string; onboarded?: boolean }
+  | { type: 'VERIFY_ID' }
   | { type: 'ADD_TO_CART'; booking: Booking }
   | { type: 'UPDATE_CART_LINE'; lineId: string; patch: Partial<Booking> }
   | { type: 'REMOVE_FROM_CART'; lineId: string }
@@ -176,7 +177,12 @@ const OWNER_REPLIES = [
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_PROFILE':
-      return { ...state, profile: { name: action.name, city: action.city, onboarded: action.onboarded ?? true } }
+      // Preserve verification across profile edits — changing your name or city
+      // is not a reason to lose an ID check, and a fresh onboarding stays false.
+      return { ...state, profile: { name: action.name, city: action.city, onboarded: action.onboarded ?? true, idVerified: state.profile.idVerified } }
+
+    case 'VERIFY_ID':
+      return { ...state, profile: { ...state.profile, idVerified: true } }
 
     case 'ADD_TO_CART':
       return {

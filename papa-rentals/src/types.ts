@@ -345,6 +345,10 @@ export interface Profile {
   name: string
   city: string
   onboarded: boolean
+  /** Whether the renter has completed ID verification. There is no real KYC in
+      a client-only app, so this is a simulated one-tap step — but the badge that
+      reads it must tell the truth rather than claim everyone is verified. */
+  idVerified: boolean
 }
 
 /** A single movement of wallet credit or loyalty points. */

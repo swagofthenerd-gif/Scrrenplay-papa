@@ -40,7 +40,11 @@ export default function ProfileView() {
         <div className="owner-row">
           <Avatar name={state.profile.name || 'You'} id="me" size={46} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <b>{state.profile.name || 'Filmmaker'} <Badge tone="green"><Icon name="check" size={14} /> ID Verified</Badge> <Badge tone="purple">{tier}</Badge></b>
+            <b>{state.profile.name || 'Filmmaker'}{' '}
+              {state.profile.idVerified
+                ? <Badge tone="green"><Icon name="check" size={14} /> ID Verified</Badge>
+                : <Badge tone="default"><Icon name="shield" size={14} /> Unverified</Badge>}{' '}
+              <Badge tone="purple">{tier}</Badge></b>
             <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <Icon name="pin" size={14} /> {state.profile.city} ·{' '}
               {completed.length === 0 ? (
@@ -52,9 +56,28 @@ export default function ProfileView() {
           </div>
           <button className="btn btn-outline btn-sm" onClick={() => setEditOpen(true)}>Edit</button>
         </div>
-        <p className="muted small" style={{ marginBottom: 0 }}>
+        <p className="muted small" style={{ marginBottom: state.profile.idVerified ? 0 : 10 }}>
           Owners see your rating when you request bookings — a strong renter score unlocks instant-book on premium gear.
         </p>
+        {!state.profile.idVerified && (
+          <div className="list-row" style={{ alignItems: 'center', gap: 10, margin: 0 }}>
+            <Icon name="shield" size={18} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b style={{ fontSize: 13 }}>Verify your ID</b>
+              <div className="muted small" style={{ margin: 0 }}>Verified renters get faster owner approvals and instant-book access.</div>
+            </div>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => {
+                buzz()
+                dispatch({ type: 'VERIFY_ID' })
+                toast('ID verified')
+              }}
+            >
+              Verify
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="wallet-card">
