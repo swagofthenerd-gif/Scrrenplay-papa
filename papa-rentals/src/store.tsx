@@ -56,7 +56,7 @@ export interface PlaceOrderOpts extends TotalsInput {
 }
 
 type Action =
-  | { type: 'SET_PROFILE'; name: string; city: string; onboarded?: boolean }
+  | { type: 'SET_PROFILE'; name: string; city: string; onboarded?: boolean; phone?: string; email?: string }
   | { type: 'VERIFY_ID' }
   | { type: 'ADD_TO_CART'; booking: Booking }
   | { type: 'UPDATE_CART_LINE'; lineId: string; patch: Partial<Booking> }
@@ -178,9 +178,20 @@ const OWNER_REPLIES = [
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_PROFILE':
-      // Preserve verification across profile edits — changing your name or city
-      // is not a reason to lose an ID check, and a fresh onboarding stays false.
-      return { ...state, profile: { name: action.name, city: action.city, onboarded: action.onboarded ?? true, idVerified: state.profile.idVerified } }
+      // Spread the existing profile so edits keep everything they don't touch —
+      // verification, and contact details onboarding never collected. `??` lets
+      // an edit set phone/email while onboarding (which omits them) leaves them.
+      return {
+        ...state,
+        profile: {
+          ...state.profile,
+          name: action.name,
+          city: action.city,
+          onboarded: action.onboarded ?? true,
+          phone: action.phone ?? state.profile.phone,
+          email: action.email ?? state.profile.email,
+        },
+      }
 
     case 'VERIFY_ID':
       return { ...state, profile: { ...state.profile, idVerified: true } }

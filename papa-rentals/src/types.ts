@@ -344,6 +344,11 @@ export interface SavedCard {
 export interface Profile {
   name: string
   city: string
+  /** Optional contact details. Orders imply a vendor can reach the renter, so
+      the profile should be able to hold a phone/email rather than pretending
+      contact happens by magic. Optional because onboarding doesn't collect them. */
+  phone?: string
+  email?: string
   onboarded: boolean
   /** Whether the renter has completed ID verification. There is no real KYC in
       a client-only app, so this is a simulated one-tap step — but the badge that

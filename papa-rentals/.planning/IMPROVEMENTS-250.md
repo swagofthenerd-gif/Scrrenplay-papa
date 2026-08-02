@@ -323,16 +323,16 @@ claiming an item, re-verify it in the code.
 ## PROFILE (`ProfileView.tsx`)
 
 ### Account & identity
-1. [ ] Profile is read-only — name/city set once in onboarding, never editable. Add "Edit profile".
+1. [x] Profile is read-only — name/city set once in onboarding, never editable. Add "Edit profile".
 2. [x] "ID Verified" badge always shown regardless of any verification — misleading.
 3. [ ] No avatar upload — everyone gets a generated `Avatar`.
-4. [ ] No phone/email fields, yet orders imply contactability and COD implies a card on file.
+4. [x] No phone/email fields, yet orders imply contactability and COD implies a card on file.
 5. [ ] No logout / account / switch-account concept.
 6. [x] No settings screen (notifications, language, currency, theme). *(`SettingsView.tsx`)*
 
 ### Wallet
-7. [ ] "+ Top up Rs 10,000" adds free money with no payment step — wire to a real flow or at least a confirm.
-8. [ ] Only one fixed top-up amount — add custom amounts.
+7. [x] "+ Top up Rs 10,000" adds free money with no payment step — wire to a real flow or at least a confirm.
+8. [x] Only one fixed top-up amount — add custom amounts.
 9. [x] No wallet transaction history. *(`WalletView.tsx`)*
 10. [ ] `useCountUp` animates balance but there's no breakdown of credit vs cash.
 11. [ ] Refunds land in wallet but there's no way to withdraw to bank.

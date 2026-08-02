@@ -53,6 +53,12 @@ export default function ProfileView() {
                 <>renter rating <Stars value={myRating} size={12} /> {myRating.toFixed(1)} · {completed.length} completed</>
               )}
             </div>
+            {(state.profile.phone || state.profile.email) && (
+              <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+                {state.profile.phone && <span><Icon name="phone" size={13} /> {state.profile.phone}</span>}
+                {state.profile.email && <span><Icon name="mail" size={13} /> {state.profile.email}</span>}
+              </div>
+            )}
           </div>
           <button className="btn btn-outline btn-sm" onClick={() => setEditOpen(true)}>Edit</button>
         </div>
@@ -310,6 +316,9 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
   const { toast } = useNav()
   const [name, setName] = useState(state.profile.name)
   const [city, setCity] = useState(state.profile.city)
+  const [phone, setPhone] = useState(state.profile.phone ?? '')
+  const [email, setEmail] = useState(state.profile.email ?? '')
+  const emailValid = !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 
   return (
     <Modal title="Edit your profile" onClose={onClose}>
@@ -321,12 +330,27 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
         City
         <input value={city} placeholder="Your city" onChange={(e) => setCity(e.target.value)} />
       </label>
+      <label className="field" style={{ marginTop: 10 }}>
+        Phone <span className="muted small">— so vendors and couriers can reach you</span>
+        <input type="tel" inputMode="tel" value={phone} placeholder="03xx xxxxxxx" onChange={(e) => setPhone(e.target.value)} />
+      </label>
+      <label className="field" style={{ marginTop: 10 }}>
+        Email <span className="muted small">— for booking receipts</span>
+        <input type="email" inputMode="email" value={email} placeholder="you@example.com" onChange={(e) => setEmail(e.target.value)} />
+      </label>
+      {!emailValid && <p className="muted small" style={{ margin: '6px 0 0', color: 'var(--red)' }}>That email doesn’t look right.</p>}
       <button
         className="btn btn-primary btn-block"
         style={{ marginTop: 14 }}
-        disabled={!city.trim()}
+        disabled={!city.trim() || !emailValid}
         onClick={() => {
-          dispatch({ type: 'SET_PROFILE', name: name.trim(), city: city.trim() })
+          dispatch({
+            type: 'SET_PROFILE',
+            name: name.trim(),
+            city: city.trim(),
+            phone: phone.trim(),
+            email: email.trim(),
+          })
           toast('Profile updated')
           onClose()
         }}
@@ -338,9 +362,10 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
 }
 
 function TopUpModal({ onClose }: { onClose: () => void }) {
-  const { dispatch } = useStore()
+  const { state, dispatch } = useStore()
   const { toast } = useNav()
   const [amount, setAmount] = useState(10000)
+  const card = state.cards.find((c) => c.id === state.selectedCardId) ?? state.cards[0]
 
   return (
     <Modal title="Top up your wallet" onClose={onClose}>
@@ -362,18 +387,30 @@ function TopUpModal({ onClose }: { onClose: () => void }) {
           onChange={(e) => setAmount(Math.max(0, Number(e.target.value) || 0))}
         />
       </label>
+      {card ? (
+        <div className="list-row" style={{ margin: '12px 0 0', gap: 10, cursor: 'default' }}>
+          <Icon name="card" size={16} />
+          <span style={{ flex: 1, minWidth: 0 }}>Charged to {card.brand} ···{card.last4}</span>
+          <span className="muted small">exp {card.expiry}</span>
+        </div>
+      ) : (
+        <p className="muted small" style={{ margin: '12px 0 0' }}>
+          Add a card at checkout to top up — top-ups move money from your card, not thin air.
+        </p>
+      )}
       <button
         className="btn btn-primary btn-block"
         style={{ marginTop: 14 }}
-        disabled={amount < 500}
+        disabled={amount < 500 || !card}
         onClick={() => {
+          if (!card) return
           buzz()
           dispatch({ type: 'ADD_WALLET', amount })
-          toast(`${money(amount)} added to wallet`)
+          toast(`${money(amount)} added — charged to ${card.brand} ···${card.last4}`)
           onClose()
         }}
       >
-        Add {money(amount)}
+        {card ? `Pay ${money(amount)} with ${card.brand} ···${card.last4}` : `Add ${money(amount)}`}
       </button>
     </Modal>
   )
