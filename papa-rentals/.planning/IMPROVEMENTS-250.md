@@ -331,8 +331,8 @@ claiming an item, re-verify it in the code.
 6. [x] No settings screen (notifications, language, currency, theme). *(`SettingsView.tsx`)*
 
 ### Wallet
-7. [ ] "+ Top up Rs 10,000" adds free money with no payment step — wire to a real flow or at least a confirm.
-8. [ ] Only one fixed top-up amount — add custom amounts.
+7. [x] "+ Top up Rs 10,000" adds free money with no payment step — wire to a real flow or at least a confirm.
+8. [x] Only one fixed top-up amount — add custom amounts.
 9. [x] No wallet transaction history. *(`WalletView.tsx`)*
 10. [ ] `useCountUp` animates balance but there's no breakdown of credit vs cash.
 11. [ ] Refunds land in wallet but there's no way to withdraw to bank.
