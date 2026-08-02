@@ -47,6 +47,7 @@ const initialState: AppState = {
   availAlerts: [],
   priceAlerts: [],
   referralRedeemed: false,
+  referralPending: false,
 }
 
 export interface PlaceOrderOpts extends TotalsInput {
@@ -276,12 +277,26 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'ADVANCE_ORDER': {
       let notifications = state.notifications
+      let justCompleted = false
       const orders = state.orders.map((o) => {
         if (o.id !== action.orderId) return o
         const step = stepOrderForward(o)
         for (const n of step.notifs) notifications = notify({ ...state, notifications }, n)
+        if (o.status !== 'completed' && step.order.status === 'completed') justCompleted = true
         return step.order
       })
+      // Release a held referral bonus on the first completed rental — the
+      // qualifying action a real referral program pays out against.
+      if (justCompleted && state.referralPending) {
+        const credited = { ...state, orders, notifications }
+        return {
+          ...credited,
+          referralPending: false,
+          walletBalance: state.walletBalance + 500,
+          ledger: record(credited, [{ kind: 'wallet', amount: 500, label: 'Referral bonus released', cash: false }]),
+          notifications: notify(credited, { icon: 'gift', title: 'Referral bonus unlocked — Rs 500 added', body: 'Your first rental completed, so your Rs 500 is now in your wallet.' }),
+        }
+      }
       return { ...state, orders, notifications }
     }
 
@@ -597,12 +612,18 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'REDEEM_REFERRAL': {
       if (state.referralRedeemed || !/^PAPA-/i.test(action.code.trim())) return state
+      // Hold the bonus rather than pay it out on code entry: it's released when
+      // the first rental completes (see ADVANCE_ORDER), so a made-up code can't
+      // be cashed out directly.
       return {
         ...state,
         referralRedeemed: true,
-        walletBalance: state.walletBalance + 500,
-        ledger: record(state, [{ kind: 'wallet', amount: 500, label: `Referral ${action.code.trim().toUpperCase()}`, cash: false }]),
-        notifications: notify(state, { icon: 'gift', title: 'Referral applied — Rs 500 added', body: 'Your friend gets Rs 500 too. Shukriya!' }),
+        referralPending: true,
+        notifications: notify(state, {
+          icon: 'gift',
+          title: 'Referral applied — Rs 500 pending',
+          body: 'It lands in your wallet when your first rental completes. Your friend gets Rs 500 too.',
+        }),
       }
     }
 
