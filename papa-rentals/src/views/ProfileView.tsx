@@ -53,6 +53,12 @@ export default function ProfileView() {
                 <>renter rating <Stars value={myRating} size={12} /> {myRating.toFixed(1)} · {completed.length} completed</>
               )}
             </div>
+            {(state.profile.phone || state.profile.email) && (
+              <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+                {state.profile.phone && <span><Icon name="phone" size={13} /> {state.profile.phone}</span>}
+                {state.profile.email && <span><Icon name="mail" size={13} /> {state.profile.email}</span>}
+              </div>
+            )}
           </div>
           <button className="btn btn-outline btn-sm" onClick={() => setEditOpen(true)}>Edit</button>
         </div>
@@ -310,6 +316,9 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
   const { toast } = useNav()
   const [name, setName] = useState(state.profile.name)
   const [city, setCity] = useState(state.profile.city)
+  const [phone, setPhone] = useState(state.profile.phone ?? '')
+  const [email, setEmail] = useState(state.profile.email ?? '')
+  const emailValid = !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 
   return (
     <Modal title="Edit your profile" onClose={onClose}>
@@ -321,12 +330,27 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
         City
         <input value={city} placeholder="Your city" onChange={(e) => setCity(e.target.value)} />
       </label>
+      <label className="field" style={{ marginTop: 10 }}>
+        Phone <span className="muted small">— so vendors and couriers can reach you</span>
+        <input type="tel" inputMode="tel" value={phone} placeholder="03xx xxxxxxx" onChange={(e) => setPhone(e.target.value)} />
+      </label>
+      <label className="field" style={{ marginTop: 10 }}>
+        Email <span className="muted small">— for booking receipts</span>
+        <input type="email" inputMode="email" value={email} placeholder="you@example.com" onChange={(e) => setEmail(e.target.value)} />
+      </label>
+      {!emailValid && <p className="muted small" style={{ margin: '6px 0 0', color: 'var(--red)' }}>That email doesn’t look right.</p>}
       <button
         className="btn btn-primary btn-block"
         style={{ marginTop: 14 }}
-        disabled={!city.trim()}
+        disabled={!city.trim() || !emailValid}
         onClick={() => {
-          dispatch({ type: 'SET_PROFILE', name: name.trim(), city: city.trim() })
+          dispatch({
+            type: 'SET_PROFILE',
+            name: name.trim(),
+            city: city.trim(),
+            phone: phone.trim(),
+            email: email.trim(),
+          })
           toast('Profile updated')
           onClose()
         }}
