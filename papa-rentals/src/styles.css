@@ -1209,13 +1209,21 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 }
 
 /* Rail scroll affordance — a hint that there is more to the right. */
-.rail-more { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: -4px; opacity: 0.7; }
 .h-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 10px; }
 
 /* Social-proof strip: real catalogue totals, not marketing filler. */
-/* Was three bordered stat tiles under the hero — a second headline arguing with
-   the first. One line of quiet type says the same thing and gets out of the way. */
-.proof-line { margin: 12px 2px 0; font-size: 12.5px; color: var(--muted); text-align: center; }
+/* Visible only to screen readers: the marks below carry their meaning in the
+   drawing, but a drawing is nothing to a reader that can't see it. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Three numbers under three marks, centred. Was a sentence, and before that a
+   row of bordered tiles arguing with the hero for the same glance. */
+.proof-row { display: flex; justify-content: center; gap: 22px; margin: 14px 0 0; color: var(--muted); }
+.proof-item { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.proof-item b { color: var(--ink); font-size: 14px; }
 
 /* Unfinished business — cart, a draft booking, wallet credit, saved searches —
    as one object instead of four stacked sections with four headings. */
@@ -1511,6 +1519,13 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
   border-top: 1px solid var(--line);
   width: 100%; display: flex; flex-direction: column; gap: 8px; align-items: center;
 }
+
+/* A rail that continues past the edge fades there instead of captioning itself.
+   Masked rather than a gradient overlay so it works on any background, light or
+   dark, without a colour to match. */
+.rail-track.has-more { -webkit-mask-image: linear-gradient(to right, #000 88%, transparent 100%); mask-image: linear-gradient(to right, #000 88%, transparent 100%); }
+.rail-track.has-prev.has-more { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 6%, #000 88%, transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 6%, #000 88%, transparent 100%); }
+.rail-track.has-prev:not(.has-more) { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 6%); mask-image: linear-gradient(to right, transparent 0, #000 6%); }
 
 /* ---------- Proximity map (spaces) ---------- */
 .pmap { background: var(--card); border-radius: var(--r-lg); padding: 14px; box-shadow: var(--shadow-sm); }

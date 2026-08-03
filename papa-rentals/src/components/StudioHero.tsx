@@ -221,9 +221,17 @@ export default function StudioHero() {
                   {state.profile.name ? `Salaam, ${state.profile.name}.` : 'Rent everything'}<br />
                   {state.profile.name ? 'Walk the studio.' : 'for your next shoot.'}
                 </h1>
+                {/* "Up to 20% off today" and "4 live deals" are the same news
+                    twice, and three pills stacked over the artwork was the
+                    busiest corner of the page. The discount is the sharper of
+                    the two, so it speaks for both and the count stands in only
+                    when nothing is discounted. */}
                 <div className="studio-offers">
-                  {bestOff > 0 && <span className="studio-tag deal"><Icon name="bolt" size={12} /> Up to {bestOff}% off today</span>}
-                  {totalDeals > 0 && <span className="studio-tag"><Icon name="ticket" size={12} /> {totalDeals} live deals</span>}
+                  {bestOff > 0 ? (
+                    <span className="studio-tag deal"><Icon name="bolt" size={12} /> Up to {bestOff}% off today</span>
+                  ) : totalDeals > 0 ? (
+                    <span className="studio-tag"><Icon name="ticket" size={12} /> {totalDeals} live deals</span>
+                  ) : null}
                   <span className="studio-tag"><Icon name={VALUE_PROPS[prop].icon} size={12} /> {VALUE_PROPS[prop].label}</span>
                 </div>
               </div>
@@ -271,7 +279,7 @@ export default function StudioHero() {
             <>
               <div className="studio-caption-main">
                 <b>The studio</b>
-                <span className="muted">{CATEGORIES.length} departments · every rentable on one set</span>
+                <span className="muted">{CATEGORIES.length} departments</span>
               </div>
               <button className="studio-caption-cta" onClick={() => go({ name: 'browse' })}>
                 Browse all gear <Icon name="arrow-right" size={12} />

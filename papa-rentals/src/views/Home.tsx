@@ -118,7 +118,7 @@ function Rail({
         }
       />
       {filters && <div className="rail-filters">{filters}</div>}
-      <div className="rail-track">
+      <div className={`rail-track${overflows && !atEnd ? ' has-more' : ''}${overflows && !atStart ? ' has-prev' : ''}`}>
         <div
           className="h-scroll"
           ref={track}
@@ -130,7 +130,7 @@ function Rail({
           {children}
         </div>
         {/* Arrows are for pointers, not thumbs — CSS hides them on touch, where
-            the swipe hint below carries the same message without stealing space. */}
+            the masked edge says the same thing without stealing a line. */}
         {overflows && !atStart && (
           <button className="rail-arrow prev" onClick={() => nudge(-1)} aria-label={`Scroll ${title} back`}>
             <Icon name="chevron-left" size={18} />
@@ -142,7 +142,10 @@ function Rail({
           </button>
         )}
       </div>
-      {overflows && !atEnd && <div className="rail-more muted small" aria-hidden="true">Swipe for more <Icon name="chevron-right" size={12} /></div>}
+      {/* Was a "Swipe for more" line under every rail — the same sentence five
+          times down one page, explaining a gesture the fade already implies.
+          The track masks its right edge while there is more to reach, which
+          says it without spending a line of type. */}
     </div>
   )
 }
@@ -412,14 +415,30 @@ export default function Home() {
       </div>
       <StudioHero />
 
-      {/* Three boxed stat tiles competed with the hero for the same glance and
-          read as a dashboard. The numbers still earn their place — they are the
-          only proof on the page that anyone else uses this — but as one quiet
-          line of type, not a second headline. */}
-      <p className="proof-line" role="note">
-        {proof.listings} listings · {proof.nearby > 0 ? proof.nearby : proof.vendors} vendors
-        {proof.nearby > 0 && state.profile.city ? ` near ${state.profile.city}` : ''} · {proof.shoots.toLocaleString('en-GB')} shoots supplied
-      </p>
+      {/* Three boxed stat tiles became a sentence, and a sentence is still
+          reading work for something the eye should take in one pass. Now it is
+          a number under a mark: the drawing carries the noun, so the words
+          "listings", "vendors" and "shoots supplied" can go. Each mark keeps
+          its meaning in a label for anyone who can't see it. */}
+      <div className="proof-row" role="note">
+        <span className="proof-item">
+          <Icon name="stack" size={15} aria-hidden="true" />
+          <b>{proof.listings}</b>
+          <span className="sr-only">listings available</span>
+        </span>
+        <span className="proof-item">
+          <Icon name="store" size={15} aria-hidden="true" />
+          <b>{proof.nearby > 0 ? proof.nearby : proof.vendors}</b>
+          <span className="sr-only">
+            vendors{proof.nearby > 0 && state.profile.city ? ` near ${state.profile.city}` : ''}
+          </span>
+        </span>
+        <span className="proof-item">
+          <Icon name="clapperboard" size={15} aria-hidden="true" />
+          <b>{proof.shoots.toLocaleString('en-GB')}</b>
+          <span className="sr-only">shoots supplied</span>
+        </span>
+      </div>
 
       {/* Above the jump bar because it's the one thing on this page that's only
           true this month. Nothing renders out of season — an empty slot beats a
@@ -430,9 +449,11 @@ export default function Home() {
           onClick={() => { buzz(); go({ name: 'browse', ...promo.target }) }}
         >
           <Icon name={promo.icon} size={22} className="season-promo-ico" />
+          {/* The blurb explained the season in two lines above a call to action
+              that already says what happens next. Title and destination are the
+              whole message; the explanation lives on the page it opens. */}
           <span className="season-promo-text">
             <span className="season-promo-title">{promo.title}</span>
-            <span className="muted small">{promo.blurb}</span>
           </span>
           <span className="season-promo-cta">{promo.cta} <Icon name="arrow-right" size={13} /></span>
         </button>
@@ -451,7 +472,6 @@ export default function Home() {
                 <Icon name="cart" size={18} />
                 <span className="continue-text">
                   <b>{cartCount} item{cartCount > 1 ? 's' : ''} in your cart</b>
-                  <span className="muted small">Finish booking before someone else takes the dates</span>
                 </span>
                 <Icon name="chevron-right" size={16} />
               </button>
@@ -468,9 +488,7 @@ export default function Home() {
                 <Icon name="calendar" size={18} />
                 <span className="continue-text">
                   <b>{d.item.name}</b>
-                  <span className="muted small">
-                    {fmtDate(d.startDate)} – {fmtDate(d.endDate)} · dates ready, never booked
-                  </span>
+                  <span className="muted small">{fmtDate(d.startDate)} – {fmtDate(d.endDate)}</span>
                 </span>
                 <Icon name="chevron-right" size={16} />
               </button>
@@ -481,7 +499,6 @@ export default function Home() {
                 <Icon name="wallet" size={18} />
                 <span className="continue-text">
                   <b>{money(state.walletBalance)} credit</b>
-                  <span className="muted small">Applied at checkout · {state.points} points on top</span>
                 </span>
                 <Icon name="chevron-right" size={16} />
               </button>
@@ -531,7 +548,6 @@ export default function Home() {
           id="deals"
           title="Flash deals"
           icon="bolt"
-          sub="Limited-time offers from vendors"
           action={{ label: 'See all', onClick: () => go({ name: 'browse', dealsOnly: true }) }}
         >
           {deals.map((item, idx) => (
@@ -551,7 +567,6 @@ export default function Home() {
       <Rail
         id="kits"
         title="Production kits"
-        sub="One booking, one delivery, one discounted rate"
         action={{ label: 'Build your own', onClick: () => { buzz(); setBuilderOpen(true) } }}
       >
         {KITS.map((kit) => {
@@ -571,14 +586,14 @@ export default function Home() {
                 <b>{money(price)}</b>
                 <span className="muted small"> /day · {kitItems.length} items</span>
               </span>
-              <span className="kit-tile-save">Save {kit.percentOff}% vs {money(full)}</span>
+              <span className="kit-tile-save">−{kit.percentOff}%</span>
             </button>
           )
         })}
         <button className="kit-tile kit-tile-build" onClick={() => { buzz(); setBuilderOpen(true) }}>
           <span className="kit-tile-head"><Icon name="plus" size={16} /> <b className="kit-tile-name">Build your own</b></span>
-          <span className="muted small">Bundle any gear — 2 items 5%, 5 or more 18% off.</span>
-          <span className="kit-tile-save">Save up to 18%</span>
+          <span className="muted small">Bundle any gear</span>
+          <span className="kit-tile-save">up to −18%</span>
         </button>
       </Rail>
 
@@ -661,7 +676,6 @@ export default function Home() {
       <Rail
         id="vendors"
         title="Vendors near you"
-        sub={`${vendorList.length} rental houses · ${vendorList.reduce((s, v) => s + v.count, 0)} listings`}
       >
         {vendorList.map((v) => <VendorTile key={v.owner.id} vendor={v} />)}
       </Rail>
@@ -671,7 +685,6 @@ export default function Home() {
           id="recent"
           title="Recently viewed"
           icon="eye"
-          sub="Jump back to anything you were looking at"
           action={{ label: 'Wishlist', onClick: () => go({ name: 'browse', wishlistOnly: true }) }}
         >
           {recentlyViewed.slice(0, 10).map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
@@ -684,7 +697,7 @@ export default function Home() {
           <RailSkeleton />
         </div>
       ) : picks.length > 0 && (
-        <Rail id="foryou" title="For you" icon="sparkles" sub="Picked from what you've been browsing">
+        <Rail id="foryou" title="For you" icon="sparkles">
           {picks.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
         </Rail>
       )}
@@ -692,7 +705,7 @@ export default function Home() {
       <ListingPromo
         icon="truck"
         title="Own a studio, camera kit or grip truck?"
-        blurb="Become a vendor in 2 minutes — you keep 90% of every booking."
+        blurb="Keep 90% of every booking."
         cta="Start listing"
         onClick={() => go({ name: 'post' })}
       />
@@ -709,10 +722,7 @@ export default function Home() {
           aria-expanded={moreOpen}
           onClick={() => { buzz(); setMoreOpen((v) => !v) }}
         >
-          <span>
-            <b>{moreOpen ? 'Fewer ways to browse' : 'More ways to browse'}</b>
-            {!moreOpen && <span className="muted small"> · new arrivals, near your last shoot, trending, hidden gems</span>}
-          </span>
+          <b>{moreOpen ? 'Fewer ways to browse' : 'More ways to browse'}</b>
           <Icon name={moreOpen ? 'chevron-up' : 'chevron-down'} size={18} />
         </button>
       </div>
@@ -723,7 +733,7 @@ export default function Home() {
           listing date, so it's "recent", and some of it has been booked. */}
       {justListed.length > 0 && (
         <Deferred id="new">
-          <Rail id="new" title="Recently listed" icon="bulb" sub="The newest gear on Papa Rentals">
+          <Rail id="new" title="Recently listed" icon="bulb">
             {justListed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
           </Rail>
         </Deferred>
@@ -731,7 +741,7 @@ export default function Home() {
 
       {coldStart.length > 0 && (
         <Deferred id="starters">
-          <Rail id="starters" title="Popular starters" icon="sparkles" sub="Highest-rated gear in every department">
+          <Rail id="starters" title="Popular starters" icon="sparkles">
             {coldStart.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
           </Rail>
         </Deferred>
@@ -791,7 +801,7 @@ export default function Home() {
 
       {hiddenGems.length > 0 && (
         <Deferred id="gems">
-          <Rail id="gems" title="Hidden gems" icon="gift" sub="4.5+ stars, under 12 bookings so far">
+          <Rail id="gems" title="Hidden gems" icon="gift">
             {hiddenGems.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
           </Rail>
         </Deferred>
@@ -800,7 +810,7 @@ export default function Home() {
       {/* A grid, not a rail — it wraps to several rows, so it reserves more. */}
       <Deferred id="trending" minHeight={520}>
         <div className="section" id="trending">
-          <SectionHeader icon="flame" title="Trending on set" sub="What crews in your city booked most this week" />
+          <SectionHeader icon="flame" title="Trending on set" />
           <div className="grid">
             {trending.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
           </div>
