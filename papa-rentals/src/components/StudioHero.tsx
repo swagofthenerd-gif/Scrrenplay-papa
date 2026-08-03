@@ -231,8 +231,9 @@ export default function StudioHero() {
                     <span className="studio-tag deal"><Icon name="bolt" size={12} /> Up to {bestOff}% off today</span>
                   ) : totalDeals > 0 ? (
                     <span className="studio-tag"><Icon name="ticket" size={12} /> {totalDeals} live deals</span>
-                  ) : null}
-                  <span className="studio-tag"><Icon name={VALUE_PROPS[prop].icon} size={12} /> {VALUE_PROPS[prop].label}</span>
+                  ) : (
+                    <span className="studio-tag"><Icon name={VALUE_PROPS[prop].icon} size={12} /> {VALUE_PROPS[prop].label}</span>
+                  )}
                 </div>
               </div>
             </button>
@@ -289,26 +290,6 @@ export default function StudioHero() {
         </div>
       </div>
 
-      {/* filmstrip: jump to any station */}
-      <div className="studio-strip" role="tablist" aria-label="Studio stations">
-        <button
-          className={`studio-stop ${frame === 0 ? 'active' : ''}`}
-          onClick={() => jumpTo(0)}
-          aria-label="Wide shot"
-        >
-          <Icon name="clapperboard" size={16} />
-        </button>
-        {CATEGORIES.map((c, i) => (
-          <button
-            key={c.id}
-            className={`studio-stop ${frame === i + 1 ? 'active' : ''}`}
-            onClick={() => jumpTo(i + 1)}
-            aria-label={c.name}
-          >
-            <Icon name={c.icon} size={16} />
-          </button>
-        ))}
-      </div>
     </div>
   )
 }

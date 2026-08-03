@@ -415,49 +415,13 @@ export default function Home() {
       </div>
       <StudioHero />
 
-      {/* Three boxed stat tiles became a sentence, and a sentence is still
-          reading work for something the eye should take in one pass. Now it is
-          a number under a mark: the drawing carries the noun, so the words
-          "listings", "vendors" and "shoots supplied" can go. Each mark keeps
-          its meaning in a label for anyone who can't see it. */}
-      <div className="proof-row" role="note">
-        <span className="proof-item">
-          <Icon name="stack" size={15} aria-hidden="true" />
-          <b>{proof.listings}</b>
-          <span className="sr-only">listings available</span>
-        </span>
-        <span className="proof-item">
-          <Icon name="store" size={15} aria-hidden="true" />
-          <b>{proof.nearby > 0 ? proof.nearby : proof.vendors}</b>
-          <span className="sr-only">
-            vendors{proof.nearby > 0 && state.profile.city ? ` near ${state.profile.city}` : ''}
-          </span>
-        </span>
-        <span className="proof-item">
-          <Icon name="clapperboard" size={15} aria-hidden="true" />
-          <b>{proof.shoots.toLocaleString('en-GB')}</b>
-          <span className="sr-only">shoots supplied</span>
-        </span>
+      <div className="section">
+        <SectionHeader
+          title="Departments"
+          action={<button className="link-btn" onClick={() => go({ name: 'browse' })}>Browse all <Icon name="arrow-right" size={13} /></button>}
+        />
+        <DeptRow showFrom onPick={(id) => go({ name: 'browse', category: id })} />
       </div>
-
-      {/* Above the jump bar because it's the one thing on this page that's only
-          true this month. Nothing renders out of season — an empty slot beats a
-          banner for a season that ended. */}
-      {promo && (
-        <button
-          className="season-promo"
-          onClick={() => { buzz(); go({ name: 'browse', ...promo.target }) }}
-        >
-          <Icon name={promo.icon} size={22} className="season-promo-ico" />
-          {/* The blurb explained the season in two lines above a call to action
-              that already says what happens next. Title and destination are the
-              whole message; the explanation lives on the page it opens. */}
-          <span className="season-promo-text">
-            <span className="season-promo-title">{promo.title}</span>
-          </span>
-          <span className="season-promo-cta">{promo.cta} <Icon name="arrow-right" size={13} /></span>
-        </button>
-      )}
 
       {/* Wallet credit, an abandoned cart, a half-filled booking and saved
           searches each used to be their own full-width section with its own
@@ -534,13 +498,27 @@ export default function Home() {
         </div>
       )}
 
-      <div className="section">
-        <SectionHeader
-          title="Departments"
-          action={<button className="link-btn" onClick={() => go({ name: 'browse' })}>Browse all <Icon name="arrow-right" size={13} /></button>}
-        />
-        <DeptRow showFrom onPick={(id) => go({ name: 'browse', category: id })} />
-      </div>
+
+      {/* Sits under Departments rather than over them: it is the one thing on
+          this page that's only true this month, but it is merchandising, and it
+          was crowding the hero. Nothing renders out of season — an empty slot
+          beats a banner for a season that ended. */}
+      {promo && (
+        <button
+          className="season-promo"
+          onClick={() => { buzz(); go({ name: 'browse', ...promo.target }) }}
+        >
+          <Icon name={promo.icon} size={22} className="season-promo-ico" />
+          {/* The blurb explained the season in two lines above a call to action
+              that already says what happens next. Title and destination are the
+              whole message; the explanation lives on the page it opens. */}
+          <span className="season-promo-text">
+            <span className="season-promo-title">{promo.title}</span>
+          </span>
+          <span className="season-promo-cta">{promo.cta} <Icon name="arrow-right" size={13} /></span>
+        </button>
+      )}
+
 
       {/* ---- Promoted offers & packages come first ---- */}
       {deals.length > 0 && (
@@ -701,6 +679,32 @@ export default function Home() {
           {picks.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
         </Rail>
       )}
+
+      {/* Proof, not navigation — so it belongs at the foot with the other
+          marketing rather than between someone and the gear. A number under a
+          mark: the drawing carries the noun, so the words "listings",
+          "vendors" and "shoots supplied" can go. Each mark keeps its meaning
+          in a label for anyone who can't see it. */}
+      <div className="proof-row" role="note">
+        <span className="proof-item">
+          <Icon name="stack" size={15} aria-hidden="true" />
+          <b>{proof.listings}</b>
+          <span className="sr-only">listings available</span>
+        </span>
+        <span className="proof-item">
+          <Icon name="store" size={15} aria-hidden="true" />
+          <b>{proof.nearby > 0 ? proof.nearby : proof.vendors}</b>
+          <span className="sr-only">
+            vendors{proof.nearby > 0 && state.profile.city ? ` near ${state.profile.city}` : ''}
+          </span>
+        </span>
+        <span className="proof-item">
+          <Icon name="clapperboard" size={15} aria-hidden="true" />
+          <b>{proof.shoots.toLocaleString('en-GB')}</b>
+          <span className="sr-only">shoots supplied</span>
+        </span>
+      </div>
+
 
       <ListingPromo
         icon="truck"
