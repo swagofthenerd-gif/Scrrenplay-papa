@@ -450,6 +450,7 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 }
 .saved-search-x:active { background: var(--line); }
 
+.grid .card-skeleton { min-width: 0; }
 .card-skeleton {
   min-width: 200px; height: 230px; flex: none; border-radius: var(--r-lg);
   background: linear-gradient(90deg, var(--card) 25%, var(--line) 50%, var(--card) 75%);
@@ -1425,3 +1426,47 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
   border-top: 1px solid var(--line);
   width: 100%; display: flex; flex-direction: column; gap: 8px; align-items: center;
 }
+
+/* ---------- Proximity map (spaces) ---------- */
+.pmap { background: var(--card); border-radius: var(--r-lg); padding: 14px; box-shadow: var(--shadow-sm); }
+/* Square via aspect-ratio rather than a fixed height, so the rings stay circular
+   from a 320px phone up to the desktop column. */
+.pmap-stage { position: relative; width: 100%; max-width: 360px; margin: 0 auto; aspect-ratio: 1; }
+.pmap-rings { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pmap-ring { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 4 5; }
+.pmap-ring-label { fill: var(--muted); font-size: 9px; text-anchor: middle; font-weight: 700; }
+/* Decorative: it must never win a hit test against a pin sitting near it. */
+.pmap-you {
+  pointer-events: none;
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 30px; height: 30px; border-radius: var(--r-pill);
+  background: var(--ink); color: var(--bg);
+  display: flex; align-items: center; justify-content: center; z-index: 2;
+}
+/* 44px hit area even though the visible dot is smaller — pins sit close together
+   near the centre, where a thumb needs the extra margin most. */
+.pmap-pin {
+  position: absolute; transform: translate(-50%, -50%);
+  min-width: 44px; min-height: 44px; padding: 0 8px;
+  display: inline-flex; align-items: center; gap: 4px; justify-content: center;
+  background: var(--card); color: var(--ink);
+  border: 1.5px solid var(--accent); border-radius: var(--r-pill);
+  box-shadow: var(--shadow-sm); cursor: pointer; font-size: 11px; font-weight: 700;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+/* The icon and the km label are inside the button, so letting them take the
+   pointer only makes the tap target ambiguous. */
+.pmap-pin > * { pointer-events: none; }
+.pmap-pin:active { transform: translate(-50%, -50%) scale(0.92); }
+.pmap-pin:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pmap-pin-km { color: var(--muted); }
+.pmap-note { text-align: center; margin: 10px 0 0; }
+
+/* Watch offers for listings a filter excluded. Wraps rather than truncates: the
+   button is the point of the row, so it must never be the part that gets cut. */
+.watch-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.watch-row + .watch-row { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.watch-row .btn { flex: none; }

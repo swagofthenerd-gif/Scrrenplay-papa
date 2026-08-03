@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getItem } from '../data/catalog'
 import { CATEGORIES, ITEMS, getOwner } from '../data/catalog'
 import { Modal } from '../components/ui'
@@ -8,11 +8,19 @@ import { useStore } from '../store'
 import { daysBetween, dealActive, didYouMean, findConflict, fmtDate, fuzzyMatch, recommendedRate, refineTags, searchRank, todayISO, uid, weightedRating, buzz } from '../utils'
 import { ItemCard, ListingPromo, RatingCompact } from '../components/ui'
 import { DeptRow } from '../components/DeptRow'
+import { ProximityMap } from '../components/ProximityMap'
 import { Icon, type IconName } from '../components/icons'
 import type { CategoryId, Item } from '../types'
 
 const MAX_COMPARE = 3
 const FILTER_MEMORY_KEY = 'papa-browse-filters'
+/* How far above a price cap still counts as "nearly affordable" and is worth
+   offering to watch. Wide enough to catch the Rs 26k lens behind a Rs 25k cap,
+   tight enough that a Rs 90k camera never shows up as a near miss. */
+const NEAR_MISS = 1.5
+/* Watching is bulk here, so it needs a ceiling — a cap of Rs 5k in a big
+   department would otherwise arm dozens of alerts from one tap. */
+const MAX_WATCH = 8
 
 /** The filter half of a Browse view — what's worth remembering per department. */
 type FilterMemory = Pick<BrowseProps, 'verified' | 'instant' | 'offers' | 'minPrice' | 'maxPrice' | 'minCapacity' | 'maxKm' | 'hourly'>
@@ -74,6 +82,9 @@ export default function Browse(props: BrowseProps) {
   const [compareOpen, setCompareOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [dense, setDense] = useState(false)
+  /* Where a space is decides whether a crew can reach it by call time, so the
+     spaces department gets a map as an alternative to the grid. */
+  const [mapView, setMapView] = useState(false)
   /* Long result sets render in pages — 200 cards mounted at once is what makes
      the filter chips feel laggy on a mid-range Android. */
   const [shown, setShown] = useState(PAGE)
@@ -120,21 +131,38 @@ export default function Browse(props: BrowseProps) {
     if (verifiedOnly) list = list.filter((i) => owners.get(i.id)?.verified)
     if (instantOnly) list = list.filter((i) => i.instantBook)
     if (offersOnly) list = list.filter((i) => i.offersAccepted)
-    if (minPrice) list = list.filter((i) => i.pricePerDay >= minPrice)
-    if (maxPrice) list = list.filter((i) => i.pricePerDay <= maxPrice)
     if (minCapacity) list = list.filter((i) => (i.space?.capacity ?? 0) >= minCapacity)
     if (hourlyOnly) list = list.filter((i) => i.hourly)
     /* Sorting by nearest still lists a lens 40 km away at the bottom. Capping the
        radius is what actually answers "what can I pick up today". */
     if (maxKm) list = list.filter((i) => (owners.get(i.id)?.distanceKm ?? Infinity) <= maxKm)
+
+    /* Price and dates are held back to here so the near-misses stay addressable.
+       Folded into the filters above, an item a few hundred rupees over the cap
+       is indistinguishable from one that was never a match, and the only thing
+       left to offer is an empty grid. */
+    const eligible = list
+    let priced = eligible
+    if (minPrice) priced = priced.filter((i) => i.pricePerDay >= minPrice)
+    if (maxPrice) priced = priced.filter((i) => i.pricePerDay <= maxPrice)
+    /* Only items just above the cap: something at four times the budget is not a
+       near-miss, and watching it would produce a notification nobody wanted. */
+    const overCap = maxPrice
+      ? eligible
+          .filter((i) => i.pricePerDay > maxPrice && i.pricePerDay <= maxPrice * NEAR_MISS)
+          .sort((a, b) => a.pricePerDay - b.pricePerDay)
+      : []
+
     /* "Is it free the week I shoot" is the question every other filter is a
        proxy for. Checking it here beats opening ten items to find out. */
-    let busy = 0
+    let busyItems: Item[] = []
+    list = priced
     if (dateFrom && dateTo) {
-      const before = list.length
-      list = list.filter((i) => !findConflict(i.id, { start: dateFrom, end: dateTo }, state.orders, state.cart))
-      busy = before - list.length
+      busyItems = priced.filter((i) => findConflict(i.id, { start: dateFrom, end: dateTo }, state.orders, state.cart))
+      const busySet = new Set(busyItems.map((i) => i.id))
+      list = priced.filter((i) => !busySet.has(i.id))
     }
+    const busy = busyItems.length
     // distance is looked up once per item, not once per comparator call
     const dist = new Map<string, number>(list.map((i) => [i.id, owners.get(i.id)?.distanceKm ?? 0]))
     const sorted = [...list]
@@ -150,7 +178,7 @@ export default function Browse(props: BrowseProps) {
       case 'nearest': sorted.sort((a, b) => (dist.get(a.id) ?? 0) - (dist.get(b.id) ?? 0)); break
       default: sorted.sort((a, b) => b.timesRented - a.timesRented)
     }
-    return { sorted, busy }
+    return { sorted, busy, overCap, busyItems }
   }, [pool, haystacks, owners, category, query, dealsOnly, wishlistOnly, wishKey, sort, verifiedOnly, instantOnly, offersOnly, minPrice, maxPrice, minCapacity, maxKm, hourlyOnly, dateFrom, dateTo, state.orders, state.cart])
   const items = result.sorted
   const busyOnDates = result.busy
@@ -232,6 +260,26 @@ export default function Browse(props: BrowseProps) {
 
   useEffect(() => setShown(PAGE), [items])
 
+  /* Filtering is instant today because the catalogue is local, so the grid
+     swaps contents with no sign anything happened — on a slow phone that reads
+     as a tap that missed. A brief skeleton makes the change legible now, and is
+     where a real request's latency will sit once listings come from a server.
+     The signature deliberately excludes `sort`: reordering cards that are
+     already on screen is visible on its own. */
+  const filterKey = [category, query, dealsOnly, wishlistOnly, verifiedOnly, instantOnly, offersOnly, minPrice, maxPrice, minCapacity, maxKm, hourlyOnly, dateFrom, dateTo].join('|')
+  const [swapping, setSwapping] = useState(false)
+  const firstFilterPass = useRef(true)
+  useEffect(() => {
+    /* Skipped on mount, or every arrival at Browse would start on placeholders. */
+    if (firstFilterPass.current) {
+      firstFilterPass.current = false
+      return
+    }
+    setSwapping(true)
+    const t = setTimeout(() => setSwapping(false), 220)
+    return () => clearTimeout(t)
+  }, [filterKey])
+
   /* A search with no results is the only place the app learns about gear it does
      not carry. Recorded only when the query itself is what emptied the list —
      if filters are active the zero is about the filters, and blaming the search
@@ -298,6 +346,16 @@ export default function Browse(props: BrowseProps) {
           <h2>{titleIcon && <Icon name={titleIcon} className="h-ico" />}{title}</h2>
           <span className="muted small" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             {items.length} listings{activeFilters > 0 && ` · ${activeFilters} filter${activeFilters > 1 ? 's' : ''}`}
+            {category === 'studios' && items.length > 0 && (
+              <button
+                className="link-btn"
+                aria-pressed={mapView}
+                aria-label={mapView ? 'Switch to list of spaces' : 'Switch to map of spaces'}
+                onClick={() => { buzz(); setMapView((m) => !m) }}
+              >
+                <Icon name={mapView ? 'scroll' : 'pin'} size={14} /> {mapView ? 'List' : 'Map'}
+              </button>
+            )}
             <button
               className="link-btn"
               aria-pressed={dense}
@@ -459,7 +517,13 @@ export default function Browse(props: BrowseProps) {
           />
         )}
 
-        {items.length === 0 ? (
+        {swapping ? (
+          <div className={dense ? 'dense-list' : 'grid'} aria-busy="true" aria-label="Updating results">
+            {Array.from({ length: Math.min(Math.max(items.length, 1), 6) }, (_, i) => (
+              <div key={i} className="card-skeleton" />
+            ))}
+          </div>
+        ) : items.length === 0 ? (
           <div className="empty-state">
             <div className="big"><Icon name="camera" size={56} /></div>
             <p>
@@ -501,6 +565,8 @@ export default function Browse(props: BrowseProps) {
               </div>
             )}
           </div>
+        ) : mapView && category === 'studios' ? (
+          <ProximityMap items={items} onOpen={(id) => go({ name: 'item', id, from: dateFrom, to: dateTo })} />
         ) : (
           <div className={dense ? 'dense-list' : 'grid'}>
             {items.slice(0, shown).map((item, idx) => (
@@ -518,11 +584,16 @@ export default function Browse(props: BrowseProps) {
             ))}
           </div>
         )}
-        {shown < items.length && (
+        {!mapView && shown < items.length && (
           <button className="btn btn-outline" style={{ width: '100%', marginTop: 12 }} onClick={() => setShown((n) => n + PAGE)}>
             Show {Math.min(PAGE, items.length - shown)} more · {items.length - shown} left
           </button>
         )}
+
+        {/* The gear a filter just hid is the gear this person actually wants.
+            Dropping it silently makes the cap or the shoot window feel like the
+            end of the search, when both are things that change on their own. */}
+        <WatchOutOfRange overCap={result.overCap} busyItems={result.busyItems} maxPrice={maxPrice} />
       </div>
       {compare.length >= 1 && (
         <div className="compare-tray">
@@ -679,6 +750,83 @@ export default function Browse(props: BrowseProps) {
       )}
 
       {compareOpen && <CompareModal ids={compare} onClose={() => setCompareOpen(false)} onOpen={(id) => { setCompareOpen(false); go({ name: 'item', id }) }} />}
+    </div>
+  )
+}
+
+/* A way to stay in the running for gear a filter just excluded: the price cap and
+   the shoot window are both things that move, and the alert plumbing already
+   exists — it was only reachable one item at a time from the listing page. */
+function WatchOutOfRange({ overCap, busyItems, maxPrice }: { overCap: Item[]; busyItems: Item[]; maxPrice?: number }) {
+  const { state, dispatch } = useStore()
+  const { toast } = useNav()
+
+  const priceTargets = overCap.slice(0, MAX_WATCH)
+  const dateTargets = busyItems.slice(0, MAX_WATCH)
+  const watchedPrice = new Set(state.priceAlerts.map((a) => a.itemId))
+  const watchedAvail = new Set(state.availAlerts.map((a) => a.itemId))
+  const pricePending = priceTargets.filter((i) => !watchedPrice.has(i.id))
+  const datePending = dateTargets.filter((i) => !watchedAvail.has(i.id))
+
+  if (priceTargets.length === 0 && dateTargets.length === 0) return null
+
+  return (
+    <div className="panel" style={{ marginTop: 14 }}>
+      {priceTargets.length > 0 && maxPrice && (
+        <div className="watch-row">
+          <div style={{ minWidth: 0 }}>
+            <b style={{ fontSize: 14 }}>
+              {priceTargets.length} just above your {money(maxPrice)} cap
+            </b>
+            <div className="muted small">
+              From {money(priceTargets[0].pricePerDay)}/day — {priceTargets[0].name}
+              {priceTargets.length > 1 && ` and ${priceTargets.length - 1} more`}
+            </div>
+          </div>
+          {pricePending.length === 0 ? (
+            <span className="muted small chip-ico"><Icon name="check-circle" size={14} /> Watching</span>
+          ) : (
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                buzz()
+                /* TOGGLE_PRICE_ALERT is a toggle: firing it at an item already
+                   being watched would quietly cancel that watch instead. */
+                pricePending.forEach((i) => dispatch({ type: 'TOGGLE_PRICE_ALERT', itemId: i.id }))
+                toast(`Watching ${pricePending.length} — we’ll ping you if the price drops`)
+              }}
+            >
+              <Icon name="bell" size={14} /> Notify me if they drop
+            </button>
+          )}
+        </div>
+      )}
+
+      {dateTargets.length > 0 && (
+        <div className="watch-row">
+          <div style={{ minWidth: 0 }}>
+            <b style={{ fontSize: 14 }}>{dateTargets.length} booked on your dates</b>
+            <div className="muted small">
+              {dateTargets[0].name}
+              {dateTargets.length > 1 && ` and ${dateTargets.length - 1} more`} — free up as other shoots wrap
+            </div>
+          </div>
+          {datePending.length === 0 ? (
+            <span className="muted small chip-ico"><Icon name="check-circle" size={14} /> Watching</span>
+          ) : (
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                buzz()
+                datePending.forEach((i) => dispatch({ type: 'ADD_AVAIL_ALERT', itemId: i.id }))
+                toast(`Watching ${datePending.length} — we’ll tell you when they free up`)
+              }}
+            >
+              <Icon name="bell" size={14} /> Notify me when free
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

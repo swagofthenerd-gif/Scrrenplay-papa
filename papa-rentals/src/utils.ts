@@ -192,6 +192,20 @@ export function scarcityNote(itemId: string, orders: Order[], cart: Booking[]): 
   return `Booked ${booked} of the next ${SCARCE_WINDOW_DAYS} days`
 }
 
+/** Copies this vendor holds. Absent `units` means one: a space is a single room,
+    and the safe default when a listing doesn't say is never to oversell it. */
+export function stockOf(item: Item): number {
+  return Math.max(1, item.units ?? 1)
+}
+
+/** What's left to add right now — stock minus the same item already sitting in
+    the cart. Without the cart term the stepper caps each line independently and
+    two lines of 2 still walk out with 4 of a 3-unit item. */
+export function stockRemaining(item: Item, cart: Booking[]): number {
+  const held = cart.filter((b) => b.itemId === item.id).reduce((n, b) => n + b.qty, 0)
+  return Math.max(0, stockOf(item) - held)
+}
+
 export function findConflict(itemId: string, range: DateRange, orders: Order[], cart: Booking[]): DateRange | null {
   for (const r of unavailableRanges(itemId, orders, cart)) {
     if (rangesOverlap(range, r)) return r

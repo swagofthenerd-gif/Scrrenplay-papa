@@ -136,7 +136,7 @@ claiming an item, re-verify it in the code.
 29. [x] No "similar but cheaper" nudge on expensive items though `similarItems` is computed.
 30. [x] Reviews show a histogram but no filter by rating / photo reviews. *(star filter done; photo reviews outstanding)*
 31. [x] No delivery-time estimate ("van reaches DHA in ~40 min") to match the "delivered like a food order" promise.
-32. [ ] Quantity stepper allows qty without checking stock — vendor with 2 units should block qty 5.
+32. [x] Quantity stepper allows qty without checking stock — vendor with 2 units should block qty 5.
 
 ### Cards & visual
 33. [x] `ItemCard` is reused everywhere but compare overlay is bolted on only in Browse — fold compare into the card component.
@@ -155,13 +155,13 @@ claiming an item, re-verify it in the code.
 42. [x] Filter chips toggle on click but have no `aria-pressed`.
 43. [x] Back button calls `history.back()` — if Browse is the entry (deep link), back may leave the app. Fall back to Home.
 44. [x] Compare tray is fixed at bottom and can cover the last row — add bottom padding when tray is up.
-45. [ ] No loading state between filter changes — add optimistic skeletons for future server-backed data.
+45. [x] No loading state between filter changes — add optimistic skeletons for future server-backed data.
 
 ### Future-facing
 46. [x] Persist last-used filters per category.
-47. [ ] "Notify me when available / price drops" on out-of-range results.
-48. [ ] Map view for spaces (studios) — location is a primary decision factor.
-49. [ ] Log which filters produce zero results — a supply-gap signal.
+47. [x] "Notify me when available / price drops" on out-of-range results.
+48. [x] Map view for spaces (studios) — location is a primary decision factor.
+49. [x] Log which filters produce zero results — a supply-gap signal.
 50. [x] Single "clear all + reset sort" action.
 
 ---

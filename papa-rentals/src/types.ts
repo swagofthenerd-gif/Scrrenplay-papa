@@ -78,6 +78,10 @@ export interface Item {
   instantBook: boolean
   offersAccepted: boolean
   insuranceRequired?: boolean
+  /** How many identical copies this vendor actually holds. Absent means one —
+      a studio is a single room, and assuming otherwise would let someone book
+      a space twice over. */
+  units?: number
   hourly?: boolean // studios etc. can also be booked by the hour
   space?: SpaceInfo // present on studios & shoot locations
   flashDeal?: { percentOff: number; endsInHours: number }

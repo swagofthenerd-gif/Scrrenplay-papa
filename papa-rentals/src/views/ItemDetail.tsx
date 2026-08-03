@@ -7,7 +7,7 @@ import type { Offer, RentalUnit, TransportId } from '../types'
 import {
   INSURANCE_RATE, OFFER_TTL_MS, OPERATOR_FEE_PER_DAY, buzz, daysBetween, dealActive,
   findConflict, fmtCountdown, fmtDate, hourlyRate, money, nextAvailable, ratingHistogram,
-  recommendedRate, todayISO, toISO, uid, unavailableRanges, rangesOverlap,
+  recommendedRate, stockOf, stockRemaining, todayISO, toISO, uid, unavailableRanges, rangesOverlap,
 } from '../utils'
 import { Badge, DealCountdown, ItemArt, ItemCard, Modal, RatingCompact, Stars } from '../components/ui'
 import { Avatar, Icon } from '../components/icons'
@@ -79,6 +79,21 @@ export default function ItemDetail({ id, from, to }: { id: string; from?: string
   const invalidRange = unit === 'day' && endDate < startDate
   const shownReviews = starFilter == null ? item.reviews : item.reviews.filter((rv) => Math.round(rv.rating) === starFilter)
 
+  /* The stepper used to run to 5 for everything, so a vendor holding one Alexa
+     could be asked for five of them and only find out at handover. */
+  const stock = stockOf(item)
+  const remaining = stockRemaining(item, state.cart)
+  const soldOut = remaining === 0
+  /* A space is one room — the count is noise there, not a choice. */
+  const showQty = !item.space && stock > 1
+
+  /* Adding the same item in another tab shrinks what's left under a quantity
+     already chosen here; without this the page keeps offering a number the
+     vendor can no longer supply. */
+  useEffect(() => {
+    setQty((q) => (remaining > 0 ? Math.min(q, remaining) : 1))
+  }, [remaining])
+
   const wishlisted = state.wishlist.includes(id)
   const thread = state.chats[owner.id]
   const chatUnread = thread?.unread ?? 0
@@ -105,6 +120,10 @@ export default function ItemDetail({ id, from, to }: { id: string; from?: string
     }
     if (conflict) {
       toast('Those dates are already booked — try the next free date')
+      return
+    }
+    if (qty > remaining) {
+      toast(remaining === 0 ? `This vendor only has ${stock} — all are in your cart` : `Only ${remaining} left — reduce the quantity`)
       return
     }
     buzz()
@@ -346,16 +365,33 @@ export default function ItemDetail({ id, from, to }: { id: string; from?: string
               </div>
             </div>
 
-            <div className="form-row">
-              <label className="field">
-                Quantity
-                <span className="qty-stepper">
-                  <button onClick={() => setQty(Math.max(1, qty - 1))} aria-label="Decrease quantity">−</button>
-                  <b>{qty}</b>
-                  <button onClick={() => setQty(Math.min(5, qty + 1))} aria-label="Increase quantity">+</button>
-                </span>
-              </label>
-            </div>
+            {showQty && (
+              <div className="form-row">
+                <label className="field">
+                  Quantity
+                  <span className="qty-stepper">
+                    <button onClick={() => setQty(Math.max(1, qty - 1))} disabled={qty <= 1} aria-label="Decrease quantity">−</button>
+                    <b>{qty}</b>
+                    <button
+                      onClick={() => setQty(Math.min(remaining, qty + 1))}
+                      disabled={qty >= remaining}
+                      aria-label="Increase quantity"
+                    >
+                      +
+                    </button>
+                  </span>
+                  {/* Say the number rather than just stopping the stepper: a + that
+                      quietly does nothing reads as a broken button. */}
+                  <span className="muted small" style={{ display: 'block', marginTop: 4 }}>
+                    {soldOut
+                      ? `All ${stock} already in your cart`
+                      : remaining < stock
+                        ? `${remaining} of ${stock} left — the rest are in your cart`
+                        : `${stock} available from this vendor`}
+                  </span>
+                </label>
+              </div>
+            )}
 
             {conflict ? (
               <div className="conflict-note">
@@ -475,8 +511,14 @@ export default function ItemDetail({ id, from, to }: { id: string; from?: string
               </button>
             )}
 
-            <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={addToCart} disabled={Boolean(conflict) || invalidRange}>
-              {conflict ? <><Icon name="ban" size={14} /> Unavailable for these dates</> : item.instantBook ? <><Icon name="bolt" size={14} /> Add to cart — instant book</> : 'Add to cart — request booking'}
+            <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={addToCart} disabled={Boolean(conflict) || invalidRange || soldOut}>
+              {conflict
+                ? <><Icon name="ban" size={14} /> Unavailable for these dates</>
+                : soldOut
+                  ? <><Icon name="ban" size={14} /> All {stock} already in your cart</>
+                  : item.instantBook
+                    ? <><Icon name="bolt" size={14} /> Add to cart — instant book</>
+                    : 'Add to cart — request booking'}
             </button>
           </div>
           )}
@@ -489,8 +531,8 @@ export default function ItemDetail({ id, from, to }: { id: string; from?: string
             {negotiated && <div className="small" style={{ color: 'var(--green)', fontWeight: 700 }}><Icon name="handshake" size={14} /> Your deal locked in</div>}
             <b>{money(rate)}</b><span className="muted small"> /{unit}</span>
           </div>
-          <button className="btn btn-primary" disabled={Boolean(conflict) || invalidRange} onClick={addToCart}>
-            {conflict ? 'Unavailable' : <><Icon name="cart" size={14} /> Add to cart</>}
+          <button className="btn btn-primary" disabled={Boolean(conflict) || invalidRange || soldOut} onClick={addToCart}>
+            {conflict ? 'Unavailable' : soldOut ? 'All in cart' : <><Icon name="cart" size={14} /> Add to cart</>}
           </button>
         </div>
       )}
