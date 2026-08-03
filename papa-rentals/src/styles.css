@@ -339,6 +339,10 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 
 /* ---------- Sections ---------- */
 .section { margin-top: 28px; }
+/* Home now has a handful of sections rather than twenty-three, so each one can
+   afford the air that tells the eye where a section starts. */
+.home-view .section { margin-top: 36px; }
+.home-view .section-head h2 { font-size: 20px; letter-spacing: -0.4px; }
 .section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
 .section-head h2 { font-size: 19px; letter-spacing: -0.3px; font-weight: 700; }
 .section-head .section-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
@@ -1140,14 +1144,20 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 10px 2px 2px;
 }
 .studio-strip::-webkit-scrollbar { display: none; }
+/* Eleven bordered boxes under a photographic hero read as a toolbar and made
+   the top of Home look busy before a single listing appeared. This is a pager,
+   so it should look like one: no chrome until a stop is the current one. The
+   40px box stays — it is the touch target, and shrinking it to a dot would put
+   eleven sub-44px controls in a row. */
 .studio-stop {
   flex: none; width: 40px; height: 40px; border-radius: var(--r-sm); cursor: pointer;
-  border: 1px solid var(--line); background: var(--card); color: var(--muted);
+  border: 1px solid transparent; background: none; color: var(--muted); opacity: 0.55;
   display: inline-flex; align-items: center; justify-content: center;
-  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease, opacity var(--dur-fast) ease;
 }
 .studio-stop:active { transform: scale(0.92); }
-.studio-stop.active { background: var(--accent-soft); color: var(--accent-dark); border-color: var(--accent); }
+.studio-stop.active { background: var(--accent-soft); color: var(--accent-dark); border-color: var(--accent); opacity: 1; }
+.studio-stop:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---------- Services band ---------- */
 .svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; }
@@ -1203,8 +1213,83 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .h-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 10px; }
 
 /* Social-proof strip: real catalogue totals, not marketing filler. */
-.proof-band { display: flex; gap: 18px; padding: 10px 14px; margin: 10px 0 2px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
-.proof-band b { font-size: 15px; }
+/* Was three bordered stat tiles under the hero — a second headline arguing with
+   the first. One line of quiet type says the same thing and gets out of the way. */
+.proof-line { margin: 12px 2px 0; font-size: 12.5px; color: var(--muted); text-align: center; }
+
+/* Unfinished business — cart, a draft booking, wallet credit, saved searches —
+   as one object instead of four stacked sections with four headings. */
+.continue-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
+  overflow: hidden; box-shadow: var(--shadow-xs);
+}
+.continue-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 14px 16px; background: none; border: 0; cursor: pointer;
+  color: var(--ink); font: inherit; min-height: 60px;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.continue-row + .continue-row { border-top: 1px solid var(--line); }
+.continue-row:active { background: var(--card-2); }
+.continue-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.continue-text b { font-size: 14px; }
+/* Truncate the second line only: a wrapped explanation doubles the row height
+   and the rows stop scanning as one list. */
+.continue-text .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.continue-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--line); }
+
+/* Kit as a rail tile: the idea and the saving, with the detail page doing the
+   committing. Fixed width so a row of them scans as a set. */
+.kit-tile {
+  flex: none; width: 232px; min-width: 232px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  padding: 16px; text-align: left; cursor: pointer; font: inherit; color: var(--ink);
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.kit-tile:active { transform: scale(0.98); }
+.kit-tile-head { display: flex; align-items: center; gap: 8px; }
+.kit-tile-name { font-size: 15px; letter-spacing: -0.2px; }
+.kit-tile-price { margin-top: auto; font-size: 15px; }
+.kit-tile-save {
+  font-size: 11.5px; font-weight: 700; color: var(--accent-dark);
+  background: var(--accent-soft); border-radius: var(--r-pill); padding: 4px 10px;
+}
+.kit-tile-build { border-style: dashed; }
+
+/* Vendor at a glance, for a rail. The full storefront card still lives on the
+   vendors page, where its own gear rail belongs. */
+.vendor-tile {
+  flex: none; width: 176px; min-width: 176px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  padding: 16px; text-align: left; cursor: pointer; font: inherit; color: var(--ink);
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.vendor-tile:active { transform: scale(0.98); }
+.vendor-tile-name {
+  font-weight: 700; font-size: 14px; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.vendor-tile-sub { line-height: 1.3; }
+.vendor-tile-badge {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;
+  font-size: 11px; font-weight: 700; color: var(--green);
+}
+
+/* The one door to the long discovery tail. Full width and quiet — it is a
+   choice on the way out of the page, not another thing competing for the eye. */
+.more-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; padding: 16px; min-height: 56px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
+  color: var(--ink); font: inherit; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.more-toggle:active { background: var(--card-2); }
+.more-toggle > span { min-width: 0; }
 /* Refresh feedback: dim the content that is about to change. */
 .is-refreshing .section { opacity: 0.55; transition: opacity 0.2s ease; }
 
