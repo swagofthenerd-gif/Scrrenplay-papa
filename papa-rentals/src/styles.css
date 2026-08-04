@@ -11,11 +11,22 @@
   --accent-dark: #e5551a;
   --accent-soft: #fff1e8;
   --ink: #222222;
-  --muted: #6f6a63;
+  /* Darkened from #6f6a63 when the dot field landed. Muted text sits directly on
+     the page, so its worst case is a glyph over a dot rather than over plain
+     white — that measured 4.41:1 and failed AA. This is 4.82:1 on a dot and
+     5.86:1 off one, so the margin survives a slightly heavier dot later. */
+  --muted: #69645d;
   --line: #ece7e0;
   --line-strong: #ddd6cc;
-  --bg: #fdfbf8;
+  --bg: #ffffff;
   --card: #ffffff;
+  /* The page is pure white and gets its warmth from a dot field rather than from
+     tinting the paper. Cards stay flat white, so the dots are what separates a
+     card from the page — which is why the dot has to be visible enough to read
+     as texture and faint enough never to compete with text sitting near it. */
+  --dot: rgba(150, 112, 74, 0.16);
+  --dot-gap: 22px;
+  --dot-size: 1.6px;
   --card-2: #f6f3ee;
   --green: #16a34a;
   --green-soft: #eafcf1;
@@ -90,6 +101,10 @@
     --line-strong: #4a443c;
     --bg: #161310;
     --card: #211d18;
+    /* Pure white is a light-mode decision. Dark keeps its warm near-black and
+       inverts the dot to a dim cream, so the texture reads the same way without
+       the page turning into a light surface. */
+    --dot: rgba(226, 199, 164, 0.10);
     --card-2: #2b2620;
     --green: #34d074;
     --green-soft: #12301d;
@@ -115,7 +130,18 @@ html, body { margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background: var(--bg);
+  /* One declaration for the whole app. The page background is owned here and
+     nowhere else, which is what keeps every tab on the same material — a view
+     that painted its own would be the one screen that looked like a different
+     app. Full-bleed overlays opt in with .dot-field for the same reason.
+
+     A gradient rather than an image: no request, no decode, and nothing to go
+     missing on a cold cache. Left on the default scroll attachment on purpose —
+     background-attachment: fixed forces a full repaint on every scroll frame and
+     is exactly the kind of thing this WebView cannot afford. */
+  background-color: var(--bg);
+  background-image: radial-gradient(circle at center, var(--dot) var(--dot-size), transparent var(--dot-size));
+  background-size: var(--dot-gap) var(--dot-gap);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
@@ -239,9 +265,23 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 .search-pill .sp-ico { display: inline-flex; align-items: center; }
 .search-pill .sp-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Full-bleed surfaces that replace the page rather than sit on it. Without this
+   the search overlay is the one screen made of plain white while everything
+   behind it is dotted, which reads as a different app rather than a layer of
+   this one. Sticky strips deliberately do NOT get it: their background scrolls
+   with the strip while the page's dots scroll with the page, and the two grids
+   visibly slide past each other. */
+.dot-field {
+  background-color: var(--bg);
+  background-image: radial-gradient(circle at center, var(--dot) var(--dot-size), transparent var(--dot-size));
+  background-size: var(--dot-gap) var(--dot-gap);
+}
+
 /* ---------- Search overlay ---------- */
 .search-overlay {
-  position: fixed; inset: 0; z-index: 80; background: var(--bg);
+  /* No `background:` shorthand here — it would reset the background-image that
+     .dot-field sets and quietly leave this the one plain-white screen. */
+  position: fixed; inset: 0; z-index: 80;
   display: flex; flex-direction: column; animation: fadeUp 0.24s var(--ease-out);
 }
 .search-overlay-head {
