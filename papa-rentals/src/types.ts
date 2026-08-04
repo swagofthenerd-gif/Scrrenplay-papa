@@ -243,7 +243,17 @@ export interface UserReport {
   reason: string
   note: string
   date: string
-  status: 'under_review' | 'resolved'
+  /* "Reported" and "in dispute" are not the same thing and were the same value.
+     A report is one side telling us something happened; mediation is both sides
+     having been asked and the case being actively arbitrated. People chase the
+     second and wait out the first, so collapsing them made every open case feel
+     like it had been filed into a void. */
+  status: 'under_review' | 'mediation' | 'resolved'
+  /** When the case next changes hands. Drives the same heartbeat everything
+      else in this app runs on. */
+  nextAt?: number
+  /** Set once mediation opens, so the order can say what is being arbitrated. */
+  orderId?: string
 }
 
 export interface AppNotification {

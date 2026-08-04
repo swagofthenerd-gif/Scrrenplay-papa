@@ -236,6 +236,7 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
     const confirmed = log.find((e) => e.status === 'confirmed')
     return confirmed ? Math.round((confirmed.at - log[0].at) / 60000) : null
   }, [order.statusLog])
+  const orderDispute = state.reports.find((r) => r.orderId === order.id)
   const done = order.status === 'completed'
   const orderClaims = state.claims.filter((c) => c.orderId === order.id)
   const hasClaim = orderClaims.length > 0
@@ -308,7 +309,14 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
             {order.id} <Icon name="chevron-right" size={13} />
           </button>{' '}
           <span className="muted small">{new Date(order.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · {order.paymentMethod}</span>
-          {order.reported && <Badge tone="red"><Icon name="flag" size={14} /> Reported</Badge>}
+          {/* Reported and in-dispute are different situations and used to look
+              identical: one is us reading a form, the other is an active
+              arbitration with the vendor's side on the table. */}
+          {order.reported && (orderDispute?.status === 'mediation'
+            ? <Badge tone="purple"><Icon name="scale" size={14} /> In mediation</Badge>
+            : orderDispute?.status === 'resolved'
+              ? <Badge tone="green"><Icon name="check" size={14} /> Dispute resolved</Badge>
+              : <Badge tone="red"><Icon name="flag" size={14} /> Reported</Badge>)}
           {order.extendedDays ? <Badge tone="purple">+{order.extendedDays}d extended</Badge> : null}
         </div>
         <b>{money(order.total)}</b>

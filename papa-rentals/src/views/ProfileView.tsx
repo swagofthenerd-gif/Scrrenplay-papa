@@ -378,9 +378,21 @@ export default function ProfileView() {
             <div key={r.id} className="review">
               <div className="review-head">
                 <b>{r.caseNo} · {r.targetName}</b>
-                <Badge tone={r.status === 'under_review' ? 'orange' : 'green'}>{r.status === 'under_review' ? 'Under review' : 'Resolved'}</Badge>
+                <Badge tone={r.status === 'resolved' ? 'green' : r.status === 'mediation' ? 'purple' : 'orange'}>
+                  {r.status === 'under_review' ? 'Under review' : r.status === 'mediation' ? 'In mediation' : 'Resolved'}
+                </Badge>
               </div>
               <div className="muted small">{r.reason} · filed {r.date}</div>
+              {/* A case number and a colour tell you nothing about whether anyone
+                  is actually doing something. Each state says who currently has
+                  it and what happens next. */}
+              <div className="muted small">
+                {r.status === 'under_review'
+                  ? <>Trust &amp; Safety are reading your report. Nothing is needed from you yet.</>
+                  : r.status === 'mediation'
+                    ? <>Both sides are being heard — we've asked {r.targetName} for their account. Add evidence any time before it closes.</>
+                    : <>Closed. The decision and any refund are on this case.</>}
+              </div>
             </div>
           ))}
         </div>

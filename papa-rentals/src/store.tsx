@@ -521,7 +521,7 @@ function reducer(state: AppState, action: Action): AppState {
     case 'REPORT':
       return {
         ...state,
-        reports: [...state.reports, action.report],
+        reports: [...state.reports, { ...action.report, orderId: action.orderId, nextAt: Date.now() + 20000 }],
         blockedOwners: action.block && !state.blockedOwners.includes(action.block)
           ? [...state.blockedOwners, action.block]
           : state.blockedOwners,
@@ -800,6 +800,30 @@ function reducer(state: AppState, action: Action): AppState {
           }
         })
         next = { ...next, orders, notifications }
+      }
+
+      // 3b. reports move from "we've read it" to "both sides are being heard"
+      const dueReports = next.reports.filter((r) => r.nextAt && r.nextAt <= now && r.status !== 'resolved')
+      if (dueReports.length) {
+        changed = true
+        let notifications = next.notifications
+        const reports = next.reports.map((r) => {
+          if (!dueReports.includes(r)) return r
+          if (r.status === 'under_review') {
+            notifications = notify({ ...next, notifications }, {
+              icon: 'scale', title: `Case ${r.caseNo} is now in mediation`,
+              body: `We've asked ${r.targetName} for their account. You'll get the outcome here.`,
+              link: '#/profile',
+            })
+            return { ...r, status: 'mediation' as const, nextAt: now + 45000 }
+          }
+          notifications = notify({ ...next, notifications }, {
+            icon: 'check-circle', title: `Case ${r.caseNo} resolved`,
+            body: 'Mediation closed. Full decision is on the case.', link: '#/profile',
+          })
+          return { ...r, status: 'resolved' as const, nextAt: undefined }
+        })
+        next = { ...next, reports, notifications }
       }
 
       // 4. user listing lifecycle: verification, then a first renter inquiry
