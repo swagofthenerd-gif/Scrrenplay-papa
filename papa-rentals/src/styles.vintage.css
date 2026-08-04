@@ -36,70 +36,20 @@
   --ca-cyan: rgba(0, 196, 255, 0.38);
 }
 
-/* An anamorphic is soft in one direction only. The trap here is that a
-   text-shadow's blur radius is *radial* — offsetting a blurred copy sideways
-   gives you a soft round shadow sitting to one side, which is a drop shadow
-   wearing a disguise, not a smear.
-   
-   A directional blur has to be built out of sharp samples instead: several
-   replicas of the letterform stepped along x with zero blur radius on every
-   one of them. The softness then exists purely on the horizontal, the vertical
-   stays razor-sharp, and the trail runs left to right because the right-hand
-   samples are the heavy ones. currentColor keeps it honest across themes — the
-   smear is always the ink of the type it belongs to, never a grey underneath. */
+/* The type used to carry the grade too: every heading got a red/cyan
+   chromatic split plus a seven-sample directional smear, and prices and stat
+   numbers got a lighter version of the same. It read as messy rather than as
+   film — a title is the one thing on a screen that has to be legible first and
+   atmospheric second, and eight text-shadows under 17px type is a legibility
+   cost with no legibility return.
 
-/* One trail, reused. `--smudge` is how far it runs. */
+   The grade still exists, it just lives on the frame rather than on the words:
+   grain, corner smear and the anamorphic edge fringe all stay. Headings are now
+   set clean, and the display faces earn their character from weight and
+   tracking instead of from fringing.
 
-.section-head h2,
-.modal-head h3,
-.panel h3,
-h1, h2, h3 {
-  text-shadow:
-    calc(var(--ca) * -1) 0 0 var(--ca-cyan),
-    var(--ca) 0 0 var(--ca-red),
-    /* the trail, running right */
-    calc(var(--smudge) * 0.35) 0 0 color-mix(in srgb, currentColor 24%, transparent),
-    calc(var(--smudge) * 0.7)  0 0 color-mix(in srgb, currentColor 16%, transparent),
-    var(--smudge)              0 0 color-mix(in srgb, currentColor 10%, transparent),
-    calc(var(--smudge) * 1.4)  0 0 color-mix(in srgb, currentColor 5%, transparent),
-    /* and the shorter one it came from */
-    calc(var(--smudge) * -0.35) 0 0 color-mix(in srgb, currentColor 12%, transparent),
-    calc(var(--smudge) * -0.7)  0 0 color-mix(in srgb, currentColor 6%, transparent);
-}
-
-/* Display type takes a wider split and a halation bloom under it —
-   the glow a bright title throws on film stock. */
-.studio-title h1,
-.studio-title h2 {
-  --ca: 1.15px;
-  --smudge: 2.6px;
-  text-shadow:
-    calc(var(--ca) * -1) 0 0 var(--ca-cyan),
-    var(--ca) 0 0 var(--ca-red),
-    calc(var(--smudge) * 0.35) 0 0 color-mix(in srgb, currentColor 26%, transparent),
-    calc(var(--smudge) * 0.7)  0 0 color-mix(in srgb, currentColor 18%, transparent),
-    var(--smudge)              0 0 color-mix(in srgb, currentColor 11%, transparent),
-    calc(var(--smudge) * 1.4)  0 0 color-mix(in srgb, currentColor 6%, transparent),
-    calc(var(--smudge) * -0.35) 0 0 color-mix(in srgb, currentColor 13%, transparent),
-    calc(var(--smudge) * -0.7)  0 0 color-mix(in srgb, currentColor 7%, transparent),
-    /* halation last, so it sits under everything */
-    0 0 14px rgba(255, 226, 170, 0.5);
-}
-
-/* Prices and the big numbers are type too, just quieter about it. */
-.item-card-price b,
-.kit-tile-price b,
-.stat-tile .stat-num,
-.cta-price {
-  --ca: 0.45px;
-  --smudge: 1.2px;
-  text-shadow:
-    calc(var(--ca) * -1) 0 0 var(--ca-cyan),
-    var(--ca) 0 0 var(--ca-red),
-    calc(var(--smudge) * 0.4) 0 0 color-mix(in srgb, currentColor 18%, transparent),
-    calc(var(--smudge) * 0.8) 0 0 color-mix(in srgb, currentColor 10%, transparent),
-    calc(var(--smudge) * -0.4) 0 0 color-mix(in srgb, currentColor 8%, transparent);
-}
+   --ca, --smudge and --ca-red/--ca-cyan above are kept deliberately: the whole
+   treatment is one block to restore if it is ever wanted back. */
 
 /* ------------------------------------------------------------------
    2. Smudged corners — a fast lens wide open

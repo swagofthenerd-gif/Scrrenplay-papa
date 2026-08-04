@@ -56,10 +56,15 @@
   --r-pill: 999px;
   --radius: var(--r-md);
 
-  --shadow-xs: 0 1px 2px rgba(34, 30, 24, 0.05);
-  --shadow-sm: 0 1px 2px rgba(34, 30, 24, 0.06), 0 2px 8px rgba(34, 30, 24, 0.05);
-  --shadow-md: 0 2px 4px rgba(34, 30, 24, 0.05), 0 6px 16px rgba(34, 30, 24, 0.08);
-  --shadow-lg: 0 6px 12px rgba(34, 30, 24, 0.08), 0 16px 40px rgba(34, 30, 24, 0.14);
+  /* Deeper and warmer than they were. A white card on a plain tint only needed a
+     hairline to read as raised; on the leather dot field it has to separate from
+     a texture, and a shadow that faint just let the dots run up to the edge of
+     the card and stop. Tinted to the leather rather than to neutral grey — a
+     grey shadow on a warm ground reads as dirt under the card. */
+  --shadow-xs: 0 1px 2px rgba(74, 52, 34, 0.07);
+  --shadow-sm: 0 1px 2px rgba(74, 52, 34, 0.06), 0 4px 14px rgba(74, 52, 34, 0.09);
+  --shadow-md: 0 2px 6px rgba(74, 52, 34, 0.07), 0 10px 28px rgba(74, 52, 34, 0.12);
+  --shadow-lg: 0 8px 18px rgba(74, 52, 34, 0.10), 0 22px 48px rgba(74, 52, 34, 0.16);
   --shadow: var(--shadow-sm);
 
   --fs-xs: 11px;
@@ -123,8 +128,8 @@
     --paper-line: #423a2e;
     --ink-draw: #ddd4c2;
     --ink-draw-soft: #9d9384;
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.34);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.44), 0 6px 20px rgba(0, 0, 0, 0.36);
     --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 6px 12px rgba(0, 0, 0, 0.45), 0 16px 44px rgba(0, 0, 0, 0.5);
 }
@@ -163,7 +168,15 @@ body {
   overscroll-behavior-y: none;
 }
 button, input, select { font-family: inherit; touch-action: manipulation; }
-h1, h2, h3, h4 { margin: 0; }
+/* With the chromatic fringe off the type, headings carry themselves on weight
+   and tracking instead. Optical sizing means the tighter tracking belongs to the
+   larger sizes only — the same -0.6px that tidies a 26px title closes up a 15px
+   panel heading until the words touch. balance stops a two-word orphan on the
+   second line, which is most of what made these look untidy at 390px. */
+h1, h2, h3, h4 { margin: 0; text-wrap: balance; }
+h1 { letter-spacing: -0.6px; }
+h2 { letter-spacing: -0.4px; }
+h3 { letter-spacing: -0.2px; }
 .muted { color: var(--muted); }
 .nowrap { white-space: nowrap; }
 /* Prices sit in columns down a grid and across a rail; proportional digits make
@@ -994,7 +1007,7 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 }
 .wallet-card .balance { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
-.stat-tile { background: var(--card); border-radius: var(--r-md); padding: 14px; text-align: center; box-shadow: var(--shadow-xs); }
+.stat-tile { background: var(--card); border-radius: var(--r-md); padding: 14px; text-align: center; box-shadow: var(--shadow-sm); }
 .stat-tile .stat-num, .stat-tile > b { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; display: block; }
 /* Referrals and the public profile grew their own stat tile — same idea, but
    drawn with a border where every other surface in the app uses a shadow, so
@@ -1008,7 +1021,7 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .list-row {
   display: flex; align-items: center; justify-content: space-between; background: var(--card);
   border: 0; color: inherit; font: inherit; text-align: left;
-  border-radius: var(--r-md); padding: 15px 16px; margin-top: 10px; box-shadow: var(--shadow-xs); font-size: 14px;
+  border-radius: var(--r-md); padding: 15px 16px; margin-top: 10px; box-shadow: var(--shadow-sm); font-size: 14px;
   gap: 10px; min-height: 52px; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .list-row:active { transform: scale(0.98); }
