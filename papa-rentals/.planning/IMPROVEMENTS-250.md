@@ -348,7 +348,7 @@ claiming an item, re-verify it in the code.
 17. [x] "Offers you've made" and "Chats" show a count but tapping does nothing — dead ends.
 18. [x] Chats have `unreadTotal` but no inbox screen. *(`InboxView.tsx`)*
 19. [x] Apply the Dashboard's "actionable count" treatment to Chats/Offers.
-20. [ ] Wishlist appears here and in Browse — ensure one canonical place.
+20. [x] Wishlist appears here and in Browse — ensure one canonical place.
 
 ### Referral
 21. [x] Referral copies to clipboard, but `navigator.clipboard` often fails in Android WebView — add visible code + share-sheet fallback.
@@ -390,7 +390,7 @@ claiming an item, re-verify it in the code.
 ### Copy & clarity
 44. [x] "renter rating" — move the "this is how owners see you" explanation next to the stars.
 45. [x] "Filmmaker" fallback name is inconsistent with onboarding's "What should we call you?" — reuse the same default.
-46. [ ] Perks panel says perks apply "automatically" — make Cart's perk lines link back here so the loop is visible.
+46. [x] Perks panel says perks apply "automatically" — make Cart's perk lines link back here so the loop is visible.
 
 ### Future-facing
 47. [ ] Verification center (ID, phone, payment) that actually unlocks the promised "instant-book on premium gear".

@@ -687,8 +687,26 @@ export default function CartView() {
                 <div className="price-line"><span className="muted small" style={{ fontWeight: 800 }}>Discounts</span><span /></div>
               )}
               {t.promoDiscount > 0 && <div className={`price-line${flashPromo}`}><span>Promo discount</span><b className="credit">−{money(t.promoDiscount)}</b></div>}
-              {t.tierDiscount > 0 && <div className="price-line"><span><Icon name="medal" size={14} /> Gold perk (5% off)</span><b className="credit">−{money(t.tierDiscount)}</b></div>}
-              {t.vanPerk > 0 && <div className="price-line"><span><Icon name="medal" size={14} /> Free van delivery perk</span><b className="credit">−{money(t.vanPerk)}</b></div>}
+              {/* The perks panel on Profile says these apply "automatically", and
+                  here they duly appear with nothing tying them back to the tier
+                  that earned them — so the one place the loop pays off never
+                  points at the place that explains it. */}
+              {t.tierDiscount > 0 && (
+                <div className="price-line">
+                  <button className="perk-link" onClick={() => go({ name: 'profile' })}>
+                    <Icon name="medal" size={14} /> Gold perk (5% off)
+                  </button>
+                  <b className="credit">−{money(t.tierDiscount)}</b>
+                </div>
+              )}
+              {t.vanPerk > 0 && (
+                <div className="price-line">
+                  <button className="perk-link" onClick={() => go({ name: 'profile' })}>
+                    <Icon name="medal" size={14} /> Free van delivery perk
+                  </button>
+                  <b className="credit">−{money(t.vanPerk)}</b>
+                </div>
+              )}
               {t.pointsUsed > 0 && <div className={`price-line${flashPoints}`}><span>PapaPoints</span><b className="credit">−{money(t.pointsUsed)}</b></div>}
               {t.walletUsed > 0 && <div className={`price-line${flashWallet}`}><span>Wallet credit</span><b className="credit">−{money(t.walletUsed)}</b></div>}
               <div className={`price-line total${flashTotal}`} aria-live="polite"><span>Charged now</span><span>{money(t.total)}</span></div>
