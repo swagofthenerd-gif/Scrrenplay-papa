@@ -39,6 +39,14 @@ export default function ProfileView() {
   const [showOffers, setShowOffers] = useState(false)
   const [copied, setCopied] = useState(false)
   const pendingRequests = state.ownerBookings.filter((b) => b.status === 'pending').length
+  /* Hosting had a door to the dashboard and no number beside it, so the one
+     question a host opens this screen with — did it make anything — needed a
+     tap to answer. Counted from the bookings that actually completed or paid
+     out this calendar month; anything still pending is not money. */
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()
+  const earnedThisMonth = state.ownerBookings
+    .filter((b) => ['completed', 'paid_out'].includes(b.status) && (b.payoutAt ?? b.completesAt ?? b.requestedAt) >= monthStart)
+    .reduce((sum, b) => sum + Math.round(b.total * 0.9), 0)
   const chatThreads = Object.entries(state.chats).filter(([, t]) => t.messages.length > 0)
   const unreadTotal = chatThreads.reduce((s, [, t]) => s + t.unread, 0)
   const shownBalance = useCountUp(state.walletBalance)
@@ -122,10 +130,22 @@ export default function ProfileView() {
         </div>
       </div>
 
+      {/* role=group with a label ties the number to its noun. Read as three
+          loose nodes, a screen reader gives you "800", "PapaPoints" — and the
+          count-up animation means the first one is often mid-flight. */}
       <div className="stat-row">
-        <div className="stat-tile"><div className="stat-num"><Icon name="trophy" size={16} /> {shownPoints}</div><div className="muted small">PapaPoints</div></div>
-        <div className="stat-tile"><div className="stat-num"><Icon name="box" size={16} /> {state.orders.length}</div><div className="muted small">Orders</div></div>
-        <div className="stat-tile"><div className="stat-num"><Icon name="heart-filled" size={16} /> {state.wishlist.length}</div><div className="muted small">Wishlist</div></div>
+        <div className="stat-tile" role="group" aria-label={`${state.points} PapaPoints`}>
+          <div className="stat-num" aria-hidden="true"><Icon name="trophy" size={16} /> {shownPoints}</div>
+          <div className="muted small" aria-hidden="true">PapaPoints</div>
+        </div>
+        <div className="stat-tile" role="group" aria-label={`${state.orders.length} orders`}>
+          <div className="stat-num" aria-hidden="true"><Icon name="box" size={16} /> {state.orders.length}</div>
+          <div className="muted small" aria-hidden="true">Orders</div>
+        </div>
+        <div className="stat-tile" role="group" aria-label={`${state.wishlist.length} items wishlisted`}>
+          <div className="stat-num" aria-hidden="true"><Icon name="heart-filled" size={16} /> {state.wishlist.length}</div>
+          <div className="muted small" aria-hidden="true">Wishlist</div>
+        </div>
       </div>
 
       {nextTier && (
@@ -236,9 +256,8 @@ export default function ProfileView() {
       <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'dashboard' })}>
         <span><Icon name="chart" size={16} /> Host dashboard</span>
         <span className="muted">
-          {pendingRequests > 0
-            ? <><span className="count-pill">{pendingRequests} waiting</span>Requests</>
-            : <>Earnings &amp; requests</>}{' '}
+          {pendingRequests > 0 && <span className="count-pill">{pendingRequests} waiting</span>}
+          {earnedThisMonth > 0 ? <>{money(earnedThisMonth)} this month</> : <>Earnings &amp; requests</>}{' '}
           <Icon name="chevron-right" size={14} />
         </span>
       </button>

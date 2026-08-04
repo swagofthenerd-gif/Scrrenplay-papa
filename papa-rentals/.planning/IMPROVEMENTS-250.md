@@ -339,7 +339,7 @@ claiming an item, re-verify it in the code.
 
 ### Loyalty (PapaPoints / tiers)
 12. [x] Tier perks explained in a wall of muted text — make perks a scannable list with checkmarks.
-13. [ ] No points history (earned/redeemed).
+13. [x] No points history (earned/redeemed).
 14. [x] Gold/Silver thresholds duplicated in two panels (progress + perks) — consolidate.
 15. [ ] No "how to earn faster" prompts (refer, complete profile, first review).
 
@@ -358,8 +358,8 @@ claiming an item, re-verify it in the code.
 
 ### Listings / hosting
 25. [x] "Your listings" shows status badges but no inline quick actions (pause/edit/boost).
-26. [ ] No earnings snapshot in Profile — surface "Rs X earned this month".
-27. [ ] Verifying state has no ETA or "what's next".
+26. [x] No earnings snapshot in Profile — surface "Rs X earned this month".
+27. [x] Verifying state has no ETA or "what's next".
 28. [x] No way to un-pause a listing from here.
 
 ### Reports & safety
@@ -379,7 +379,7 @@ claiming an item, re-verify it in the code.
 
 ### Accessibility
 38. [x] Click-`div` `list-row`s aren't buttons — no keyboard/focus/role.
-39. [ ] Stat tiles convey meaning by icon — ensure number+label association is read correctly.
+39. [x] Stat tiles convey meaning by icon — ensure number+label association is read correctly.
 40. [ ] Referral toast is the only copy feedback — add an inline "Copied ✓" state for screen readers.
 41. [x] Progress bar has no `role="progressbar"` / aria values.
 
