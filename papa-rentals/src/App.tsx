@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavContext, browseTabView, useHashRouter, useNav } from './nav'
 import { StoreProvider, useStore } from './store'
-import { buzz, fmtTimeAgo } from './utils'
+import { buzz, fmtTimeAgo, NAME_FALLBACK } from './utils'
 import { getItem } from './data/catalog'
 import { ItemArt, Modal } from './components/ui'
 import { Icon, IconSketchFilter, LogoMark } from './components/icons'
@@ -103,7 +103,7 @@ function Onboarding() {
       </p>
       <label className="field">
         What should we call you?
-        <input value={name} placeholder="Your name" enterKeyHint="done" onChange={(e) => setName(e.target.value)} />
+        <input value={name} placeholder={NAME_FALLBACK} enterKeyHint="done" onChange={(e) => setName(e.target.value)} />
       </label>
       <div className="field" style={{ marginTop: 12 }}>
         Your city

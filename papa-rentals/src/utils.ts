@@ -457,6 +457,13 @@ export function highlightMatch(text: string, query: string): { text: string; hit
     that matters most. `text` is what gets rendered if the download route fails;
     for anything that isn't already HTML it is shown as preformatted text, which
     is at least selectable and shareable. */
+/* Three places invented their own fallback for a person who never typed a name:
+   the header said "Filmmaker", the avatar said "You", and onboarding offered
+   "Your name" as the placeholder — so the word you were shown while signing up
+   was not the word you were then called. One default, used everywhere. */
+export const NAME_FALLBACK = 'Filmmaker'
+export const displayName = (name?: string) => (name?.trim() ? name.trim() : NAME_FALLBACK)
+
 export function downloadOrShow(filename: string, body: string, mime: string) {
   const a = document.createElement('a')
   if (typeof a.download === 'string') {

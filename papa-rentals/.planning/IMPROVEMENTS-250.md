@@ -375,7 +375,7 @@ claiming an item, re-verify it in the code.
 34. [x] Many `list-row`s look identical whether tappable or not — give tappable rows a consistent chevron.
 35. [ ] Wallet card, stat tiles and panels use different visual languages — align to one card system.
 36. [x] Perks paragraph mixes bold inline — convert to a definition list.
-37. [ ] Long city names / titles — verify truncation in the owner row.
+37. [x] Long city names / titles — verify truncation in the owner row.
 
 ### Accessibility
 38. [x] Click-`div` `list-row`s aren't buttons — no keyboard/focus/role.
@@ -388,8 +388,8 @@ claiming an item, re-verify it in the code.
 43. [ ] Tier-up should be celebrated when a purchase crosses a threshold — currently silent.
 
 ### Copy & clarity
-44. [ ] "renter rating" — move the "this is how owners see you" explanation next to the stars.
-45. [ ] "Filmmaker" fallback name is inconsistent with onboarding's "What should we call you?" — reuse the same default.
+44. [x] "renter rating" — move the "this is how owners see you" explanation next to the stars.
+45. [x] "Filmmaker" fallback name is inconsistent with onboarding's "What should we call you?" — reuse the same default.
 46. [ ] Perks panel says perks apply "automatically" — make Cart's perk lines link back here so the loop is visible.
 
 ### Future-facing

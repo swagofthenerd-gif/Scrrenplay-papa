@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { REFERRAL_BONUS, useStore } from '../store'
-import { GOLD_POINTS, SILVER_POINTS, buzz, fmtTimeAgo, money } from '../utils'
+import { GOLD_POINTS, SILVER_POINTS, buzz, fmtTimeAgo, money, displayName } from '../utils'
 import { Badge, ItemArt, Modal, Stars, useCountUp } from '../components/ui'
 import { Icon, Avatar, type IconName } from '../components/icons'
 
@@ -67,19 +67,25 @@ export default function ProfileView() {
 
       <div className="panel">
         <div className="owner-row">
-          <Avatar name={state.profile.name || 'You'} id="me" size={46} />
+          <Avatar name={displayName(state.profile.name)} id="me" size={46} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <b>{state.profile.name || 'Filmmaker'}{' '}
+            <b>{displayName(state.profile.name)}{' '}
               {state.profile.idVerified
                 ? <Badge tone="green"><Icon name="check" size={14} /> ID Verified</Badge>
                 : <Badge tone="default"><Icon name="shield" size={14} /> Unverified</Badge>}{' '}
               <Badge tone="purple">{tier}</Badge></b>
             <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <Icon name="pin" size={14} /> {state.profile.city} ·{' '}
+              <span className="ellipsis" style={{ maxWidth: '40%' }}><Icon name="pin" size={14} /> {state.profile.city}</span> ·{' '}
               {completed.length === 0 ? (
                 <>New renter — your first completed rental starts your score</>
               ) : (
-                <>renter rating <Stars value={myRating} size={12} /> {myRating.toFixed(1)} · {completed.length} completed</>
+                /* The explanation used to be a paragraph below the whole panel, with
+                   the phone and email rows between it and the stars it referred to —
+                   so the score read as a mark you were being given rather than the
+                   one owners are shown when you ask to book. */
+                <>
+                  what owners see: <Stars value={myRating} size={12} /> {myRating.toFixed(1)} · {completed.length} completed
+                </>
               )}
             </div>
             {(state.profile.phone || state.profile.email) && (
@@ -92,7 +98,7 @@ export default function ProfileView() {
           <button className="btn btn-outline btn-sm" onClick={() => setEditOpen(true)}>Edit</button>
         </div>
         <p className="muted small" style={{ marginBottom: state.profile.idVerified ? 0 : 10 }}>
-          Owners see your rating when you request bookings — a strong renter score unlocks instant-book on premium gear.
+          A strong renter score unlocks instant-book on premium gear.
         </p>
         {!state.profile.idVerified && (
           <div className="list-row" style={{ alignItems: 'center', gap: 10, margin: 0 }}>

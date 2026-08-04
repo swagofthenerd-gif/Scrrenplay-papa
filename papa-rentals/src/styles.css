@@ -1801,3 +1801,8 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
   padding: 10px 6px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
 }
 .ref-stat b { font-size: 17px; }
+
+/* City and vendor names are free text and both run long enough to push a row's
+   other half off screen. Used wherever a name shares a line with something that
+   must stay readable. */
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }
