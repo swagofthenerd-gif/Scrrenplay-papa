@@ -113,9 +113,15 @@ export default function ProfileView() {
           </div>
           <button className="btn btn-outline btn-sm" onClick={() => setEditOpen(true)}>Edit</button>
         </div>
-        <p className="muted small" style={{ marginBottom: verifiedCount(state.profile) === VERIFY_STEPS.length ? 0 : 10 }}>
+        <p className="muted small" style={{ marginBottom: 8 }}>
           A strong renter score unlocks instant-book on premium gear.
         </p>
+        {/* The rating has always been two-way, and the renter's half went nowhere
+            anyone could look — including the renter. */}
+        <button className="list-row" style={{ width: '100%', cursor: 'pointer', margin: 0 }} onClick={() => go({ name: 'publicProfile' })}>
+          <span><Icon name="user" size={16} /> See your public profile</span>
+          <span className="muted">What owners see <Icon name="chevron-right" size={14} /></span>
+        </button>
         {/* Verifying was a single button that set one flag nothing read. It is a
             three-step centre now, and the row reports real progress against it. */}
         {verifiedCount(state.profile) < VERIFY_STEPS.length && (
