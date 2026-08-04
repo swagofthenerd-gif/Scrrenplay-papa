@@ -42,13 +42,13 @@ export default function InboxView({ ownerId }: { ownerId?: string }) {
       ) : (
         threads.map(([ownerId, thread]) => {
           const last = thread.messages[thread.messages.length - 1]
-          const { name, kind } = threadPeer(state, ownerId)
+          const { name, subtitle, kind } = threadPeer(state, ownerId)
           return (
             <button key={ownerId} className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => setOpen(ownerId)}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                 <Avatar name={name} id={ownerId} size={38} />
                 <span style={{ minWidth: 0 }}>
-                  <b>{name}</b>{kind === 'driver' && <> <Badge tone="purple">Driver</Badge></>}
+                  <b>{name}</b>{kind === 'driver' && <> <Badge tone="purple">Driver</Badge></>}{kind === 'order' && <> <Badge tone="purple">{subtitle.replace('About order ', '')}</Badge></>}
                   <span className="muted small" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '52vw' }}>
                     {last?.from === 'me' ? 'You: ' : ''}{last?.text}
                   </span>
@@ -123,8 +123,8 @@ function Thread({ ownerId, onBack }: { ownerId: string; onBack: () => void }) {
           <b>{name}</b>
           <div className="muted small">{peer.subtitle}</div>
         </div>
-        {peer.kind === 'owner' && (
-          <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'vendor', id: ownerId })}>View vendor</button>
+        {peer.ownerId && (
+          <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'vendor', id: peer.ownerId! })}>View vendor</button>
         )}
         {peer.kind === 'driver' && driverPhone && (
           <a className="btn btn-outline btn-sm" href={`tel:${driverPhone.replace(/\s/g, '')}`}>

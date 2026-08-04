@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useState } from 'react'
 import { getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
-import { driverThreadId, useStore } from '../store'
+import { driverThreadId, orderThreadId, useStore } from '../store'
 import type { Order, OrderStatus } from '../types'
 import { buzz, downloadReceipt, fmtCountdown, fmtDate, money, shiftBooking, todayISO, uid } from '../utils'
 import { Badge, ItemArt, Modal, Stars } from '../components/ui'
@@ -240,7 +240,7 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
   /* One row per vendor: a cart can span several, and a single "message the vendor"
      silently picked whoever owned the first line. */
   for (const o of vendors) {
-    actions.push({ label: `Message ${o.name}`, icon: 'chat', run: () => go({ name: 'inbox', ownerId: o.id }) })
+    actions.push({ label: `Message ${o.name} about ${order.id}`, icon: 'chat', run: () => go({ name: 'inbox', ownerId: orderThreadId(order.id, o.id) }) })
   }
   if ((done || order.status === 'returned' || order.status === 'in_use') && claimableLeft > 0) {
     actions.push({

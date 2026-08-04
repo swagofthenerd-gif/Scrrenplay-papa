@@ -163,11 +163,23 @@ const SUPPORT_FALLBACK = 'I’ve opened a ticket for a human specialist — they
 export const DRIVER_THREAD = 'driver:'
 export const driverThreadId = (orderId: string) => `${DRIVER_THREAD}${orderId}`
 
+/* A vendor thread reached from an order is about that order. Globally there is
+   still one conversation per vendor — that is the right home for "do you have
+   this in stock" — but "the lens you sent has a loose mount" belongs to the
+   booking it is about, and dropping it into a thread that also holds three
+   months of availability questions is how it gets lost. */
+export const ORDER_THREAD = 'order:'
+export const orderThreadId = (orderId: string, ownerId: string) => `${ORDER_THREAD}${orderId}|${ownerId}`
+
 /** Who a thread id refers to. Three call sites derived this independently and the
     one in the reducer named support after a random vendor, because getOwner falls
     back to the first vendor for an id it doesn't recognise. */
-export function threadPeer(state: AppState, id: string): { name: string; subtitle: string; kind: 'support' | 'driver' | 'owner' } {
+export function threadPeer(state: AppState, id: string): { name: string; subtitle: string; kind: 'support' | 'driver' | 'order' | 'owner'; ownerId?: string } {
   if (id === 'support') return { name: 'Papa Support', subtitle: 'Replies 24/7', kind: 'support' }
+  if (id.startsWith(ORDER_THREAD)) {
+    const [orderId, ownerId] = id.slice(ORDER_THREAD.length).split('|')
+    return { name: getOwner(ownerId).name, subtitle: `About order ${orderId}`, kind: 'order', ownerId }
+  }
   if (id.startsWith(DRIVER_THREAD)) {
     const order = state.orders.find((o) => o.id === id.slice(DRIVER_THREAD.length))
     const d = order?.driver
@@ -178,7 +190,7 @@ export function threadPeer(state: AppState, id: string): { name: string; subtitl
     }
   }
   const o = getOwner(id)
-  return { name: o.name, subtitle: `Usually replies in ${o.responseMins} min`, kind: 'owner' }
+  return { name: o.name, subtitle: `Usually replies in ${o.responseMins} min`, kind: 'owner', ownerId: id }
 }
 
 /* A driver is mid-delivery with a phone in a van, so the replies are short and
@@ -202,8 +214,21 @@ function pickReply(ownerId: string, t: ChatThread): string {
     return SUPPORT_FALLBACK
   }
   if (ownerId.startsWith(DRIVER_THREAD)) return DRIVER_REPLIES[t.messages.length % DRIVER_REPLIES.length]
+  /* A thread attached to an order is about gear the person already has. Answering
+     it with "book today and I'll throw in a battery" reads as a vendor who has not
+     noticed they are mid-rental with you. */
+  if (ownerId.startsWith(ORDER_THREAD)) return ORDER_REPLIES[t.messages.length % ORDER_REPLIES.length]
   return OWNER_REPLIES[t.messages.length % OWNER_REPLIES.length]
 }
+
+const ORDER_REPLIES = [
+  'Thanks for flagging it — let me check what went out with this booking.',
+  'Sorry about that. Send a photo and I’ll sort it before your next shoot day.',
+  'Noted against this order. I can swap the unit tomorrow morning if that helps.',
+  'That accessory should have been in the case — I’ll get a replacement to you.',
+  'No problem extending, I’ll confirm the new return time on this booking.',
+  'All good on my side — the deposit hold releases as soon as I finish the check.',
+]
 
 const OWNER_REPLIES = [
   'Salaam! Yes, it’s available for those dates.',

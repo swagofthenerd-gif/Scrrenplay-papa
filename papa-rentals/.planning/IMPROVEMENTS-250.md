@@ -313,7 +313,7 @@ claiming an item, re-verify it in the code.
 44. [x] Reorder-from-history as a first-class flow.
 45. [x] "Share tracking" link so a producer can send status to their team.
 46. [x] Calendar export (.ics) for confirmed shoot dates.
-47. [ ] Per-order chat thread with the vendor, not just the owner globally.
+47. [x] Per-order chat thread with the vendor, not just the owner globally.
 48. [x] Post-shoot "return checklist" to reduce claims.
 49. [ ] Dispute/mediation state distinct from "reported".
 50. [ ] Log status-transition timestamps to later show real SLAs ("avg approval: 4 min").
