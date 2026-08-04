@@ -907,8 +907,12 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
 .stat-tile { background: var(--card); border-radius: var(--r-md); padding: 14px; text-align: center; box-shadow: var(--shadow-xs); }
 .stat-tile .stat-num { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+/* border:0 is load-bearing. Half of these rows are buttons, and a button with
+   no border declared takes the UA's `2px outset ButtonBorder` — which drew a
+   heavy outline around every tappable row and none around the rest. */
 .list-row {
   display: flex; align-items: center; justify-content: space-between; background: var(--card);
+  border: 0; color: inherit; font: inherit; text-align: left;
   border-radius: var(--r-md); padding: 15px 16px; margin-top: 10px; box-shadow: var(--shadow-xs); font-size: 14px;
   gap: 10px; min-height: 52px; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
@@ -1467,6 +1471,17 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .price-line.flash { animation: line-flash 0.8s var(--ease-out); border-radius: 6px; }
 
 .group-switch { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+
+/* The five headings that turned Profile from one flat stack into groups. Quiet
+   by design — they are signposts between the rows, not sections competing with
+   them. */
+.profile-group {
+  display: flex; align-items: center; gap: 7px;
+  margin: 26px 0 8px; font-size: 12px; font-weight: 800;
+  letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted);
+}
+.profile-group .icon { color: var(--muted); }
+.profile-group + .list-row, .profile-group + .panel { margin-top: 0; }
 
 /* A number you have to do something about, told apart from a number that is
    just information. Same treatment the host dashboard gives its queue. */

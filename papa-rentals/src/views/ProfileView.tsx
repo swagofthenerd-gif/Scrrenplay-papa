@@ -98,6 +98,21 @@ export default function ProfileView() {
         )}
       </div>
 
+      {/* Everything below used to be one flat stack of rows and panels, mixing
+          navigation with data with forms — a wallet card, then a link, then a
+          form, then a link. Five headings, and each row sits with the rows that
+          answer the same question. */}
+      <h3 className="profile-group"><Icon name="user" size={14} /> You</h3>
+      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'browse', wishlistOnly: true })}>
+        <span><Icon name="heart-filled" size={16} /> Your wishlist</span><span className="muted">{state.wishlist.length} items <Icon name="arrow-right" size={14} /></span>
+      </button>
+      <button className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => go({ name: 'settings' })}>
+        <span><Icon name="sliders" size={16} /> Settings</span>
+        <span className="muted">Notifications, payouts, privacy <Icon name="chevron-right" size={14} /></span>
+      </button>
+
+
+      <h3 className="profile-group"><Icon name="wallet" size={14} /> Money</h3>
       <div className="wallet-card">
         <div style={{ color: '#d6d3d1', fontSize: 13 }}><Icon name="wallet" size={14} /> Papa Wallet</div>
         <div className="balance">{money(shownBalance)}</div>
@@ -135,22 +150,28 @@ export default function ProfileView() {
         </div>
       )}
 
-      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'dashboard' })}>
-        <span><Icon name="chart" size={16} /> Host dashboard</span>
-        <span className="muted">
-          {pendingRequests > 0
-            ? <><span className="count-pill">{pendingRequests} waiting</span>Requests</>
-            : <>Earnings &amp; requests</>}{' '}
-          <Icon name="chevron-right" size={14} />
-        </span>
-      </button>
-      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'support' })}>
-        <span><Icon name="headset" size={16} /> Help Center</span><span className="muted">24/7 support <Icon name="arrow-right" size={14} /></span>
-      </button>
-
-      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'browse', wishlistOnly: true })}>
-        <span><Icon name="heart-filled" size={16} /> Your wishlist</span><span className="muted">{state.wishlist.length} items <Icon name="arrow-right" size={14} /></span>
-      </button>
+      {/* Perks were a paragraph of bolded fragments, and the two thresholds were
+          written out again after the progress panel above had already said them.
+          One list, ticked against the points actually held, with the numbers
+          coming from the same constants the checkout maths uses. */}
+      <div className="panel" style={{ marginTop: 14 }}>
+        <h3 style={{ fontSize: 15 }}><Icon name="trophy" size={16} /> Your perks</h3>
+        <p className="muted small" style={{ marginTop: 0 }}>1 point per Rs 100 spent · 1 point = Rs 1 at checkout.</p>
+        <ul className="perk-list">
+          {TIER_PERKS.map((perk) => {
+            const held = state.points >= perk.at
+            return (
+              <li key={perk.label} className={held ? 'held' : ''}>
+                <Icon name={held ? 'check-circle' : 'ban'} size={15} />
+                <span className="perk-text">
+                  <b>{perk.label}</b>
+                  <span className="muted small">{held ? 'Yours now' : `at ${perk.at.toLocaleString('en-GB')} pts`}</span>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
       <button
         className="list-row"
         style={{ cursor: 'pointer', width: '100%' }}
@@ -210,6 +231,54 @@ export default function ProfileView() {
           <span className="muted small">Rs 500 · unlocks on your first completed rental</span>
         </div>
       )}
+
+      <h3 className="profile-group"><Icon name="store" size={14} /> Hosting</h3>
+      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'dashboard' })}>
+        <span><Icon name="chart" size={16} /> Host dashboard</span>
+        <span className="muted">
+          {pendingRequests > 0
+            ? <><span className="count-pill">{pendingRequests} waiting</span>Requests</>
+            : <>Earnings &amp; requests</>}{' '}
+          <Icon name="chevron-right" size={14} />
+        </span>
+      </button>
+      <div className="panel" style={{ marginTop: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: 15 }}><Icon name="home" size={16} /> Your listings</h3>
+          <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'post' })}>+ List a space</button>
+        </div>
+        {state.myListings.length === 0 ? (
+          <p className="muted small" style={{ marginBottom: 0 }}>
+            Studios, rooftops, havelis, warehouses — post any space crews would shoot at and keep 90% of every booking.
+          </p>
+        ) : (
+          state.myListings.map((l) => (
+            <div
+              key={l.id}
+              style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--line)', cursor: 'pointer' }}
+              onClick={() => go({ name: 'item', id: l.id })}
+            >
+              <ItemArt item={l} size="thumb" />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ fontSize: 14 }}>{l.name}</b>
+                <div className="muted small">{money(l.pricePerDay)}/day · {l.space?.type}</div>
+              </div>
+              {l.pendingVerifyAt ? <Badge tone="orange"><Icon name="hourglass" size={14} /> Verifying — usually live within a day</Badge> : l.paused ? <Badge tone="red"><Icon name="pause" size={14} /> Paused</Badge> : <Badge tone="green"><Icon name="dot" size={14} className="ic-green" /> Live</Badge>}
+              {!l.pendingVerifyAt && (
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={(e) => { e.stopPropagation(); dispatch({ type: 'TOGGLE_LISTING_PAUSE', itemId: l.id }) }}
+                >
+                  {l.paused ? 'Resume' : 'Pause'}
+                </button>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+
+      <h3 className="profile-group"><Icon name="clock" size={14} /> Activity</h3>
       <button
         className="list-row"
         style={{ width: '100%', cursor: state.offers.length ? 'pointer' : 'default' }}
@@ -252,46 +321,6 @@ export default function ProfileView() {
           <Icon name="chevron-right" size={14} />
         </span>
       </button>
-      <button className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => go({ name: 'settings' })}>
-        <span><Icon name="sliders" size={16} /> Settings</span>
-        <span className="muted">Notifications, payouts, privacy <Icon name="chevron-right" size={14} /></span>
-      </button>
-
-      <div className="panel" style={{ marginTop: 14 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: 15 }}><Icon name="home" size={16} /> Your listings</h3>
-          <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'post' })}>+ List a space</button>
-        </div>
-        {state.myListings.length === 0 ? (
-          <p className="muted small" style={{ marginBottom: 0 }}>
-            Studios, rooftops, havelis, warehouses — post any space crews would shoot at and keep 90% of every booking.
-          </p>
-        ) : (
-          state.myListings.map((l) => (
-            <div
-              key={l.id}
-              style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--line)', cursor: 'pointer' }}
-              onClick={() => go({ name: 'item', id: l.id })}
-            >
-              <ItemArt item={l} size="thumb" />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <b style={{ fontSize: 14 }}>{l.name}</b>
-                <div className="muted small">{money(l.pricePerDay)}/day · {l.space?.type}</div>
-              </div>
-              {l.pendingVerifyAt ? <Badge tone="orange"><Icon name="hourglass" size={14} /> Verifying — usually live within a day</Badge> : l.paused ? <Badge tone="red"><Icon name="pause" size={14} /> Paused</Badge> : <Badge tone="green"><Icon name="dot" size={14} className="ic-green" /> Live</Badge>}
-              {!l.pendingVerifyAt && (
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={(e) => { e.stopPropagation(); dispatch({ type: 'TOGGLE_LISTING_PAUSE', itemId: l.id }) }}
-                >
-                  {l.paused ? 'Resume' : 'Pause'}
-                </button>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-
       {state.reports.length > 0 && (
         <div className="panel" style={{ marginTop: 14 }}>
           <h3 style={{ fontSize: 15 }}><Icon name="flag" size={16} /> Your reports</h3>
@@ -307,6 +336,12 @@ export default function ProfileView() {
         </div>
       )}
 
+
+      <h3 className="profile-group"><Icon name="headset" size={14} /> Support</h3>
+      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'support' })}>
+        <span><Icon name="headset" size={16} /> Help Center</span><span className="muted">24/7 support <Icon name="arrow-right" size={14} /></span>
+      </button>
+
       {state.blockedOwners.length > 0 && (
         <div className="panel" style={{ marginTop: 14 }}>
           <h3 style={{ fontSize: 15 }}><Icon name="ban" size={16} /> Blocked</h3>
@@ -321,28 +356,7 @@ export default function ProfileView() {
         </div>
       )}
 
-      {/* Perks were a paragraph of bolded fragments, and the two thresholds were
-          written out again here after the progress panel above had already said
-          them. One list, ticked against the points actually held, and the
-          numbers come from the same constants the checkout maths uses. */}
-      <div className="panel" style={{ marginTop: 14 }}>
-        <h3 style={{ fontSize: 15 }}><Icon name="trophy" size={16} /> Your perks</h3>
-        <p className="muted small" style={{ marginTop: 0 }}>1 point per Rs 100 spent · 1 point = Rs 1 at checkout.</p>
-        <ul className="perk-list">
-          {TIER_PERKS.map((perk) => {
-            const held = state.points >= perk.at
-            return (
-              <li key={perk.label} className={held ? 'held' : ''}>
-                <Icon name={held ? 'check-circle' : 'ban'} size={15} />
-                <span className="perk-text">
-                  <b>{perk.label}</b>
-                  <span className="muted small">{held ? 'Yours now' : `at ${perk.at.toLocaleString('en-GB')} pts`}</span>
-                </span>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
+
 
       {editOpen && <EditProfileModal onClose={() => setEditOpen(false)} />}
       {topUpOpen && <TopUpModal onClose={() => setTopUpOpen(false)} />}
