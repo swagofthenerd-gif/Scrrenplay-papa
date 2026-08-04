@@ -7,6 +7,7 @@ import { buzz, downloadReceipt, fmtCountdown, fmtDate, money, shiftBooking, toda
 import { Badge, ItemArt, Modal, Stars } from '../components/ui'
 import { Icon, type IconName } from '../components/icons'
 import { ReportModal } from './ItemDetail'
+import { TransitMap } from '../components/TransitMap'
 
 const STEPS: { id: OrderStatus; label: string; icon: IconName }[] = [
   { id: 'confirmed', label: 'Confirmed', icon: 'check' },
@@ -324,14 +325,16 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
 
       {order.status === 'in_transit' && order.driver && (
         <>
-          <div className="route" aria-hidden="true">
-            <Icon name="store" size={14} className="route-ico route-start" />
-            <Icon name="clapperboard" size={14} className="route-ico route-end" />
-            <svg viewBox="0 0 300 40" preserveAspectRatio="none">
-              <path d="M8 32 C 80 32, 90 8, 150 8 S 220 32, 292 32" fill="none" stroke="var(--line)" strokeWidth="3" strokeDasharray="6 5" strokeLinecap="round" />
-              <circle r="6" fill="var(--accent)" style={{ offsetPath: "path('M8 32 C 80 32, 90 8, 150 8 S 220 32, 292 32')" }} className="dot-anim" />
-            </svg>
-          </div>
+          {/* A multi-vendor order is one van doing a round, so naming only the
+              first pickup would be wrong. The distance is the longest leg — the
+              run isn't done until the furthest vendor has been collected. */}
+          <TransitMap
+            from={vendors.length > 1 ? `${vendors.length} pickups · ${vendors.map((v) => v.area).join(', ')}` : owner.area}
+            to={order.address}
+            distanceKm={Math.max(...vendors.map((v) => v.distanceKm))}
+            startedAt={order.statusAt}
+            arrivesAt={order.autoAdvanceAt}
+          />
           <div className="driver-card">
             <Icon name="driver" size={26} />
             <div style={{ minWidth: 0 }}>

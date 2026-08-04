@@ -256,7 +256,7 @@ claiming an item, re-verify it in the code.
 7. [ ] Same for auto-advance (`autoAdvanceAt`) — make simulated progression invisible to end users.
 
 ### Live tracking
-8. [ ] In-transit map is a decorative SVG path, not a real route — even a static map thumbnail with two pins feels more real.
+8. [x] In-transit map is a decorative SVG path, not a real route — even a static map thumbnail with two pins feels more real.
 9. [x] Driver PIN shown but no "copy PIN" or confirm-handover action.
 10. [ ] Driver "Call" is a `tel:` link — add in-app chat with the driver.
 11. [x] No live ETA countdown during transit.
