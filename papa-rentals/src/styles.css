@@ -1282,7 +1282,10 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 }
 .home-view .kit-tile { position: relative; }
 /* The page itself is the sheet everything is pinned to. */
-.home-view { background-image: radial-gradient(color-mix(in srgb, var(--ink-draw-soft) 9%, transparent) 1px, transparent 1px); background-size: 9px 9px; }
+/* Tight enough to read as a texture rather than as a grid of dots you can
+   count. Spread out it stopped being paper and started being a pattern; the
+   ink comes down a little to pay for the extra density. */
+.home-view { background-image: radial-gradient(color-mix(in srgb, var(--ink-draw-soft) 11%, transparent) 1px, transparent 1px); background-size: 5px 5px; }
 
 /* ---------- Services band ---------- */
 .svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; }
