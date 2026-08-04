@@ -71,3 +71,36 @@ export function VendorCard({ vendor, index }: { vendor: Vendor; index?: number }
     </div>
   )
 }
+
+/*
+ * The storefront card above carries a whole rail of a vendor's gear, which is
+ * right on a page about vendors and wrong on Home: six of them ran for several
+ * screens and buried everything below. This is the same door at a glanceable
+ * size — identity, trust, price floor — for use in a rail.
+ */
+export function VendorTile({ vendor }: { vendor: Vendor }) {
+  const { go } = useNav()
+  const { owner } = vendor
+  return (
+    <button
+      className="vendor-tile"
+      onClick={() => go({ name: 'vendor', id: owner.id })}
+      aria-label={`Open ${owner.name}, ${vendor.count} listings, from ${money(vendor.minPrice)} per day`}
+    >
+      <Avatar name={owner.name} id={owner.id} size={44} />
+      <span className="vendor-tile-name">{owner.name}</span>
+      <span className="vendor-tile-meta">
+        <RatingCompact rating={owner.rating} count={owner.ratingCount} />
+      </span>
+      {/* The count is in the label for anyone who needs it. On a 160px tile the
+          useful half of that sentence is the price floor. */}
+      <span className="vendor-tile-sub muted small nowrap">from {money(vendor.minPrice)}</span>
+      {(owner.superOwner || owner.verified) && (
+        <span className="vendor-tile-badge">
+          <Icon name={owner.superOwner ? 'crown' : 'check'} size={11} />
+          {owner.superOwner ? 'Super' : 'Verified'}
+        </span>
+      )}
+    </button>
+  )
+}

@@ -28,6 +28,14 @@
   --red-soft: #fdecec;
   --star: #f59e0b;
   --star-off: #d6d3d1;
+  /* The drawn surface. The hero was the only thing in the app made of paper and
+     pencil; naming the colours is what lets the rest of the page be made of the
+     same material instead of approximating it locally. */
+  --paper: #f7f2e8;
+  --paper-2: #efe8da;
+  --paper-line: #e2d9c6;
+  --ink-draw: #3d382f;
+  --ink-draw-soft: #7d766a;
 
   --r-sm: 12px;
   --r-md: 16px;
@@ -91,6 +99,11 @@
     --red: #f87171;
     --red-soft: #3a1a1a;
     --star-off: #4a443e;
+    --paper: #262019;
+    --paper-2: #2f2820;
+    --paper-line: #423a2e;
+    --ink-draw: #ddd4c2;
+    --ink-draw-soft: #9d9384;
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.4);
@@ -111,6 +124,14 @@ body {
 button, input, select { font-family: inherit; touch-action: manipulation; }
 h1, h2, h3, h4 { margin: 0; }
 .muted { color: var(--muted); }
+.nowrap { white-space: nowrap; }
+/* Prices sit in columns down a grid and across a rail; proportional digits make
+   those columns wobble by a pixel or two per row, which is exactly the kind of
+   thing that reads as "unfinished" without anyone being able to name it. */
+.item-card-price, .kit-tile-price, .vendor-tile-sub, .proof-item,
+.price-line, .cta-price, .deal-ribbon, .studio-title h2 {
+  font-variant-numeric: tabular-nums;
+}
 .small { font-size: 12px; }
 mark { background: var(--accent-soft); color: var(--accent-dark); border-radius: 3px; padding: 0 1px; }
 
@@ -126,7 +147,7 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 .badge .icon, .btn .icon, .filter-chip .icon, .link-btn .icon, .slot-chip .icon,
 .hero-badges .icon, .price-line .icon, .status-banner .icon, .offer-status .icon,
 .section-sub .icon, .muted .icon, .cta-price .icon { vertical-align: -0.15em; }
-.h-ico { vertical-align: -0.18em; margin-right: 1px; color: var(--accent); }
+.h-ico { vertical-align: -0.18em; margin-right: 1px; color: var(--muted); }
 .chip-ico, .row-ico { display: inline-flex; align-items: center; gap: 6px; }
 .cmp-name { display: inline-flex; align-items: center; gap: 6px; }
 /* "Frame & Fable Co." wrapped to three lines on a narrow card and pushed the
@@ -186,7 +207,14 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 }
 .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 7px; }
 .logo span { color: var(--accent); }
-@media (max-width: 560px) { .logo .logo-word { display: none; } }
+/* On a phone the wordmark is the first thing to go: the search field is the
+   control people came for, and it was down to about ninety pixels. */
+@media (max-width: 560px) { .logo span { display: none; } }
+.sp-short { display: none; }
+@media (max-width: 560px) {
+  .sp-long { display: none; }
+  .sp-short { display: inline; }
+}
 .search-wrap { position: relative; flex: 1; min-width: 0; }
 .searchbox {
   display: flex; align-items: center; gap: 8px;
@@ -275,6 +303,13 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 }
 
 /* ---------- Bottom nav ---------- */
+/* Content used to run flush into the nav's hairline. A short fade above it
+   reads as the page continuing underneath rather than colliding with it. */
+.bottom-nav::before {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 100%; height: 24px;
+  pointer-events: none;
+  background: linear-gradient(to top, color-mix(in srgb, var(--bg) 92%, transparent), transparent);
+}
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
   background: color-mix(in srgb, var(--card) 94%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
@@ -339,13 +374,23 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 
 /* ---------- Sections ---------- */
 .section { margin-top: 28px; }
+/* Home now has a handful of sections rather than twenty-three, so each one can
+   afford the air that tells the eye where a section starts. */
+.home-view .section { margin-top: 36px; }
 .section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
-.section-head h2 { font-size: 19px; letter-spacing: -0.3px; font-weight: 700; }
+/* Eight of these run down Home. At 19/700 with an accent glyph they each asked
+   for as much attention as the gear underneath them; a heading only has to be
+   findable, and the cards are what people came to look at. */
+.section-head h2 { font-size: 17px; letter-spacing: -0.2px; font-weight: 700; }
 .section-head .section-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.section-actions { display: flex; align-items: center; gap: 2px; }
+/* Orange has one job on this page — the thing you press — and "See all" is not
+   it. Ink reads as navigation; the accent stays for actions and live deals. */
 .link-btn {
-  background: none; border: none; color: var(--accent); font-weight: 700; cursor: pointer;
+  background: none; border: none; color: var(--ink); font-weight: 700; cursor: pointer;
   font-size: 13px; padding: 8px 6px; min-height: 36px;
 }
+.link-btn .icon { color: var(--muted); }
 
 /* ---------- Category chips ---------- */
 .cat-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
@@ -372,21 +417,20 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
    same height as its neighbours instead of shortening the row. */
 /* ---------- Rail scroll arrows (pointer devices only) ---------- */
 .rail-track { position: relative; }
-.rail-arrow {
-  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
-  width: 34px; height: 34px; border-radius: var(--r-pill); cursor: pointer;
-  display: none; align-items: center; justify-content: center;
-  background: var(--card); color: var(--ink);
-  border: 1px solid var(--line); box-shadow: var(--shadow-md);
-}
-.rail-arrow.prev { left: 2px; }
-.rail-arrow.next { right: 2px; }
-.rail-arrow:active { transform: translateY(-50%) scale(0.92); }
 /* Only where there's a real cursor — on a touch screen these are dead weight
-   sitting on top of the cards you're trying to swipe. */
+   next to a rail you swipe. */
+.rail-nav { display: none; align-items: center; gap: 2px; }
 @media (hover: hover) and (pointer: fine) {
-  .rail-arrow { display: flex; }
+  .rail-nav { display: inline-flex; }
 }
+.rail-arrow {
+  width: 30px; height: 30px; border-radius: var(--r-pill); cursor: pointer; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; color: var(--ink); border: 1px solid transparent;
+  transition: background var(--dur-fast) ease, opacity var(--dur-fast) ease;
+}
+.rail-arrow:hover { background: var(--card-2); }
+.rail-arrow:disabled { opacity: 0.25; cursor: default; background: none; }
 
 .cat-chip .cat-from {
   font-size: 10px; font-weight: 600; color: var(--muted); line-height: 12px; margin-top: -3px;
@@ -424,7 +468,27 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 /* Home stacks a dozen rails. Skip paint for the ones below the fold — same
    trick as .order-card, and find-in-page still works. */
 .h-scroll { content-visibility: auto; contain-intrinsic-size: auto 250px; }
-.h-scroll .item-card { min-width: 200px; max-width: 220px; flex: none; }
+/* Two cards and a sliver, whatever the phone. At a fixed 200px the second card
+   was cut through the middle of a word — neither a card you can read nor a hint
+   that there is more, which is the one thing a peek exists to say. */
+.h-scroll .item-card { flex: none; width: min(calc((100% - 36px) / 2), 220px); min-width: 150px; }
+/* A rail card is a glance, not a spec sheet. The vendor, the distance and the
+   scarcity note are all real — they are on the card in Browse, where a grid has
+   the room and the intent to compare. */
+.h-scroll .item-card .owner-inline,
+.h-scroll .item-card .item-km,
+.h-scroll .item-card .item-scarcity { display: none; }
+.h-scroll .item-card .item-card-meta { margin-top: 2px; }
+/* The ribbon on the artwork already says −15%; repeating it as a struck price
+   is what pushed "Rs 23,800 /day" onto three lines in a 160px card. */
+.h-scroll .item-card .item-card-price s { display: none; }
+.h-scroll .item-card .item-card-price { white-space: nowrap; }
+.h-scroll .item-card .item-card-title { -webkit-line-clamp: 2; min-height: 2.7em; }
+
+/* Whatever the peek works out to, a flick lands a card flush against the left
+   edge instead of stopping mid-slice. */
+.h-scroll { scroll-snap-type: x proximity; scroll-padding-left: 2px; }
+.h-scroll > * { scroll-snap-align: start; }
 
 /* jump bar: sticks below the topbar so any rail is one tap away */
 .jump-bar {
@@ -450,6 +514,7 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 }
 .saved-search-x:active { background: var(--line); }
 
+.grid .card-skeleton { min-width: 0; }
 .card-skeleton {
   min-width: 200px; height: 230px; flex: none; border-radius: var(--r-lg);
   background: linear-gradient(90deg, var(--card) 25%, var(--line) 50%, var(--card) 75%);
@@ -470,7 +535,18 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 .art-card { aspect-ratio: 4 / 3; width: 100%; }
 .art-hero { aspect-ratio: 4 / 3; max-height: 340px; width: 100%; border-radius: var(--r-xl); }
 .art-thumb { width: 54px; height: 54px; border-radius: var(--r-sm); flex: none; }
-.item-art .art-glyph, .grad-fill .art-glyph { color: #fff; opacity: 0.92; position: relative; z-index: 0; }
+/* Paper, ruled like the storyboard sheet in the hero, with the drawing in
+   pencil on top of it. */
+.art-paper {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--paper-line) 70%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--paper-line) 70%, transparent) 1px, transparent 1px);
+  background-size: 26px 26px, 26px 26px;
+}
+/* A 26px rule inside a 54px thumbnail is a window frame, not paper. */
+.art-thumb.art-paper { background-size: 13px 13px, 13px 13px; }
+.item-art .art-glyph, .grad-fill .art-glyph { color: var(--ink-draw); opacity: 0.72; position: relative; z-index: 0; }
 .item-art .art-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.35s ease; }
 .item-art .art-photo.loaded { opacity: 1; }
 .item-art .art-skeleton { position: absolute; inset: 0; z-index: 1; }
@@ -483,6 +559,11 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 /* Approval is the quieter of the two — it is information, not a selling point,
    so it recedes rather than competing with the Instant badge across a grid. */
 .photo-badge.badge-approval { background: rgba(255, 255, 255, 0.78); color: #57534e; font-weight: 600; }
+/* The round controls on the artwork are white pills. On a dark card that made
+   two headlamps out of the heart and the compare toggle — brighter than the
+   photo they sit on. */
+:root[data-theme='dark'] .wish-btn,
+:root[data-theme='dark'] .cmp-btn { background: rgba(24, 20, 16, 0.82); color: #cfc8bf; }
 :root[data-theme='dark'] .photo-badge { background: rgba(24, 20, 16, 0.85); color: #f2efec; }
 :root[data-theme='dark'] .photo-badge.badge-approval { background: rgba(24, 20, 16, 0.7); color: #b8b1aa; }
 
@@ -505,6 +586,7 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 
 .deal-ribbon {
   position: absolute; left: 0; bottom: 0; right: 0; background: rgba(20, 14, 8, 0.72);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); color: #ffd7a1;
   font-size: 11px; font-weight: 700; padding: 6px 12px; font-variant-numeric: tabular-nums; z-index: 2;
 }
@@ -520,6 +602,8 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 .item-card-title { font-weight: 600; font-size: 14px; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
 .item-card-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12px; }
 .item-card-price { margin-top: 7px; font-size: 14px; }
+/* A price is one word. Only the parts around it may wrap. */
+.item-card-price s, .item-card-price b, .item-card-price .item-km { white-space: nowrap; }
 
 /* ---------- Filters ---------- */
 .filter-row { display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto; margin: 14px 0 4px; padding-bottom: 6px; scrollbar-width: none; }
@@ -829,6 +913,16 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   gap: 10px; min-height: 52px; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .list-row:active { transform: scale(0.98); }
+/* Two-state segmented control, for a preference where both options should be
+   visible at once rather than hidden behind a toggle you have to press to read. */
+.seg { display: inline-flex; background: var(--card-2); border-radius: var(--r-pill); padding: 3px; gap: 2px; }
+.seg-btn {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font: inherit;
+  font-size: 12.5px; font-weight: 700; color: var(--muted);
+  background: none; border: none; border-radius: var(--r-pill); padding: 7px 12px; min-height: 34px;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+.seg-btn.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow-xs); }
 .chev { color: var(--muted); font-weight: 700; }
 
 /* ---------- Modal / bottom sheet ---------- */
@@ -871,7 +965,16 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .kit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
 
 /* inline "list your space" promo card */
-.promo-card { flex-direction: row; align-items: center; gap: 14px; margin-top: 12px; }
+.promo-card {
+  flex-direction: row; align-items: center; gap: 14px; margin-top: 12px;
+  width: 100%; text-align: left; border: 1px solid var(--line); cursor: pointer;
+  font: inherit; color: var(--ink);
+}
+.promo-card:active { transform: scale(0.995); }
+.promo-cta {
+  flex: none; display: inline-flex; align-items: center; gap: 5px;
+  font-size: 13px; font-weight: 700; color: var(--accent-dark);
+}
 .promo-ico {
   width: 46px; height: 46px; border-radius: var(--r-md); flex: none;
   display: inline-flex; align-items: center; justify-content: center;
@@ -879,8 +982,14 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 }
 /* min-width:0 is what lets the blurb wrap instead of shoving the CTA off the
    card — a flex item defaults to its content width, and the copy is long. */
-.promo-body { flex: 1; min-width: 0; }
+.promo-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .promo-body b { font-size: 14px; }
+@media (max-width: 430px) {
+  /* The CTA drops under the copy rather than squeezing the headline to two
+     words per line. */
+  .promo-card { flex-wrap: wrap; }
+  .promo-cta { width: 100%; justify-content: flex-end; }
+}
 
 /* ---------- FAQ ---------- */
 .faq-q {
@@ -1035,6 +1144,14 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   background: #f6f0e4; /* storyboard paper — stays paper in dark mode by design */
   border: 1px solid #e2d9c6;
 }
+/* The drawing is drawn on white, so it cannot invert without becoming a
+   different drawing. In dark mode it stays paper and gets treated as what it
+   is: a lit board on a dark wall. Dimming it slightly and setting it in a warm
+   rim closes the seam that made it look like a sticker on the page. */
+:root[data-theme='dark'] .studio-stage {
+  border-color: #4a4136; filter: brightness(0.9) saturate(0.94);
+  box-shadow: 0 0 0 1px rgba(255, 240, 214, 0.06), var(--shadow-lg);
+}
 /* the drawing fills the whole panel now — the slug is written on it, not under it */
 .studio-art { position: absolute; inset: 0; overflow: hidden; }
 .studio-layer {
@@ -1042,12 +1159,12 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   will-change: transform; transform-origin: 0 0; pointer-events: none;
 }
 .studio-layer.back { opacity: 0.62; }
-/* the establishing wide shot: one drawn set, shown only on frame 0 and
-   dissolved away as the camera pushes in on the first station */
+/* the establishing wide shot — now the whole backdrop, drifting a little as the
+   cards are swiped so the panel reads as one place rather than a wallpaper */
 .studio-wide {
   position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background-position: center 62%; background-size: cover; background-repeat: no-repeat;
-  will-change: opacity, transform; transform-origin: 50% 70%;
+  will-change: transform; transform-origin: 50% 70%;
 }
 /* paper grain */
 .studio-stage::before {
@@ -1055,9 +1172,11 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   background-image: radial-gradient(rgba(120, 105, 80, 0.10) 1px, transparent 1px);
   background-size: 4px 4px;
 }
+/* Held, not animated: the vignette used to bloom as a station settled, but with
+   one held drawing it is simply how the panel is lit — and it is what keeps the
+   corners dark enough for the slug and the pager to sit on. */
 .studio-spot {
-  position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0;
-  transition: opacity var(--dur) var(--ease-out);
+  position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0.55;
   background:
     radial-gradient(circle at 50% 62%, rgba(255, 233, 190, 0.30) 0%, rgba(255, 233, 190, 0) 42%),
     radial-gradient(circle at 50% 58%, rgba(60, 48, 30, 0) 34%, rgba(60, 48, 30, 0.22) 100%);
@@ -1095,13 +1214,14 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   content: ''; position: absolute; left: -14px; right: -30px; top: -10px; bottom: -26px; z-index: -1;
   background: radial-gradient(120% 100% at 8% 26%, rgba(249, 244, 233, 0.94) 0%, rgba(249, 244, 233, 0.72) 46%, rgba(249, 244, 233, 0) 100%);
 }
-.studio-sc {
-  font-size: 10.5px; font-weight: 800; letter-spacing: 2.4px; color: #6b6357; text-transform: uppercase;
-}
-.studio-title h1 {
+.studio-title h1,
+.studio-title h2 {
   font-size: clamp(19px, 5.6vw, 25px); line-height: 1.14; letter-spacing: -0.6px; color: #2e2921;
   margin-top: 6px; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
+/* A news card leads with what kind of news it is, so its tag sits above the
+   headline rather than under it. */
+.studio-card .studio-tag { margin-bottom: 4px; }
 .studio-offers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .studio-tag {
   display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700;
@@ -1109,44 +1229,63 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   border-radius: 4px; padding: 4px 9px; transform: rotate(-1deg);
 }
 .studio-tag.deal { background: #fff1e8; color: var(--accent-dark); border-color: rgba(255, 107, 44, 0.4); transform: rotate(1deg); }
-.studio-hint { margin-top: 12px; font-size: 12px; font-weight: 700; color: #6b6357; display: flex; align-items: center; gap: 5px; }
 
-/* settled-station slug, written on the panel itself */
+/* the caption scrap, written on the panel itself */
 .studio-slug {
-  position: absolute; left: 20px; bottom: 20px; right: 20px; max-width: 300px; z-index: 6; pointer-events: none;
+  position: absolute; left: 20px; bottom: 20px; z-index: 6; pointer-events: none;
+  max-width: calc(100% - 40px);
   background: rgba(255, 253, 246, 0.9); border: 1.2px solid rgba(65, 59, 51, 0.34);
-  border-radius: 3px; padding: 7px 11px 9px; transform: rotate(-0.5deg);
+  border-radius: 3px; padding: 7px 11px; transform: rotate(-0.5deg);
   box-shadow: 0 2px 8px rgba(60, 48, 30, 0.13);
 }
-/* the pencil rule a director writes the slug on */
-.studio-slug::after {
-  content: ''; position: absolute; left: 11px; right: 11px; top: 25px; height: 1px;
-  background: rgba(65, 59, 51, 0.16);
-}
 
-.studio-caption-main { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin-top: 2px; color: #3b352d; }
-.studio-caption-main b { font-size: 16px; letter-spacing: -0.2px; color: #2e2921; }
-.studio-caption-main .muted { color: #6b6357; font-size: 12.5px; font-weight: 600; }
 .studio-caption-cta {
-  font-size: 11.5px; font-weight: 700; color: var(--accent-dark);
-  display: flex; align-items: center; gap: 4px; margin-top: 4px;
-  background: none; border: 0; padding: 4px 0; cursor: pointer; font-family: inherit;
+  font-size: 12px; font-weight: 800; color: var(--accent-dark);
+  display: flex; align-items: center; gap: 5px;
 }
-.studio-caption-cta:active { opacity: .6; }
+/* The hint on the establishing shot. It is one word and a drawn arrow because
+   there is nothing else worth saying about a card you are meant to push. */
+.studio-swipe {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 800; letter-spacing: 2.2px; color: #6b6357;
+}
+.studio-swipe .swipe-arrow { animation: swipe-nudge 2.4s var(--ease-out) infinite; }
+@keyframes swipe-nudge {
+  0%, 55%, 100% { transform: translateX(0); }
+  30% { transform: translateX(6px); }
+}
 
-/* filmstrip */
-.studio-strip {
-  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 10px 2px 2px;
+/* Pager, top-right: a count you can see without reading, kept clear of the
+   caption scrap in the opposite corner. */
+.studio-dots { position: absolute; top: 18px; right: 18px; z-index: 6; display: flex; gap: 5px; pointer-events: none; }
+.studio-dot {
+  width: 6px; height: 6px; border-radius: 50%; border: 1.2px solid rgba(65, 59, 51, 0.45);
+  transition: background var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
 }
-.studio-strip::-webkit-scrollbar { display: none; }
-.studio-stop {
-  flex: none; width: 40px; height: 40px; border-radius: var(--r-sm); cursor: pointer;
-  border: 1px solid var(--line); background: var(--card); color: var(--muted);
-  display: inline-flex; align-items: center; justify-content: center;
-  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+.studio-dot.on { background: #3b352d; transform: scale(1.15); }
+
+/* A pencil rule under every section title, the way the hero writes on the
+   panel. It is the cheapest way to carry one material through the whole page:
+   the heading sits on paper stock, not on a blank web surface. */
+.home-view .section-head { position: relative; padding-bottom: 9px; }
+.home-view .section-head::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: linear-gradient(to right, var(--paper-line) 0, var(--paper-line) 62%, transparent 100%);
 }
-.studio-stop:active { transform: scale(0.92); }
-.studio-stop.active { background: var(--accent-soft); color: var(--accent-dark); border-color: var(--accent); }
+/* Registration ticks, as on the hero's panel — two corners, not four, so a
+   grid of cards doesn't turn into a grid of brackets. */
+.home-view .item-card::after,
+.home-view .kit-tile::after {
+  content: ''; position: absolute; right: 7px; bottom: 7px; width: 9px; height: 9px;
+  border-right: 1.2px solid var(--paper-line); border-bottom: 1.2px solid var(--paper-line);
+  border-bottom-right-radius: 2px; pointer-events: none; z-index: 1;
+}
+.home-view .kit-tile { position: relative; }
+/* The page itself is the sheet everything is pinned to. */
+/* Tight enough to read as a texture rather than as a grid of dots you can
+   count. Spread out it stopped being paper and started being a pattern; the
+   ink comes down a little to pay for the extra density. */
+.home-view { background-image: radial-gradient(color-mix(in srgb, var(--ink-draw-soft) 11%, transparent) 1px, transparent 1px); background-size: 5px 5px; }
 
 /* ---------- Services band ---------- */
 .svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; }
@@ -1198,14 +1337,136 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 }
 
 /* Rail scroll affordance — a hint that there is more to the right. */
-.rail-more { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: -4px; opacity: 0.7; }
 .h-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 10px; }
 
 /* Social-proof strip: real catalogue totals, not marketing filler. */
-.proof-band { display: flex; gap: 18px; padding: 10px 14px; margin: 10px 0 2px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
-.proof-band b { font-size: 15px; }
+/* Visible only to screen readers: the marks below carry their meaning in the
+   drawing, but a drawing is nothing to a reader that can't see it. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Three numbers under three marks, centred. Was a sentence, and before that a
+   row of bordered tiles arguing with the hero for the same glance. */
+/* Three numbers floating between two cards read as debug output. On a strip of
+   paper, ruled the way the hero's caption scrap is, they read as a note. */
+.paper-strip {
+  background: var(--paper); border: 1px solid var(--paper-line); border-radius: var(--r-md);
+  padding: 10px 14px;
+}
+.proof-row { display: flex; justify-content: center; gap: 26px; margin: 16px 0 0; color: var(--ink-draw-soft); }
+.proof-item { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.proof-item b { color: var(--ink-draw); font-size: 14px; }
+
+/* Unfinished business — cart, a draft booking, wallet credit, saved searches —
+   as one object instead of four stacked sections with four headings. */
+.continue-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
+  overflow: hidden; box-shadow: var(--shadow-xs);
+}
+.continue-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 14px 16px; background: none; border: 0; cursor: pointer;
+  color: var(--ink); font: inherit; min-height: 60px;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.continue-row + .continue-row { border-top: 1px solid var(--line); }
+.continue-row:active { background: var(--card-2); }
+.continue-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.continue-text b { font-size: 14px; }
+/* Truncate the second line only: a wrapped explanation doubles the row height
+   and the rows stop scanning as one list. */
+.continue-text .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.continue-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--line); }
+
+/* Kit as a rail tile: the idea and the saving, with the detail page doing the
+   committing. Fixed width so a row of them scans as a set. */
+.kit-tile {
+  flex: none; width: 232px; min-width: 232px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  padding: 16px; text-align: left; cursor: pointer; font: inherit; color: var(--ink);
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.kit-tile:active { transform: scale(0.98); }
+.kit-tile-head { display: flex; align-items: center; gap: 8px; }
+.kit-tile-name { font-size: 15px; letter-spacing: -0.2px; }
+.kit-tile-price { margin-top: auto; font-size: 15px; }
+.kit-tile-save {
+  font-size: 11.5px; font-weight: 700; color: var(--accent-dark);
+  background: var(--accent-soft); border-radius: var(--r-pill); padding: 4px 10px;
+}
+.kit-tile-build { border-style: dashed; }
+
+/* Vendor at a glance, for a rail. The full storefront card still lives on the
+   vendors page, where its own gear rail belongs. */
+.vendor-tile {
+  flex: none; width: min(calc((100% - 36px) / 2), 200px); min-width: 150px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  padding: 16px; text-align: left; cursor: pointer; font: inherit; color: var(--ink);
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.vendor-tile:active { transform: scale(0.98); }
+.vendor-tile-name {
+  font-weight: 700; font-size: 14px; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.vendor-tile-sub { line-height: 1.3; }
+.vendor-tile-badge {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;
+  font-size: 11px; font-weight: 700; color: var(--green);
+}
+
+/* The one door to the long discovery tail. It was a full-width card holding
+   four words — the biggest, emptiest object on the page. A door does not need
+   a room of its own. */
+.more-row { display: flex; justify-content: center; }
+.more-toggle {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 12px 18px; min-height: var(--tap); border-radius: var(--r-pill);
+  background: none; border: 1px solid var(--line);
+  color: var(--ink); font: inherit; font-weight: 700; font-size: 13.5px; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.more-toggle:active { background: var(--card-2); }
+/* Everything used to arrive on the same frame. Staggering the first screens as
+   they mount reads as the page assembling itself rather than snapping into
+   place — and only the first eight, because anything below that is already
+   being scrolled to and would animate where nobody is looking. */
+.home-view > *:nth-child(-n + 8) { animation: fadeUp 0.5s var(--ease-out) backwards; }
+.home-view > *:nth-child(1) { animation-delay: 0ms; }
+.home-view > *:nth-child(2) { animation-delay: 50ms; }
+.home-view > *:nth-child(3) { animation-delay: 100ms; }
+.home-view > *:nth-child(4) { animation-delay: 150ms; }
+.home-view > *:nth-child(5) { animation-delay: 200ms; }
+.home-view > *:nth-child(6) { animation-delay: 250ms; }
+.home-view > *:nth-child(7) { animation-delay: 300ms; }
+.home-view > *:nth-child(8) { animation-delay: 350ms; }
+/* A press should cost the card its lift, not just its scale — the shadow
+   dropping is what makes it feel pushed rather than shrunk. */
+.item-card:active, .kit-tile:active, .vendor-tile:active, .promo-card:active {
+  box-shadow: var(--shadow-xs);
+}
+/* A flick that runs out of rail shouldn't drag the page sideways with it. */
+.h-scroll { overscroll-behavior-x: contain; }
+
 /* Refresh feedback: dim the content that is about to change. */
 .is-refreshing .section { opacity: 0.55; transition: opacity 0.2s ease; }
+
+/* A summary line that just changed. Green because every line that can move
+   here moves in the customer's favour — a discount, credit, or the total
+   coming down with it. */
+@keyframes line-flash {
+  0%   { background: color-mix(in srgb, var(--green) 20%, transparent); }
+  100% { background: transparent; }
+}
+.price-line.flash { animation: line-flash 0.8s var(--ease-out); border-radius: 6px; }
+
+.group-switch { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
 
 /* Compact results: one listing per row for scanning long result sets. */
 .dense-list { display: flex; flex-direction: column; gap: 8px; }
@@ -1314,26 +1575,6 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
   margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
 }
 
-/* Seasonal promo slot. Tinted rather than gradient-filled: it sits directly
-   under the hero, and a second loud block there competes with it. */
-.season-promo {
-  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer;
-  margin: 0 0 12px; padding: 12px 14px;
-  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
-  border-radius: var(--r-md);
-}
-.season-promo:active { transform: scale(0.995); }
-.season-promo-ico { flex: none; color: var(--accent); }
-.season-promo-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.season-promo-title { font-weight: 700; font-size: 14px; }
-.season-promo-cta { flex: none; display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 650; color: var(--accent); }
-@media (max-width: 520px) {
-  /* The CTA wraps under the text rather than squeezing the blurb to two words. */
-  .season-promo { flex-wrap: wrap; }
-  .season-promo-cta { width: 100%; justify-content: flex-end; }
-}
-
 /* Scarcity line on catalogue cards. Amber rather than red: it's a nudge about
    timing, not an error, and --red here would compete with the deal ribbon. */
 .item-scarcity {
@@ -1425,3 +1666,54 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
   border-top: 1px solid var(--line);
   width: 100%; display: flex; flex-direction: column; gap: 8px; align-items: center;
 }
+
+/* A rail that continues past the edge fades there instead of captioning itself.
+   Masked rather than a gradient overlay so it works on any background, light or
+   dark, without a colour to match. */
+.rail-track.has-more { -webkit-mask-image: linear-gradient(to right, #000 88%, transparent 100%); mask-image: linear-gradient(to right, #000 88%, transparent 100%); }
+.rail-track.has-prev.has-more { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 6%, #000 88%, transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 6%, #000 88%, transparent 100%); }
+.rail-track.has-prev:not(.has-more) { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 6%); mask-image: linear-gradient(to right, transparent 0, #000 6%); }
+
+/* ---------- Proximity map (spaces) ---------- */
+.pmap { background: var(--card); border-radius: var(--r-lg); padding: 14px; box-shadow: var(--shadow-sm); }
+/* Square via aspect-ratio rather than a fixed height, so the rings stay circular
+   from a 320px phone up to the desktop column. */
+.pmap-stage { position: relative; width: 100%; max-width: 360px; margin: 0 auto; aspect-ratio: 1; }
+.pmap-rings { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pmap-ring { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 4 5; }
+.pmap-ring-label { fill: var(--muted); font-size: 9px; text-anchor: middle; font-weight: 700; }
+/* Decorative: it must never win a hit test against a pin sitting near it. */
+.pmap-you {
+  pointer-events: none;
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 30px; height: 30px; border-radius: var(--r-pill);
+  background: var(--ink); color: var(--bg);
+  display: flex; align-items: center; justify-content: center; z-index: 2;
+}
+/* 44px hit area even though the visible dot is smaller — pins sit close together
+   near the centre, where a thumb needs the extra margin most. */
+.pmap-pin {
+  position: absolute; transform: translate(-50%, -50%);
+  min-width: 44px; min-height: 44px; padding: 0 8px;
+  display: inline-flex; align-items: center; gap: 4px; justify-content: center;
+  background: var(--card); color: var(--ink);
+  border: 1.5px solid var(--accent); border-radius: var(--r-pill);
+  box-shadow: var(--shadow-sm); cursor: pointer; font-size: 11px; font-weight: 700;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+/* The icon and the km label are inside the button, so letting them take the
+   pointer only makes the tap target ambiguous. */
+.pmap-pin > * { pointer-events: none; }
+.pmap-pin:active { transform: translate(-50%, -50%) scale(0.92); }
+.pmap-pin:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pmap-pin-km { color: var(--muted); }
+.pmap-note { text-align: center; margin: 10px 0 0; }
+
+/* Watch offers for listings a filter excluded. Wraps rather than truncates: the
+   button is the point of the row, so it must never be the part that gets cut. */
+.watch-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.watch-row + .watch-row { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.watch-row .btn { flex: none; }

@@ -8,7 +8,7 @@ import { Icon } from '../components/icons'
 const FAQS: [string, string][] = [
   ['How do deposits work?', 'Deposits are authorization holds, never charges. They release automatically within 24 hours of a damage-free return — you can watch the release status on each order card.'],
   ['What if I need to cancel?', 'Free cancellation up to 48 hours before your start date. Inside 48 hours a 10% fee applies. Refunds land in your Papa Wallet instantly.'],
-  ['What does Papa Damage Protection cover?', 'Accidental damage up to the item’s full value, for 8% of the rental. File a claim from the order — most claims resolve within a day, credited to your wallet.'],
+  ['What does Papa Protection cover?', 'Accidental damage up to the item’s full value, for 8% of the rental. File a claim from the order — most claims resolve within a day, credited to your wallet.'],
   ['How does “Offer your price” work?', 'On any listing with Offers OK, slide to your price. Offers at 92%+ of the recommended fare are usually accepted instantly. Accepted deals stay locked for 24 hours, even if you change dates.'],
   ['How do host payouts work?', 'You keep 90% of every booking. Payouts land in your wallet within 24 hours of a completed booking — track them in your Host dashboard.'],
   ['My delivery is late — what now?', 'The courier card on your order has a call button and your handover PIN. If the courier is 15+ minutes late, your delivery fee is auto-credited.'],

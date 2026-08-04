@@ -24,7 +24,8 @@ export type IconName =
   | 'star' | 'heart' | 'heart-filled'
   | 'check' | 'check-circle' | 'x' | 'x-circle' | 'warning' | 'siren'
   | 'hourglass' | 'clock' | 'refresh' | 'ban' | 'dot'
-  | 'chevron-left' | 'chevron-right' | 'chevron-down' | 'arrow-right' | 'arrow-up-right'
+  | 'chevron-left' | 'chevron-right' | 'chevron-down' | 'chevron-up' | 'arrow-right' | 'arrow-up-right'
+  | 'stack' | 'swipe'
   | 'undo' | 'skip' | 'play' | 'pause'
   | 'bolt' | 'handshake' | 'coins' | 'shield' | 'wallet' | 'trophy' | 'ticket'
   | 'gift' | 'crown' | 'medal' | 'card' | 'mobile' | 'cash' | 'calendar'
@@ -180,6 +181,7 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
   'chevron-left': <path d="M14.8 5.6 8.4 12l6.4 6.4" />,
   'chevron-right': <path d="m9.2 5.6 6.4 6.4-6.4 6.4" />,
   'chevron-down': <path d="m5.6 9.2 6.4 6.4 6.4-6.4" />,
+  'chevron-up': <path d="m5.6 14.8 6.4-6.4 6.4 6.4" />,
   'arrow-right': <path d="M4.4 12h15.2m-6.4-6.4L19.6 12l-6.4 6.4" />,
   'arrow-up-right': <path d="M7 17 17 7M9.4 7H17v7.6" />,
   undo: (
@@ -522,6 +524,25 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
       <path d="M15.4 5.4a3.6 3.6 0 0 1 0 6.4M17.6 14.8a6.2 6.2 0 0 1 3.6 5.2" />
     </>
   ),
+  /* Stacked cases — the count of things on the shelf. Three slabs in
+     perspective rather than a literal box, so it reads at 14px. */
+  stack: (
+    <>
+      <path {...T} d="M12 3.6 20.6 8 12 12.4 3.4 8Z" />
+      <path d="M12 3.6 20.6 8 12 12.4 3.4 8Z" />
+      <path d="m3.4 12 8.6 4.4L20.6 12" />
+      <path d="m3.4 16 8.6 4.4L20.6 16" />
+    </>
+  ),
+  /* A thumb arc over a card edge: the gesture, drawn once, instead of the
+     words "swipe for more" repeated under every rail. */
+  swipe: (
+    <>
+      <path {...T} d="M9.4 11.2V6.4a1.6 1.6 0 0 1 3.2 0v6.2l2.6-1a2.2 2.2 0 0 1 2.8 1.4l.8 2.4a3.6 3.6 0 0 1-2.2 4.4l-3.4 1.2a3.6 3.6 0 0 1-4.4-1.8L6.4 15a1.8 1.8 0 0 1 3-2Z" />
+      <path d="M9.4 11.2V6.4a1.6 1.6 0 0 1 3.2 0v6.2l2.6-1a2.2 2.2 0 0 1 2.8 1.4l.8 2.4a3.6 3.6 0 0 1-2.2 4.4l-3.4 1.2a3.6 3.6 0 0 1-4.4-1.8L6.4 15a1.8 1.8 0 0 1 3-2Z" />
+      <path d="M4.6 6.6 3 5m1.6 6.4H2.4M6.6 3 5.2 1.6" />
+    </>
+  ),
   store: (
     <>
       <path {...T} d="M4.4 10.6h15.2V19a1.6 1.6 0 0 1-1.6 1.6H6A1.6 1.6 0 0 1 4.4 19Z" />
@@ -734,7 +755,12 @@ export function Icon({
 
 /* ---------------- monogram avatar (replaces emoji owner avatars) ---------------- */
 export function Avatar({ name, id, size = 46 }: { name: string; id: string; size?: number }) {
-  const hue = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
+  /* The rolling hash alone put every vendor in the same colour: ids run o1, o2,
+     o3, so the hash landed one degree apart and a rail of avatars came out as
+     six identical greens. Spreading the result by a step co-prime with 360
+     turns those neighbours into different hues. */
+  const raw = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
+  const hue = (raw * 137) % 360
   const initials = name
     .split(/\s+/)
     .slice(0, 2)

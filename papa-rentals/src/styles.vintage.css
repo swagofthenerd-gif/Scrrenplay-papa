@@ -1,0 +1,204 @@
+/* ============================================================
+   Papa Rentals — filmic layer
+   ------------------------------------------------------------
+   Anamorphic chromatic fringing and a directional trail on the
+   type, 35mm grain over the whole app, warm stock, and the soft
+   smudged corners a fast vintage lens gives you wide open.
+
+   Everything here paints on top of the design system and nothing
+   here changes layout, so the whole grade comes off by removing
+   the import in src/main.tsx. Four dials at the top of :root.
+   ============================================================ */
+
+/* ------------------------------------------------------------------
+   1. Chromatic aberration on headings
+   ------------------------------------------------------------------
+   An anamorphic lens splits colour *horizontally* — the squeeze is on
+   one axis, so the fringing is too. Red trails one way, cyan the
+   other, and the split grows with the size of the type the way it
+   grows toward the edge of a frame. Two shadows, no blur on the tight
+   one: sharp fringe first, then a wider bloom for the big display
+   sizes only.
+------------------------------------------------------------------ */
+:root {
+  /* Three dials for the whole look. Everything below reads from these, so the
+     grade can be taken from "period" to "barely there" without hunting. */
+  --grain: 0.28;        /* silver density */
+  --smear: 2.6px;       /* how soft the corners go */
+  --wash: 0.5;          /* warmth of the stock */
+
+  --ca: 0.7px;          /* the colour split, at body-heading size */
+  --smudge: 2.1px;      /* how far the directional trail runs */
+  --ca-red: rgba(255, 42, 78, 0.42);
+  --ca-cyan: rgba(0, 196, 255, 0.38);
+}
+
+/* An anamorphic is soft in one direction only. The trap here is that a
+   text-shadow's blur radius is *radial* — offsetting a blurred copy sideways
+   gives you a soft round shadow sitting to one side, which is a drop shadow
+   wearing a disguise, not a smear.
+   
+   A directional blur has to be built out of sharp samples instead: several
+   replicas of the letterform stepped along x with zero blur radius on every
+   one of them. The softness then exists purely on the horizontal, the vertical
+   stays razor-sharp, and the trail runs left to right because the right-hand
+   samples are the heavy ones. currentColor keeps it honest across themes — the
+   smear is always the ink of the type it belongs to, never a grey underneath. */
+
+/* One trail, reused. `--smudge` is how far it runs. */
+
+.section-head h2,
+.modal-head h3,
+.panel h3,
+h1, h2, h3 {
+  text-shadow:
+    calc(var(--ca) * -1) 0 0 var(--ca-cyan),
+    var(--ca) 0 0 var(--ca-red),
+    /* the trail, running right */
+    calc(var(--smudge) * 0.35) 0 0 color-mix(in srgb, currentColor 24%, transparent),
+    calc(var(--smudge) * 0.7)  0 0 color-mix(in srgb, currentColor 16%, transparent),
+    var(--smudge)              0 0 color-mix(in srgb, currentColor 10%, transparent),
+    calc(var(--smudge) * 1.4)  0 0 color-mix(in srgb, currentColor 5%, transparent),
+    /* and the shorter one it came from */
+    calc(var(--smudge) * -0.35) 0 0 color-mix(in srgb, currentColor 12%, transparent),
+    calc(var(--smudge) * -0.7)  0 0 color-mix(in srgb, currentColor 6%, transparent);
+}
+
+/* Display type takes a wider split and a halation bloom under it —
+   the glow a bright title throws on film stock. */
+.studio-title h1,
+.studio-title h2 {
+  --ca: 1.15px;
+  --smudge: 2.6px;
+  text-shadow:
+    calc(var(--ca) * -1) 0 0 var(--ca-cyan),
+    var(--ca) 0 0 var(--ca-red),
+    calc(var(--smudge) * 0.35) 0 0 color-mix(in srgb, currentColor 26%, transparent),
+    calc(var(--smudge) * 0.7)  0 0 color-mix(in srgb, currentColor 18%, transparent),
+    var(--smudge)              0 0 color-mix(in srgb, currentColor 11%, transparent),
+    calc(var(--smudge) * 1.4)  0 0 color-mix(in srgb, currentColor 6%, transparent),
+    calc(var(--smudge) * -0.35) 0 0 color-mix(in srgb, currentColor 13%, transparent),
+    calc(var(--smudge) * -0.7)  0 0 color-mix(in srgb, currentColor 7%, transparent),
+    /* halation last, so it sits under everything */
+    0 0 14px rgba(255, 226, 170, 0.5);
+}
+
+/* Prices and the big numbers are type too, just quieter about it. */
+.item-card-price b,
+.kit-tile-price b,
+.stat-tile .stat-num,
+.cta-price {
+  --ca: 0.45px;
+  --smudge: 1.2px;
+  text-shadow:
+    calc(var(--ca) * -1) 0 0 var(--ca-cyan),
+    var(--ca) 0 0 var(--ca-red),
+    calc(var(--smudge) * 0.4) 0 0 color-mix(in srgb, currentColor 18%, transparent),
+    calc(var(--smudge) * 0.8) 0 0 color-mix(in srgb, currentColor 10%, transparent),
+    calc(var(--smudge) * -0.4) 0 0 color-mix(in srgb, currentColor 8%, transparent);
+}
+
+/* ------------------------------------------------------------------
+   2. Smudged corners — a fast lens wide open
+   ------------------------------------------------------------------
+   Real corner softness is a blur that only exists away from the
+   optical centre, so this is a backdrop blur wearing a radial mask:
+   nothing at all in the middle of the frame, rising to a genuine
+   smear in the corners. The vignette rides on the same layer because
+   on a real lens they are the same fault.
+------------------------------------------------------------------ */
+html::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  pointer-events: none;
+  backdrop-filter: blur(var(--smear)) saturate(1.08);
+  -webkit-backdrop-filter: blur(var(--smear)) saturate(1.08);
+  -webkit-mask-image: radial-gradient(ellipse 112% 88% at 50% 48%, transparent 44%, #000 100%);
+  mask-image: radial-gradient(ellipse 112% 88% at 50% 48%, transparent 44%, #000 100%);
+  background:
+    radial-gradient(ellipse 126% 100% at 50% 46%, transparent 50%, rgba(38, 26, 12, 0.26) 84%, rgba(24, 15, 6, 0.5) 100%);
+}
+
+/* Anamorphic edge fringe: the colour split that lives at the sides of
+   the frame rather than on the type. Screen blend so it lifts the
+   edge instead of dirtying it. */
+html::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0.5;
+  background:
+    linear-gradient(to right, rgba(0, 180, 255, 0.16) 0, transparent 7%),
+    linear-gradient(to left, rgba(255, 40, 80, 0.14) 0, transparent 7%),
+    /* the horizontal streak an anamorphic throws off a highlight */
+    linear-gradient(to bottom, transparent 0, rgba(120, 190, 255, 0.05) 46%, transparent 60%);
+}
+
+/* ------------------------------------------------------------------
+   3. Film grain
+   ------------------------------------------------------------------
+   feTurbulence baked into a data URI, tiled and drifted one frame at a
+   time. Steps() is the point: film grain does not slide, it is a new
+   field of silver every frame, so the shift has to jump rather than
+   glide. Oversized and translated so the tile seam never enters the
+   viewport.
+------------------------------------------------------------------ */
+body::after {
+  content: '';
+  position: fixed;
+  top: -60%;
+  left: -60%;
+  width: 220%;
+  height: 220%;
+  z-index: 101;
+  pointer-events: none;
+  opacity: var(--grain);
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='180' height='180' filter='url(%23g)'/></svg>");
+  background-size: 180px 180px;
+  animation: film-grain 0.5s steps(1) infinite;
+}
+
+/* Eight positions, so the field never repeats in a way the eye can
+   lock onto. */
+@keyframes film-grain {
+  0%   { transform: translate3d(0, 0, 0); }
+  12%  { transform: translate3d(-7%, 4%, 0); }
+  25%  { transform: translate3d(5%, -8%, 0); }
+  37%  { transform: translate3d(-9%, -3%, 0); }
+  50%  { transform: translate3d(8%, 6%, 0); }
+  62%  { transform: translate3d(-4%, 9%, 0); }
+  75%  { transform: translate3d(6%, -5%, 0); }
+  87%  { transform: translate3d(-6%, -7%, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+/* A warm stock. Kodak, not Fuji: the whole frame drifts a touch amber
+   and loses a little of its digital contrast in the shadows. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  opacity: var(--wash);
+  background: linear-gradient(180deg, rgb(255, 234, 201), rgb(255, 243, 222));
+}
+:root[data-theme='dark'] body::before {
+  mix-blend-mode: screen;
+  background: linear-gradient(180deg, rgba(94, 62, 24, 0.16), rgba(40, 28, 14, 0.1));
+}
+:root[data-theme='dark'] body::after { opacity: calc(var(--grain) * 1.25); mix-blend-mode: overlay; }
+
+/* Grain that boils is the whole effect, but it is also a full-screen
+   animation — off it goes when the phone asks for less motion. The
+   grain stays, it just stops moving. */
+@media (prefers-reduced-motion: reduce) {
+  body::after { animation: none !important; }
+}

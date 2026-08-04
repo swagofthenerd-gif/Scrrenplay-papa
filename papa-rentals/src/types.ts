@@ -16,7 +16,6 @@ export interface Category {
   id: CategoryId
   name: string
   icon: IconName
-  gradient: string
 }
 
 export interface Owner {
@@ -69,7 +68,7 @@ export interface Item {
   specs: string[]
   description: string
   tags: string[]
-  image?: string // hero/card photo URL; gradient+icon art is the fallback
+  image?: string // hero/card photo URL; the drawn art is the fallback
   images?: string[] // detail-page gallery (first entry === image)
   timesRented: number
   /** When the listing went live (epoch ms). Drives "New this week" and lets
@@ -78,6 +77,10 @@ export interface Item {
   instantBook: boolean
   offersAccepted: boolean
   insuranceRequired?: boolean
+  /** How many identical copies this vendor actually holds. Absent means one —
+      a studio is a single room, and assuming otherwise would let someone book
+      a space twice over. */
+  units?: number
   hourly?: boolean // studios etc. can also be booked by the hour
   space?: SpaceInfo // present on studios & shoot locations
   flashDeal?: { percentOff: number; endsInHours: number }
@@ -179,6 +182,9 @@ export interface Order {
   paymentMethod: string
   address: string
   approveAt?: number // for request-to-book orders
+  /** When the order entered its current status. "Preparing since 2:14pm" is the
+      difference between a progress bar and knowing somebody is on it. */
+  statusAt?: number
   driver?: Driver
   lineRatings?: number[]
   myRatingOfOwner?: number

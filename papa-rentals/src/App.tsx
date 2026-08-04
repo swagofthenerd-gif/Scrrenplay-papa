@@ -29,35 +29,13 @@ function SearchPill({ onOpen }: { onOpen: () => void }) {
     <div className="search-wrap">
       <button className="search-pill" onClick={onOpen} aria-label="Search gear">
         <span className="sp-ico"><Icon name="search" size={16} /></span>
-        <span className="sp-label">Search cameras, lights, spaces…</span>
+        {/* Two labels, not one ellipsised label. The long one is the better
+            invitation; the short one is the one that fits on a phone, where the
+            long one truncated to a single letter. */}
+        <span className="sp-label sp-long">Search cameras, lights, spaces…</span>
+        <span className="sp-label sp-short">Search gear</span>
       </button>
     </div>
-  )
-}
-
-/* ---------------- light / dark ---------------- */
-function ThemeToggle() {
-  const { state, dispatch } = useStore()
-  /* Read from the DOM rather than from state, because on first launch state has
-     no theme at all — the boot script in index.html has already resolved the
-     system preference into the attribute, and that is the only place the real
-     current answer lives until someone presses this button. */
-  const dark = state.theme
-    ? state.theme === 'dark'
-    : typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark'
-  return (
-    <button
-      className="icon-btn"
-      onClick={() => {
-        buzz()
-        dispatch({ type: 'SET_THEME', theme: dark ? 'light' : 'dark' })
-      }}
-      aria-pressed={dark}
-      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={dark ? 'Light mode' : 'Dark mode'}
-    >
-      <Icon name={dark ? 'sun' : 'moon'} />
-    </button>
   )
 }
 
@@ -176,7 +154,6 @@ function Shell() {
           </div>
           <SearchPill onOpen={() => setSearchOpen(true)} />
           <div className="topbar-actions">
-            <ThemeToggle />
             <button className="icon-btn" onClick={() => setNotifOpen(true)} aria-label={`Notifications, ${unreadNotifs} unread`}>
               <Icon name="bell" />{unreadNotifs > 0 && <span className="dot">{unreadNotifs}</span>}
             </button>

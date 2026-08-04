@@ -127,12 +127,12 @@ function stepOrderForward(o: Order): { order: Order; notifs: NotifSpec[] } {
   const notifs: NotifSpec[] = []
   if (o.status === 'requested') {
     notifs.push({ icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
-    return { order: { ...o, status: 'confirmed', approveAt: undefined, autoAdvanceAt: Date.now() + 30000 }, notifs }
+    return { order: { ...o, status: 'confirmed', approveAt: undefined, statusAt: Date.now(), autoAdvanceAt: Date.now() + 30000 }, notifs }
   }
   const idx = STATUS_FLOW.indexOf(o.status)
   if (idx < 0 || idx >= STATUS_FLOW.length - 1) return { order: o, notifs }
   const next = STATUS_FLOW[idx + 1]
-  let patch: Partial<Order> = { status: next, autoAdvanceAt: next === 'completed' ? undefined : Date.now() + 35000 }
+  let patch: Partial<Order> = { status: next, statusAt: Date.now(), autoAdvanceAt: next === 'completed' ? undefined : Date.now() + 35000 }
   if (next === 'in_transit' && !o.driver) {
     const d = DRIVER_POOL[Math.floor(Math.random() * DRIVER_POOL.length)]
     patch = { ...patch, driver: { ...d, pin: String(1000 + Math.floor(Math.random() * 9000)) } }
@@ -247,6 +247,7 @@ function reducer(state: AppState, action: Action): AppState {
         lines: state.cart,
         status: needsApproval ? 'requested' : 'confirmed',
         approveAt: needsApproval ? Date.now() + 12000 : undefined,
+        statusAt: Date.now(),
         autoAdvanceAt: needsApproval ? undefined : Date.now() + 25000,
         subtotal: t.subtotal,
         transportFee: t.transportFee,

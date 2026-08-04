@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CATEGORIES, ITEMS, KITS, getItem, getOwner } from '../data/catalog'
-import { activePromo } from '../data/promos'
 import { useNav } from '../nav'
 import { forYou, similarItems } from '../recs'
 import { vendors } from '../vendors'
 import { useStore } from '../store'
-import { buzz, bundleDiscount, daysBetween, dealActive, dealEndsAt, fmtCountdown, fmtDate, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
-import { Badge, ItemArt, ItemCard, ListingPromo, Modal } from '../components/ui'
+import { buzz, bundleDiscount, dealActive, fmtDate, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
+import { ItemArt, ItemCard, ListingPromo, Modal } from '../components/ui'
 import { DeptRow } from '../components/DeptRow'
 import { Chip, SectionHeader } from '../components/primitives'
 import { Deferred } from '../components/Deferred'
 import { Icon, type IconName } from '../components/icons'
-import { VendorCard } from '../components/VendorCard'
+import { VendorTile } from '../components/VendorCard'
 import StudioHero from '../components/StudioHero'
 import ServicesBand from '../components/ServicesBand'
 import type { Item } from '../types'
@@ -110,15 +109,31 @@ function Rail({
         title={title}
         sub={sub}
         action={
-          action && (
-            <button className="link-btn" onClick={action.onClick}>
-              {action.label} <Icon name="arrow-right" size={13} />
-            </button>
-          )
+          <div className="section-actions">
+            {action && (
+              <button className="link-btn" onClick={action.onClick}>
+                {action.label} <Icon name="arrow-right" size={13} />
+              </button>
+            )}
+            {/* Arrows are for pointers, not thumbs — CSS hides them on touch,
+                where the masked edge says the same thing. They sit in the
+                header because centred on the track they landed on a card's
+                title and price, which is the content they exist to reveal. */}
+            {overflows && (
+              <span className="rail-nav">
+                <button className="rail-arrow" onClick={() => nudge(-1)} disabled={atStart} aria-label={`Scroll ${title} back`}>
+                  <Icon name="chevron-left" size={16} />
+                </button>
+                <button className="rail-arrow" onClick={() => nudge(1)} disabled={atEnd} aria-label={`Scroll ${title} forward`}>
+                  <Icon name="chevron-right" size={16} />
+                </button>
+              </span>
+            )}
+          </div>
         }
       />
       {filters && <div className="rail-filters">{filters}</div>}
-      <div className="rail-track">
+      <div className={`rail-track${overflows && !atEnd ? ' has-more' : ''}${overflows && !atStart ? ' has-prev' : ''}`}>
         <div
           className="h-scroll"
           ref={track}
@@ -129,65 +144,12 @@ function Rail({
         >
           {children}
         </div>
-        {/* Arrows are for pointers, not thumbs — CSS hides them on touch, where
-            the swipe hint below carries the same message without stealing space. */}
-        {overflows && !atStart && (
-          <button className="rail-arrow prev" onClick={() => nudge(-1)} aria-label={`Scroll ${title} back`}>
-            <Icon name="chevron-left" size={18} />
-          </button>
-        )}
-        {overflows && !atEnd && (
-          <button className="rail-arrow next" onClick={() => nudge(1)} aria-label={`Scroll ${title} forward`}>
-            <Icon name="chevron-right" size={18} />
-          </button>
-        )}
       </div>
-      {overflows && !atEnd && <div className="rail-more muted small" aria-hidden="true">Swipe for more <Icon name="chevron-right" size={12} /></div>}
+      {/* Was a "Swipe for more" line under every rail — the same sentence five
+          times down one page, explaining a gesture the fade already implies.
+          The track masks its right edge while there is more to reach, which
+          says it without spending a line of type. */}
     </div>
-  )
-}
-
-/* Home is long. Without a jump bar the only way to reach the vendors is to
-   flick past six rails, and nobody scrolls that far twice. */
-const JUMPS: { id: string; label: string; icon: React.ComponentProps<typeof Icon>['name'] }[] = [
-  { id: 'deals', label: 'Deals', icon: 'bolt' },
-  { id: 'kits', label: 'Kits', icon: 'backpack' },
-  { id: 'vendors', label: 'Vendors', icon: 'store' },
-  { id: 'spaces', label: 'Spaces', icon: 'pin' },
-  { id: 'trending', label: 'Trending', icon: 'flame' },
-]
-
-/* Jumping into the lazily-rendered tail lands you short: the smooth scroll starts
-   against reserved placeholders, and the sections it passes on the way mount and
-   grow while it's still travelling, pushing the target further down. So we settle,
-   then correct — a second scroll once the section is real puts its header where
-   the first one promised. The correction is cheap when nothing moved, because
-   scrollIntoView on an already-aligned element is a no-op. */
-function jumpTo(id: string) {
-  const el = document.getElementById(id)
-  if (!el) return
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  window.setTimeout(() => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, 700)
-}
-
-function JumpBar() {
-  return (
-    <nav className="jump-bar" aria-label="Jump to a section">
-      {JUMPS.map((j) => (
-        <button
-          key={j.id}
-          className="slot-chip"
-          onClick={() => {
-            buzz()
-            jumpTo(j.id)
-          }}
-        >
-          <Icon name={j.icon} size={13} /> {j.label}
-        </button>
-      ))}
-    </nav>
   )
 }
 
@@ -201,17 +163,6 @@ function RailSkeleton({ count = 4 }: { count?: number }) {
   )
 }
 
-/* A deal without a visible clock is just a badge. */
-function DealCountdown({ itemId }: { itemId: string }) {
-  const [left, setLeft] = useState(() => dealEndsAt(itemId) - Date.now())
-  useEffect(() => {
-    const t = setInterval(() => setLeft(dealEndsAt(itemId) - Date.now()), 1000)
-    return () => clearInterval(t)
-  }, [itemId])
-  if (left <= 0) return null
-  return <span className="muted small"><Icon name="clock" size={12} /> {fmtCountdown(left)} left</span>
-}
-
 export default function Home() {
   const { go, toast } = useNav()
   const { state, dispatch } = useStore()
@@ -223,6 +174,9 @@ export default function Home() {
   const [shuffle, setShuffle] = useState(0)
   const [kitDate, setKitDate] = useState(todayISO(2))
   const [builderOpen, setBuilderOpen] = useState(false)
+  /* Collapsed by default: the tail is six re-rankings of the same catalogue,
+     and opening it should be a choice rather than the price of scrolling. */
+  const [moreOpen, setMoreOpen] = useState(false)
   const [builderCat, setBuilderCat] = useState<string>('all')
   const [builderIds, setBuilderIds] = useState<string[]>([])
   const pullStart = useRef<number | null>(null)
@@ -237,11 +191,6 @@ export default function Home() {
     () => builderIds.map((id) => ITEMS.find((i) => i.id === id)).filter((i): i is Item => Boolean(i)),
     [builderIds]
   )
-  /* Recomputed per render off today's date: the app can sit open past midnight
-     on a phone that never gets closed, and a promo whose season ended overnight
-     should stop claiming it's on. */
-  const promo = activePromo(todayISO(0))
-
   const builderFull = builderItems.reduce((s, i) => s + i.pricePerDay, 0)
   const builderDiscount = bundleDiscount(builderItems.length)
   const builderPrice = Math.round(builderFull * (1 - builderDiscount / 100))
@@ -438,7 +387,7 @@ export default function Home() {
   })
 
   return (
-    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} className={refreshing ? 'is-refreshing' : ''}>
+    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} className={`home-view${refreshing ? ' is-refreshing' : ''}`}>
       {/* Height follows the damped pull distance while a finger is down, so the strip
           tracks the gesture instead of snapping open at a hidden threshold. The
           `dragging` class kills the CSS transition during the drag — otherwise every
@@ -453,111 +402,93 @@ export default function Home() {
       </div>
       <StudioHero />
 
-      <div className="proof-band" role="note">
-        <div><b>{proof.listings}</b><span className="muted small"> listings</span></div>
-        <div>
-          <b>{proof.nearby > 0 ? proof.nearby : proof.vendors}</b>
-          <span className="muted small">
-            {proof.nearby > 0 && state.profile.city ? ` vendors near ${state.profile.city}` : ' vendors'}
-          </span>
-        </div>
-        <div><b>{proof.shoots.toLocaleString('en-GB')}</b><span className="muted small"> shoots supplied</span></div>
-      </div>
-
-      {/* Above the jump bar because it's the one thing on this page that's only
-          true this month. Nothing renders out of season — an empty slot beats a
-          banner for a season that ended. */}
-      {promo && (
-        <button
-          className="season-promo"
-          onClick={() => { buzz(); go({ name: 'browse', ...promo.target }) }}
-        >
-          <Icon name={promo.icon} size={22} className="season-promo-ico" />
-          <span className="season-promo-text">
-            <span className="season-promo-title">{promo.title}</span>
-            <span className="muted small">{promo.blurb}</span>
-          </span>
-          <span className="season-promo-cta">{promo.cta} <Icon name="arrow-right" size={13} /></span>
-        </button>
-      )}
-
-      <JumpBar />
-
-      {state.walletBalance > 0 && (
-        <div className="section">
-          <button className="kit-card promo-card" style={{ width: '100%', textAlign: 'left' }} onClick={() => go({ name: 'wallet' })}>
-            <span className="promo-ico"><Icon name="wallet" size={22} /></span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <b style={{ fontSize: 14 }}>{money(state.walletBalance)} credit ready to spend</b>
-              <div className="muted small">Applied automatically at checkout · {state.points} points on top</div>
-            </div>
-            <Icon name="chevron-right" size={16} />
-          </button>
-        </div>
-      )}
-
-      {state.savedSearches.length > 0 && (
-        <div className="section">
-          <SectionHeader icon="search" title="Saved searches" />
-          <div className="rail-filters">
-            {state.savedSearches.map((s) => (
-              <span key={s.id} className="saved-search">
-                <button
-                  className="slot-chip"
-                  onClick={() => { buzz(); go({ name: 'browse', query: s.q, category: s.category, maxPrice: s.maxPrice }) }}
-                >
-                  <Icon name="search" size={12} /> {savedLabel(s)}
-                </button>
-                <button
-                  className="saved-search-x"
-                  aria-label={`Remove saved search ${savedLabel(s)}`}
-                  onClick={() => { buzz(); dispatch({ type: 'REMOVE_SAVED_SEARCH', id: s.id }); toast('Saved search removed') }}
-                >
-                  <Icon name="x" size={12} />
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {cartCount > 0 && (
-        <div className="section">
-          <button className="kit-card promo-card" style={{ width: '100%', textAlign: 'left' }} onClick={() => go({ name: 'cart' })}>
-            <span className="promo-ico"><Icon name="cart" size={22} /></span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <b style={{ fontSize: 14 }}>Pick up where you left off</b>
-              <div className="muted small">{cartCount} item{cartCount > 1 ? 's' : ''} waiting in your cart</div>
-            </div>
-            <Icon name="chevron-right" size={16} />
-          </button>
-        </div>
-      )}
-
       <div className="section">
         <SectionHeader
-          icon="clapperboard"
           title="Departments"
-          action={
-            <span style={{ display: 'flex', gap: 12 }}>
-              {state.wishlist.length > 0 && (
-                <button className="link-btn" onClick={() => go({ name: 'browse', wishlistOnly: true })}>
-                  <Icon name="heart-filled" size={13} /> Wishlist ({state.wishlist.length})
-                </button>
-              )}
-              {/* Trust is the first filter most renters reach for, and burying it
-                  three taps deep in Browse means most never find it. */}
-              <button className="link-btn" onClick={() => go({ name: 'browse', verified: true })}>
-                <Icon name="shield" size={13} /> Verified only
-              </button>
-              <button className="link-btn" onClick={() => go({ name: 'browse' })}>Browse all <Icon name="arrow-right" size={13} /></button>
-            </span>
-          }
+          action={<button className="link-btn" onClick={() => go({ name: 'browse' })}>Browse all <Icon name="arrow-right" size={13} /></button>}
         />
         <DeptRow showFrom onPick={(id) => go({ name: 'browse', category: id })} />
       </div>
 
-      <ServicesBand />
+      {/* Wallet credit, an abandoned cart, a half-filled booking and saved
+          searches each used to be their own full-width section with its own
+          heading, so a returning user met four boxes before reaching any gear.
+          They are all the same thing — unfinished business — so they are one
+          object now, and it disappears entirely for anyone with none. */}
+      {(cartCount > 0 || drafts.length > 0 || state.walletBalance > 0 || state.savedSearches.length > 0 || state.wishlist.length > 0) && (
+        <div className="section">
+          <div className="continue-card">
+            {cartCount > 0 && (
+              <button className="continue-row" onClick={() => { buzz(); go({ name: 'cart' }) }}>
+                <Icon name="cart" size={18} />
+                <span className="continue-text">
+                  <b>{cartCount} item{cartCount > 1 ? 's' : ''} in your cart</b>
+                </span>
+                <Icon name="chevron-right" size={16} />
+              </button>
+            )}
+
+            {/* Only the latest draft: the point is one obvious way back in, and a
+                list of half-starts is the clutter this card replaced. */}
+            {drafts.slice(0, 1).map((d) => (
+              <button
+                key={d.itemId}
+                className="continue-row"
+                onClick={() => { buzz(); go({ name: 'item', id: d.itemId, from: d.startDate, to: d.endDate }) }}
+              >
+                <Icon name="calendar" size={18} />
+                <span className="continue-text">
+                  <b>{d.item.name}</b>
+                  <span className="muted small">{fmtDate(d.startDate)} – {fmtDate(d.endDate)}</span>
+                </span>
+                <Icon name="chevron-right" size={16} />
+              </button>
+            ))}
+
+            {state.walletBalance > 0 && (
+              <button className="continue-row" onClick={() => { buzz(); go({ name: 'wallet' }) }}>
+                <Icon name="wallet" size={18} />
+                <span className="continue-text">
+                  <b>{money(state.walletBalance)} credit</b>
+                </span>
+                <Icon name="chevron-right" size={16} />
+              </button>
+            )}
+
+            {(state.savedSearches.length > 0 || state.wishlist.length > 0) && (
+              <div className="continue-chips">
+                {state.wishlist.length > 0 && (
+                  <button className="slot-chip" onClick={() => { buzz(); go({ name: 'browse', wishlistOnly: true }) }}>
+                    <Icon name="heart-filled" size={12} /> Wishlist ({state.wishlist.length})
+                  </button>
+                )}
+                {state.savedSearches.map((s) => (
+                  <span key={s.id} className="saved-search">
+                    <button
+                      className="slot-chip"
+                      onClick={() => { buzz(); go({ name: 'browse', query: s.q, category: s.category, maxPrice: s.maxPrice }) }}
+                    >
+                      <Icon name="search" size={12} /> {savedLabel(s)}
+                    </button>
+                    <button
+                      className="saved-search-x"
+                      aria-label={`Remove saved search ${savedLabel(s)}`}
+                      onClick={() => { buzz(); dispatch({ type: 'REMOVE_SAVED_SEARCH', id: s.id }); toast('Saved search removed') }}
+                    >
+                      <Icon name="x" size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+
+      {/* The seasonal banner used to sit here, under Departments. It is a
+          promotion, and promotions are what the hero is for now — running it
+          twice on one screen was the clutter, not the banner. */}
 
       {/* ---- Promoted offers & packages come first ---- */}
       {deals.length > 0 && (
@@ -565,105 +496,52 @@ export default function Home() {
           id="deals"
           title="Flash deals"
           icon="bolt"
-          sub="Limited-time offers from vendors"
           action={{ label: 'See all', onClick: () => go({ name: 'browse', dealsOnly: true }) }}
         >
-          {deals.map((item, idx) => (
-            <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <ItemCard {...cardProps(item, idx)} />
-              <DealCountdown itemId={item.id} />
-            </div>
-          ))}
+          {/* The clock used to be repeated under each card, which said the same
+              minutes as the ribbon on the artwork and left every deal card
+              standing on a different baseline to the rest of the rail. */}
+          {deals.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
         </Rail>
       )}
 
-      <div className="section" id="kits">
-        <SectionHeader icon="backpack" title="Production kits" sub="One booking, one delivery, one discounted rate" />
-        <label className="muted small" style={{ display: 'block', marginBottom: 8 }}>
-          Shoot date for kits{' '}
-          <input
-            type="date"
-            value={kitDate}
-            min={todayISO(0)}
-            onChange={(e) => setKitDate(e.target.value)}
-            style={{ marginLeft: 6 }}
-          />
-        </label>
-        <div className="kit-grid">
-          {KITS.map((kit) => {
-            const kitItems = kit.itemIds.map(getItem)
-            const full = kitItems.reduce((s, i) => s + i.pricePerDay, 0)
-            const price = Math.round(full * (1 - kit.percentOff / 100))
-            return (
-              <div className="kit-card" key={kit.id}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 6 }}><Icon name={kit.icon} size={18} /> {kit.name}</h3>
-                  <Badge tone="purple">Save {kit.percentOff}%</Badge>
-                </div>
-                <div className="kit-thumbs">
-                  {kitItems.map((i) => <ItemArt key={i.id} item={i} size="thumb" />)}
-                </div>
-                <p className="muted" style={{ margin: 0, fontSize: 13 }}>{kit.blurb}</p>
-                <div>
-                  <s className="muted small">{money(full)}</s> <b>{money(price)}</b><span className="muted"> bundle /day · {kitItems.length} items</span>
-                </div>
-                {/* Two actions, not one. "Add kit" commits four bookings from a
-                    one-line blurb; anyone who wants to know what is actually in the
-                    box had no way to find out without adding it and reading the cart. */}
-                <div className="kit-actions">
-                <button className="btn btn-outline btn-sm" onClick={() => { buzz(); go({ name: 'kit', id: kit.id }) }}>
-                  See what's inside
-                </button>
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => {
-                    buzz()
-                    kitItems.forEach((i) =>
-                      dispatch({
-                        type: 'ADD_TO_CART',
-                        booking: {
-                          id: uid(),
-                          itemId: i.id,
-                          startDate: kitDate,
-                          endDate: kitDate,
-                          pickupTime: '09:00',
-                          qty: 1,
-                          unit: 'day',
-                          hours: 4,
-                          insurance: true,
-                          operator: false,
-                          transport: 'van',
-                          rate: Math.round(i.pricePerDay * (1 - kit.percentOff / 100)),
-                          negotiated: false,
-                        },
-                      })
-                    )
-                    toast(`${kit.name} added for ${kitDate}`)
-                  }}
-                >
-                  Add kit to cart
-                </button>
-                </div>
-              </div>
-            )
-          })}
-
-          {/* The three curated kits cover three kinds of shoot. Everyone else was
-              being told the bundle rate exists and then given no way to earn it. */}
-          <div className="kit-card kit-card-build">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="plus" size={18} /> Build your own kit</h3>
-              <Badge tone="purple">Save up to 18%</Badge>
-            </div>
-            <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-              Pick the gear your shoot actually needs. The more you bundle, the bigger the discount — 2 items 5%, 3 items 10%, 4 items 15%, 5 or more 18%.
-            </p>
-            <button className="btn btn-outline btn-sm" onClick={() => { buzz(); setBuilderOpen(true) }}>
-              Start building
+      {/* Four full-width kit blocks, each with a blurb, a thumbnail strip, two
+          buttons and a date field, ran most of a screen before the first vendor
+          appeared. A kit is one idea — a discounted bundle for a kind of shoot —
+          so a card states that idea and the detail page, which already has its
+          own dates and an add button, handles the commitment. */}
+      <Rail
+        id="kits"
+        title="Production kits"
+        action={{ label: 'Build your own', onClick: () => { buzz(); setBuilderOpen(true) } }}
+      >
+        {KITS.map((kit) => {
+          const kitItems = kit.itemIds.map(getItem)
+          const full = kitItems.reduce((s, i) => s + i.pricePerDay, 0)
+          const price = Math.round(full * (1 - kit.percentOff / 100))
+          return (
+            <button key={kit.id} className="kit-tile" onClick={() => { buzz(); go({ name: 'kit', id: kit.id }) }}>
+              <span className="kit-tile-head">
+                <Icon name={kit.icon} size={16} />
+                <b className="kit-tile-name">{kit.name}</b>
+              </span>
+              <span className="kit-thumbs">
+                {kitItems.map((i) => <ItemArt key={i.id} item={i} size="thumb" />)}
+              </span>
+              <span className="kit-tile-price">
+                <b>{money(price)}</b>
+                <span className="muted small"> /day · {kitItems.length} items</span>
+              </span>
+              <span className="kit-tile-save">−{kit.percentOff}%</span>
             </button>
-          </div>
-        </div>
-      </div>
+          )
+        })}
+        <button className="kit-tile kit-tile-build" onClick={() => { buzz(); setBuilderOpen(true) }}>
+          <span className="kit-tile-head"><Icon name="plus" size={16} /> <b className="kit-tile-name">Build your own</b></span>
+          <span className="muted small">Bundle any gear</span>
+          <span className="kit-tile-save">up to −18%</span>
+        </button>
+      </Rail>
 
       {builderOpen && (
         <Modal title="Build your own kit" onClose={() => setBuilderOpen(false)}>
@@ -737,68 +615,22 @@ export default function Home() {
         </Modal>
       )}
 
-      {/* ---- Then the vendors, foodpanda-style storefront cards ---- */}
-      <div className="section" id="vendors">
-        {/* The old subtitle ended "tap a vendor to explore their storefront".
-            Telling people how to tap a card is an admission the card doesn't
-            look tappable — the chevron and the pressed state do that job. */}
-        <SectionHeader
-          icon="store"
-          title="Vendors near you"
-          sub={`${vendorList.length} rental houses · ${vendorList.reduce((s, v) => s + v.count, 0)} listings`}
-        />
-        <div className="vendor-list">
-          {vendorList.map((v, idx) => <VendorCard key={v.owner.id} vendor={v} index={idx} />)}
-        </div>
-        {/* House icon on a pitch that leads with "camera kit or grip truck" was
-            the wrong picture; a truck matches what the sentence is asking for. */}
-        <ListingPromo
-          icon="truck"
-          title="Own a studio, camera kit or grip truck?"
-          blurb="Become a vendor in 2 minutes — you keep 90% of every booking."
-          cta="Start listing"
-          onClick={() => go({ name: 'post' })}
-        />
-      </div>
-
-      {/* ---- Hybrid discovery tail ---- */}
-      {/* Above "Recently viewed" on purpose: a half-filled booking is a stronger
-          intent than a glance, and it's the one thing on this page you lose by
-          leaving. Tapping through restores the exact window via the route's
-          from/to, so the date picker is already filled in on arrival. */}
-      {drafts.length > 0 && (
-        <div className="section" id="resume">
-          <SectionHeader icon="clock" title="Pick up where you left off" sub="Dates you chose but never booked" />
-          <div className="resume-list">
-            {drafts.map((d) => {
-              const nights = daysBetween(d.startDate, d.endDate)
-              return (
-                <button
-                  key={d.itemId}
-                  className="resume-card"
-                  onClick={() => { buzz(); go({ name: 'item', id: d.itemId, from: d.startDate, to: d.endDate }) }}
-                >
-                  <ItemArt item={d.item} size="thumb" />
-                  <span className="resume-info">
-                    <span className="resume-name">{d.item.name}</span>
-                    <span className="resume-dates">
-                      <Icon name="calendar" size={12} /> {fmtDate(d.startDate)} – {fmtDate(d.endDate)} · {nights} day{nights > 1 ? 's' : ''}
-                    </span>
-                  </span>
-                  <span className="resume-go">Resume <Icon name="arrow-right" size={13} /></span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      {/* Six storefront cards, each carrying its own rail of gear, was the single
+          longest thing on this page — the vendors section alone outran everything
+          below it. The full card still does its job on the vendors page; here a
+          rail of tiles answers "who is near me" without spending four screens. */}
+      <Rail
+        id="vendors"
+        title="Vendors near you"
+      >
+        {vendorList.map((v) => <VendorTile key={v.owner.id} vendor={v} />)}
+      </Rail>
 
       {recentlyViewed.length > 0 && (
         <Rail
           id="recent"
           title="Recently viewed"
           icon="eye"
-          sub="Jump back to anything you were looking at"
           action={{ label: 'Wishlist', onClick: () => go({ name: 'browse', wishlistOnly: true }) }}
         >
           {recentlyViewed.slice(0, 10).map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
@@ -811,22 +643,69 @@ export default function Home() {
           <RailSkeleton />
         </div>
       ) : picks.length > 0 && (
-        <Rail id="foryou" title="For you" icon="sparkles" sub="Picked from what you've been browsing">
+        <Rail id="foryou" title="For you" icon="sparkles">
           {picks.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
         </Rail>
       )}
 
-      {/* Everything from here down starts at least two screens low, and rendering
-          every card in all seven sections on first paint is what made the home
-          screen hitch before it appeared on the WebView this ships in. Each one
-          mounts a screen ahead of the scroll; the placeholder holds its height and
-          its id so the jump bar still reaches a section that hasn't rendered. */}
+      {/* Proof, not navigation — so it belongs at the foot with the other
+          marketing rather than between someone and the gear. A number under a
+          mark: the drawing carries the noun, so the words "listings",
+          "vendors" and "shoots supplied" can go. Each mark keeps its meaning
+          in a label for anyone who can't see it. */}
+      <div className="proof-row paper-strip" role="note">
+        <span className="proof-item">
+          <Icon name="stack" size={15} aria-hidden="true" />
+          <b>{proof.listings}</b>
+          <span className="sr-only">listings available</span>
+        </span>
+        <span className="proof-item">
+          <Icon name="store" size={15} aria-hidden="true" />
+          <b>{proof.nearby > 0 ? proof.nearby : proof.vendors}</b>
+          <span className="sr-only">
+            vendors{proof.nearby > 0 && state.profile.city ? ` near ${state.profile.city}` : ''}
+          </span>
+        </span>
+        <span className="proof-item">
+          <Icon name="clapperboard" size={15} aria-hidden="true" />
+          <b>{proof.shoots.toLocaleString('en-GB')}</b>
+          <span className="sr-only">shoots supplied</span>
+        </span>
+      </div>
 
+
+      <ListingPromo
+        icon="truck"
+        title="Own a studio, camera kit or grip truck?"
+        blurb="Keep 90% of every booking."
+        cta="Start listing"
+        onClick={() => go({ name: 'post' })}
+      />
+
+      {/* Seven more rails used to run from here to the bottom, all of them the
+          same shape and most of them the same catalogue re-ranked — six screens
+          that read as "the page never ends" rather than as six useful angles.
+          They are all still here, behind one deliberate tap, which also means
+          the cards inside them are never built for someone who didn't ask.
+          Each still mounts a screen ahead of the scroll once opened. */}
+      <div className="section more-row">
+        <button
+          className="more-toggle"
+          aria-expanded={moreOpen}
+          onClick={() => { buzz(); setMoreOpen((v) => !v) }}
+        >
+          {moreOpen ? 'Fewer ways to browse' : 'More ways to browse'}
+          <Icon name={moreOpen ? 'chevron-up' : 'chevron-down'} size={16} />
+        </button>
+      </div>
+
+      {moreOpen && (
+        <>
       {/* Title and subtitle both used to over-promise: the rail is ranked by
           listing date, so it's "recent", and some of it has been booked. */}
       {justListed.length > 0 && (
         <Deferred id="new">
-          <Rail id="new" title="Recently listed" icon="bulb" sub="The newest gear on Papa Rentals">
+          <Rail id="new" title="Recently listed" icon="bulb">
             {justListed.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
           </Rail>
         </Deferred>
@@ -834,7 +713,7 @@ export default function Home() {
 
       {coldStart.length > 0 && (
         <Deferred id="starters">
-          <Rail id="starters" title="Popular starters" icon="sparkles" sub="Highest-rated gear in every department">
+          <Rail id="starters" title="Popular starters" icon="sparkles">
             {coldStart.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
           </Rail>
         </Deferred>
@@ -894,7 +773,7 @@ export default function Home() {
 
       {hiddenGems.length > 0 && (
         <Deferred id="gems">
-          <Rail id="gems" title="Hidden gems" icon="gift" sub="4.5+ stars, under 12 bookings so far">
+          <Rail id="gems" title="Hidden gems" icon="gift">
             {hiddenGems.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
           </Rail>
         </Deferred>
@@ -903,12 +782,18 @@ export default function Home() {
       {/* A grid, not a rail — it wraps to several rows, so it reserves more. */}
       <Deferred id="trending" minHeight={520}>
         <div className="section" id="trending">
-          <SectionHeader icon="flame" title="Trending on set" sub="What crews in your city booked most this week" />
+          <SectionHeader icon="flame" title="Trending on set" />
           <div className="grid">
             {trending.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
           </div>
         </div>
       </Deferred>
+
+      {/* The services pitch is orientation for a first visit, not something a
+          returning renter needs above their cart every time. */}
+      <ServicesBand />
+        </>
+      )}
     </div>
   )
 }

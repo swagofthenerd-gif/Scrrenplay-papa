@@ -136,7 +136,7 @@ claiming an item, re-verify it in the code.
 29. [x] No "similar but cheaper" nudge on expensive items though `similarItems` is computed.
 30. [x] Reviews show a histogram but no filter by rating / photo reviews. *(star filter done; photo reviews outstanding)*
 31. [x] No delivery-time estimate ("van reaches DHA in ~40 min") to match the "delivered like a food order" promise.
-32. [ ] Quantity stepper allows qty without checking stock — vendor with 2 units should block qty 5.
+32. [x] Quantity stepper allows qty without checking stock — vendor with 2 units should block qty 5.
 
 ### Cards & visual
 33. [x] `ItemCard` is reused everywhere but compare overlay is bolted on only in Browse — fold compare into the card component.
@@ -155,13 +155,13 @@ claiming an item, re-verify it in the code.
 42. [x] Filter chips toggle on click but have no `aria-pressed`.
 43. [x] Back button calls `history.back()` — if Browse is the entry (deep link), back may leave the app. Fall back to Home.
 44. [x] Compare tray is fixed at bottom and can cover the last row — add bottom padding when tray is up.
-45. [ ] No loading state between filter changes — add optimistic skeletons for future server-backed data.
+45. [x] No loading state between filter changes — add optimistic skeletons for future server-backed data.
 
 ### Future-facing
 46. [x] Persist last-used filters per category.
-47. [ ] "Notify me when available / price drops" on out-of-range results.
-48. [ ] Map view for spaces (studios) — location is a primary decision factor.
-49. [ ] Log which filters produce zero results — a supply-gap signal.
+47. [x] "Notify me when available / price drops" on out-of-range results.
+48. [x] Map view for spaces (studios) — location is a primary decision factor.
+49. [x] Log which filters produce zero results — a supply-gap signal.
 50. [x] Single "clear all + reset sort" action.
 
 ---
@@ -196,49 +196,49 @@ claiming an item, re-verify it in the code.
 19. [x] No cancellation-policy acknowledgment checkbox — policy is muted text.
 20. [x] "Clear all" wipes the cart instantly with no undo/confirm.
 21. [x] `Remove` is instant with no undo.
-22. [ ] No stock/availability re-check at checkout — an item could be booked between add and place.
+22. [x] No stock/availability re-check at checkout — an item could be booked between add and place.
 
 ### Empty & edge states
-23. [ ] Empty cart doesn't surface wishlist or last-viewed as a fast path back in.
-24. [ ] No handling for a line whose item became unavailable/paused after add — it'll still try to book.
-25. [ ] Cross-sell ("Complete your setup") only keys off the last cart line — blend signals across all lines.
+23. [x] Empty cart doesn't surface wishlist or last-viewed as a fast path back in.
+24. [x] No handling for a line whose item became unavailable/paused after add — it'll still try to book.
+25. [x] Cross-sell ("Complete your setup") only keys off the last cart line — blend signals across all lines.
 
 ### Layout & responsiveness
-26. [ ] `detail-grid` puts summary in a second column — confirm the CTA isn't below the fold on narrow phones.
-27. [ ] Pay CTA is inside the summary panel — make it a sticky bottom bar with the live total.
-28. [ ] Long item names in `cart-line-info` — verify truncation.
-29. [ ] Promo input and toggles are visually similar rows — group under a "Discounts" subheader.
+26. [x] `detail-grid` puts summary in a second column — confirm the CTA isn't below the fold on narrow phones.
+27. [x] Pay CTA is inside the summary panel — make it a sticky bottom bar with the live total.
+28. [x] Long item names in `cart-line-info` — verify truncation.
+29. [x] Promo input and toggles are visually similar rows — group under a "Discounts" subheader.
 
 ### Feedback & motion
-30. [ ] Applying a promo toasts but the summary doesn't animate the discount line in.
-31. [ ] Toggling wallet/points recomputes silently — flash the affected summary line.
-32. [ ] No haptic on remove (you `buzz()` on place order only).
+30. [x] Applying a promo toasts but the summary doesn't animate the discount line in.
+31. [x] Toggling wallet/points recomputes silently — flash the affected summary line.
+32. [x] No haptic on remove (you `buzz()` on place order only).
 
 ### Copy
-33. [ ] "Transport (per owner)" is jargon — "Delivery (charged once per vendor)".
-34. [ ] "Damage protection" vs "Papa Protection" vs "insurance" — three names for one thing. Pick one.
-35. [ ] "You'll earn +N PapaPoints" — add "→ Rs N off next time" to make value concrete.
+33. [x] "Transport (per owner)" is jargon — "Delivery (charged once per vendor)".
+34. [x] "Damage protection" vs "Papa Protection" vs "insurance" — three names for one thing. Pick one.
+35. [x] "You'll earn +N PapaPoints" — add "→ Rs N off next time" to make value concrete.
 
 ### Performance & correctness
-36. [ ] `cartTotals` called twice in `applyPromo` and again on render — memoize.
-37. [ ] `similarItems(...).filter(...).slice(6)` runs every render — memoize on cart contents.
-38. [ ] `PAYMENT_METHODS.find(...)` / `TRANSPORT_OPTIONS.find(...)` run per line/render — precompute maps.
-39. [ ] `address` falls back to `addresses[0]` but `placeOrder` can still send "Self pickup" — make delivery-vs-pickup explicit.
+36. [x] `cartTotals` called twice in `applyPromo` and again on render — memoize.
+37. [x] `similarItems(...).filter(...).slice(6)` runs every render — memoize on cart contents.
+38. [x] `PAYMENT_METHODS.find(...)` / `TRANSPORT_OPTIONS.find(...)` run per line/render — precompute maps.
+39. [x] `address` falls back to `addresses[0]` but `placeOrder` can still send "Self pickup" — make delivery-vs-pickup explicit.
 
 ### Accessibility
-40. [ ] Toggle rows use real checkboxes (good), but pay-method and address rows are click-divs — unify to real inputs.
-41. [ ] Disabled pay button (on `promoError`) gives no explanation next to it.
-42. [ ] Number/points values aren't announced on change — add `aria-live` on the total.
+40. [x] Toggle rows use real checkboxes (good), but pay-method and address rows are click-divs — unify to real inputs.
+41. [x] Disabled pay button (on `promoError`) gives no explanation next to it.
+42. [x] Number/points values aren't announced on change — add `aria-live` on the total.
 
 ### Future-facing
 43. [ ] Split-payment / pay-deposit-now-rest-later.
-44. [ ] Group cart by shoot date for multi-day productions.
-45. [ ] "Request quote" path for very large carts routing to a human.
-46. [ ] Save cart as a named "kit" — bridges to Home "build your own kit".
-47. [ ] Estimated delivery ETA per vendor in cart, not just fees.
-48. [ ] Tax/GST line for real invoicing — summary structure is ready.
-49. [ ] Abandoned-cart reminder via the existing notification center.
-50. [ ] "Someone else is viewing this" / low-stock nudge at checkout.
+44. [x] Group cart by shoot date for multi-day productions.
+45. [x] "Request quote" path for very large carts routing to a human.
+46. [x] Save cart as a named "kit" — bridges to Home "build your own kit".
+47. [x] Estimated delivery ETA per vendor in cart, not just fees.
+48. [x] Tax/GST line for real invoicing — summary structure is ready.
+49. [x] Abandoned-cart reminder via the existing notification center.
+50. [x] "Someone else is viewing this" / low-stock nudge at checkout.
 
 ---
 
@@ -247,39 +247,39 @@ claiming an item, re-verify it in the code.
 ### Organization & findability
 1. [x] Flat list with no tabs — add Active / Completed / Cancelled segments.
 2. [x] No search or date filter — a user with 40 orders can't find one.
-3. [ ] No sort control (newest/oldest/amount).
+3. [x] No sort control (newest/oldest/amount).
 4. [x] Orders aren't grouped by month.
 5. [x] No order-detail screen — everything crammed into the card. *(`OrderDetailView.tsx`)*
 
 ### The "Skip ahead" debug control
-6. [ ] "Skip ahead" manually advances order status — a demo shortcut in production UI. Gate behind a dev flag.
+6. [x] "Skip ahead" manually advances order status — a demo shortcut in production UI. Gate behind a dev flag.
 7. [ ] Same for auto-advance (`autoAdvanceAt`) — make simulated progression invisible to end users.
 
 ### Live tracking
 8. [ ] In-transit map is a decorative SVG path, not a real route — even a static map thumbnail with two pins feels more real.
-9. [ ] Driver PIN shown but no "copy PIN" or confirm-handover action.
+9. [x] Driver PIN shown but no "copy PIN" or confirm-handover action.
 10. [ ] Driver "Call" is a `tel:` link — add in-app chat with the driver.
 11. [x] No live ETA countdown during transit.
-12. [ ] Timeline steps don't show timestamps — "Preparing since 2:14pm" builds confidence.
+12. [x] Timeline steps don't show timestamps — "Preparing since 2:14pm" builds confidence.
 
 ### Actions on a card
 13. [x] Action row can show 8+ buttons wrapping messily — prioritize 1 primary + overflow menu.
 14. [x] "Get help" routes to generic Support — pass order context so support opens pre-filled.
-15. [ ] "Report" and "File claim" overlap conceptually — clarify when to use which.
-16. [ ] Cancel fee threshold (`startsSoon = startDate <= todayISO(2)`) is a rough proxy for "48h" — make it a real hour-level check.
+15. [x] "Report" and "File claim" overlap conceptually — clarify when to use which.
+16. [x] Cancel fee threshold (`startsSoon = startDate <= todayISO(2)`) is a rough proxy for "48h" — make it a real hour-level check.
 17. [ ] Extend modal blocks hourly bookings entirely — offer one-tap re-book from there.
 18. [x] "Book again" silently drops the negotiated rate (`negotiated:false`) — tell the user.
 
 ### Ratings
-19. [ ] `ownerRatingOfMe ?? 5` — a missing owner rating silently shows 5 stars. Misleading.
+19. [x] `ownerRatingOfMe ?? 5` — a missing owner rating silently shows 5 stars. Misleading.
 20. [ ] Rating is per-item but review text "applies to each item" — allow per-item notes.
 21. [x] No way to edit/withdraw a rating after publishing. *(edit done; withdraw outstanding)*
-22. [ ] Completed orders show "+N PapaPoints earned" with no link to where points went.
+22. [x] Completed orders show "+N PapaPoints earned" with no link to where points went.
 
 ### Status clarity
 23. [x] "requested" orders show only a banner and no timeline — show a greyed-out timeline.
 24. [ ] Cancelled orders show fee/refund inline but no receipt/breakdown link.
-25. [ ] No notification tie-in on the card ("we'll notify you when it ships").
+25. [x] No notification tie-in on the card ("we'll notify you when it ships").
 
 ### Receipts & records
 26. [ ] `downloadReceipt` — verify it works in Android WebView (blob download from `appassets` can fail silently). Offer share/email fallback.
@@ -287,30 +287,30 @@ claiming an item, re-verify it in the code.
 28. [ ] Receipt is per-order; no monthly statement.
 
 ### Claims
-29. [ ] Claim amount defaults to `min(10000, maxAmount)` with no guidance on typical payouts.
-30. [ ] Claim offers 4 canned reasons and one amount field — no photo upload, the crux of a real damage claim.
+29. [x] Claim amount defaults to `min(10000, maxAmount)` with no guidance on typical payouts.
+30. [x] Claim offers 4 canned reasons and one amount field — no photo upload, the crux of a real damage claim.
 31. [x] After filing, users told to "track it in Help Center" but claims aren't clearly linked from this screen.
-32. [ ] `hasClaim` blocks a second claim on the whole order — a multi-item order might need two.
+32. [x] `hasClaim` blocks a second claim on the whole order — a multi-item order might need two.
 
 ### Layout & performance
-33. [ ] Every `OrderCard` mounts 5 conditional modals; whole list re-renders on any store change — memoize cards by order id + status.
-34. [ ] `getItem`/`getOwner` called repeatedly per line per render.
-35. [ ] Timeline + route SVG animate continuously off-screen — pause when not visible.
+33. [x] Every `OrderCard` mounts 5 conditional modals; whole list re-renders on any store change — memoize cards by order id + status.
+34. [x] `getItem`/`getOwner` called repeatedly per line per render.
+35. [x] Timeline + route SVG animate continuously off-screen — pause when not visible.
 36. [ ] No virtualization for long order histories.
 
 ### Accessibility
-37. [ ] Timeline steps convey state by color + filled bubble — add `aria-current` and text ("step 3 of 6").
+37. [x] Timeline steps convey state by color + filled bubble — add `aria-current` and text ("step 3 of 6").
 38. [ ] Action buttons wrap with no logical grouping for screen readers.
-39. [ ] Animated transit dot has no reduced-motion guard.
-40. [ ] PIN is visually prominent but not labeled for screen readers ("handover PIN 4821").
+39. [x] Animated transit dot has no reduced-motion guard.
+40. [x] PIN is visually prominent but not labeled for screen readers ("handover PIN 4821").
 
 ### Copy & trust
-41. [ ] "updates automatically" hints at the simulation — reword to sound like real logistics.
-42. [ ] "Owner is inspecting; deposit hold release is queued" is great copy — mirror that specificity in requested/confirmed states.
-43. [ ] Clarify deposit hold vs charge consistently with Cart.
+41. [x] "updates automatically" hints at the simulation — reword to sound like real logistics.
+42. [x] "Owner is inspecting; deposit hold release is queued" is great copy — mirror that specificity in requested/confirmed states.
+43. [x] Clarify deposit hold vs charge consistently with Cart.
 
 ### Future-facing
-44. [ ] Reorder-from-history as a first-class flow.
+44. [x] Reorder-from-history as a first-class flow.
 45. [x] "Share tracking" link so a producer can send status to their team.
 46. [x] Calendar export (.ics) for confirmed shoot dates.
 47. [ ] Per-order chat thread with the vendor, not just the owner globally.
