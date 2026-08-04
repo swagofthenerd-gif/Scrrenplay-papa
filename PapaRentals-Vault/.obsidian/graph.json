@@ -1,0 +1,14 @@
+{
+  "collapse-filter": false,
+  "search": "",
+  "showTags": true,
+  "showAttachments": false,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    { "query": "tag:#trap", "color": { "a": 1, "rgb": 14701138 } },
+    { "query": "tag:#decision", "color": { "a": 1, "rgb": 5431378 } },
+    { "query": "path:04-Features", "color": { "a": 1, "rgb": 11621088 } },
+    { "query": "path:02-Architecture", "color": { "a": 1, "rgb": 5419488 } }
+  ],
+  "scale": 1
+}

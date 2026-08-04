@@ -13,11 +13,14 @@ it is the authority for anything about *how this codebase behaves*.
 when, what's still open — read the vault:
 
 ```
-~/PapaRentals-Vault
+../PapaRentals-Vault
 ```
 
-Start with `~/PapaRentals-Vault/CLAUDE.md`, then `ROUTER.md`, which maps a
-question to the one file that answers it. Do **not** read the whole vault,
+It is committed to this repository, so it travels with the code rather than
+living only on one machine.
+
+Start with `../PapaRentals-Vault/00-Start/Home.md`, which maps a question to
+the one note that answers it. Do **not** read the whole vault,
 and do not grep this codebase to rediscover something already written there.
 
 ### Which one answers what
@@ -26,7 +29,7 @@ and do not grep this codebase to rediscover something already written there.
 |---|---|
 | How do I build/preview/deploy? What are the traps? | the skill |
 | Which file implements X? | vault `02-Architecture/File-Map.md` |
-| What's left to build? | vault `06-Backlog/Backlog-Index.md` |
+| What's left to build? | vault `06-Backlog/Backlog-Index.md` (all 250 closed) |
 | Why is it built this way? | vault `04-Features/` (one file per area) |
 | What happened last session? | vault `05-History/Session-Log.md` |
 | What are the exact item numbers? | `.planning/IMPROVEMENTS-250.md` (canonical) |
@@ -42,11 +45,12 @@ vault mirrors it at `06-Backlog/Improvements-250-verbatim.md` plus a
 generated summary. If you close items here, re-copy and regenerate:
 
 ```bash
-cp .planning/IMPROVEMENTS-250.md ~/PapaRentals-Vault/06-Backlog/Improvements-250-verbatim.md
-python3 ~/PapaRentals-Vault/System/build_backlog_index.py
+cp .planning/IMPROVEMENTS-250.md ../PapaRentals-Vault/06-Backlog/Improvements-250-verbatim.md
+# then update the counts table in 06-Backlog/Backlog-Index.md
 ```
 
 ## After a work session
 
-Run the vault's `Skills/session-log.md` so the next session doesn't start
-from zero. That is the entire point of the vault existing.
+Add an entry to `../PapaRentals-Vault/05-History/Session-Log.md` so the next
+session doesn't start from zero. That is the entire point of the vault existing.
+`99-Meta/Vault-Maintenance.md` says which note covers what.
