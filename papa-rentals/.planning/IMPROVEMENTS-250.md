@@ -363,7 +363,7 @@ claiming an item, re-verify it in the code.
 28. [x] No way to un-pause a listing from here.
 
 ### Reports & safety
-29. [ ] "Your reports" lists case numbers/status with no way to view details or add evidence.
+29. [x] "Your reports" lists case numbers/status with no way to view details or add evidence.
 30. [x] "Blocked" owners can't be unblocked from this list — display-only.
 31. [x] No privacy/data controls (download my data, delete account).
 

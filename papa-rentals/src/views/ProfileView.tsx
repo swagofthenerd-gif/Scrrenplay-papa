@@ -5,6 +5,7 @@ import { REFERRAL_BONUS, useStore } from '../store'
 import { GOLD_POINTS, SILVER_POINTS, buzz, fmtTimeAgo, money, displayName } from '../utils'
 import { Badge, ItemArt, Modal, Stars, useCountUp } from '../components/ui'
 import { Icon, Avatar, type IconName } from '../components/icons'
+import type { UserReport } from '../types'
 
 
 /* One source for what each tier buys you, read by both the perk list and the
@@ -34,6 +35,7 @@ export default function ProfileView() {
   const waitingOffers = state.offers.filter((o) => o.status === 'countered').length
   const [editOpen, setEditOpen] = useState(false)
   const [topUpOpen, setTopUpOpen] = useState(false)
+  const [openCase, setOpenCase] = useState<string | null>(null)
   /* The toast said "+Rs 10,000" in the corner while the balance counted up on
      its own on the other side of the screen, and nothing connected the two. The
      amount now rises out of the balance it just joined. */
@@ -381,8 +383,16 @@ export default function ProfileView() {
       {state.reports.length > 0 && (
         <div className="panel" style={{ marginTop: 14 }}>
           <h3 style={{ fontSize: 15 }}><Icon name="flag" size={16} /> Your reports</h3>
+          {/* The case was a read-only row: a number, a colour and a date. Mediation
+              explicitly asks for your side of it, so there had to be somewhere to
+              put it — and somewhere to see what you had already said. */}
           {state.reports.map((r) => (
-            <div key={r.id} className="review">
+            <button
+              key={r.id}
+              className="review"
+              style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'none', border: 0, borderTop: '1px solid var(--line)' }}
+              onClick={() => setOpenCase(r.id)}
+            >
               <div className="review-head">
                 <b>{r.caseNo} · {r.targetName}</b>
                 <Badge tone={r.status === 'resolved' ? 'green' : r.status === 'mediation' ? 'purple' : 'orange'}>
@@ -390,17 +400,15 @@ export default function ProfileView() {
                 </Badge>
               </div>
               <div className="muted small">{r.reason} · filed {r.date}</div>
-              {/* A case number and a colour tell you nothing about whether anyone
-                  is actually doing something. Each state says who currently has
-                  it and what happens next. */}
-              <div className="muted small">
-                {r.status === 'under_review'
-                  ? <>Trust &amp; Safety are reading your report. Nothing is needed from you yet.</>
-                  : r.status === 'mediation'
-                    ? <>Both sides are being heard — we've asked {r.targetName} for their account. Add evidence any time before it closes.</>
-                    : <>Closed. The decision and any refund are on this case.</>}
+              <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ flex: 1 }}>
+                  {r.evidence?.length
+                    ? `${r.evidence.length} ${r.evidence.length === 1 ? 'note' : 'notes'} added`
+                    : r.status === 'resolved' ? 'View the decision' : 'View case and add evidence'}
+                </span>
+                <Icon name="chevron-right" size={14} />
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -428,6 +436,9 @@ export default function ProfileView() {
 
 
       {editOpen && <EditProfileModal onClose={() => setEditOpen(false)} />}
+      {openCase && (
+        <CaseModal report={state.reports.find((r) => r.id === openCase)!} onClose={() => setOpenCase(null)} />
+      )}
       {topUpOpen && <TopUpModal onClose={() => setTopUpOpen(false)} onCredited={setCredited} />}
     </div>
   )
@@ -479,6 +490,86 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
       >
         Save
       </button>
+    </Modal>
+  )
+}
+
+/* A case you can only watch is a case you cannot influence, and mediation
+   explicitly asks for your account of what happened. This is where it goes —
+   plus the history, so what you already said is visible rather than something
+   you have to remember having sent. */
+function CaseModal({ report, onClose }: { report: UserReport; onClose: () => void }) {
+  const { dispatch } = useStore()
+  const { toast } = useNav()
+  const [note, setNote] = useState('')
+  const closed = report.status === 'resolved'
+
+  const stages: { key: UserReport['status']; label: string; hint: string }[] = [
+    { key: 'under_review', label: 'Filed and read', hint: 'Trust & Safety have your report.' },
+    { key: 'mediation', label: 'Both sides heard', hint: `We asked ${report.targetName} for their account.` },
+    { key: 'resolved', label: 'Decided', hint: 'The case is closed.' },
+  ]
+  const at = stages.findIndex((x) => x.key === report.status)
+
+  return (
+    <Modal title={`Case ${report.caseNo}`} onClose={onClose}>
+      <p className="muted small" style={{ marginTop: 0 }}>
+        {report.targetName} · {report.reason} · filed {report.date}
+      </p>
+
+      <ol className="case-steps">
+        {stages.map((st, i) => (
+          <li key={st.key} className={i < at ? 'done' : i === at ? 'now' : ''}>
+            <b>{st.label}</b>
+            <span className="muted small">{st.hint}</span>
+          </li>
+        ))}
+      </ol>
+
+      {report.note && (
+        <div className="panel" style={{ marginTop: 12 }}>
+          <b style={{ fontSize: 13 }}>What you reported</b>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>{report.note}</p>
+        </div>
+      )}
+
+      <h3 style={{ fontSize: 14, marginBottom: 4 }}>Evidence you've added</h3>
+      {report.evidence?.length ? (
+        report.evidence.map((e) => (
+          <div key={e.id} className="review" style={{ borderTop: '1px solid var(--line)' }}>
+            <div className="muted small">{new Date(e.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+            <div style={{ fontSize: 14 }}>{e.text}</div>
+          </div>
+        ))
+      ) : (
+        <p className="muted small" style={{ marginTop: 0 }}>Nothing yet.</p>
+      )}
+
+      {closed ? (
+        <p className="muted small">This case is closed, so nothing more can be added to it.</p>
+      ) : (
+        <div className="promo-row" style={{ marginTop: 10 }}>
+          <input
+            value={note}
+            placeholder="Serial numbers, what was said, what's missing…"
+            aria-label="Add evidence"
+            enterKeyHint="done"
+            onChange={(e) => setNote(e.target.value)}
+          />
+          <button
+            className="btn btn-outline btn-sm"
+            disabled={!note.trim()}
+            onClick={() => {
+              buzz()
+              dispatch({ type: 'ADD_EVIDENCE', reportId: report.id, text: note })
+              setNote('')
+              toast('Added to the case')
+            }}
+          >
+            Add
+          </button>
+        </div>
+      )}
     </Modal>
   )
 }

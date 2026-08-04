@@ -254,6 +254,9 @@ export interface UserReport {
   nextAt?: number
   /** Set once mediation opens, so the order can say what is being arbitrated. */
   orderId?: string
+  /** What you have added to the case since filing. A case you can only watch is
+      a case you cannot influence, and mediation explicitly asks for your side. */
+  evidence?: { id: string; text: string; at: number }[]
 }
 
 /** A friend who used your code. The app cannot know this for real without a

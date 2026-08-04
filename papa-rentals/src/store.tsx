@@ -104,6 +104,7 @@ type Action =
   | { type: 'REDEEM_REFERRAL'; code: string }
   | { type: 'SHARE_REFERRAL' }
   | { type: 'CLEAR_TIER_UP' }
+  | { type: 'ADD_EVIDENCE'; reportId: string; text: string }
   | { type: 'TICK'; now: number }
 
 /* One number, used by the code copy, the tracking list and the payout. It was
@@ -731,6 +732,19 @@ function reducer(state: AppState, action: Action): AppState {
     case 'ADD_AVAIL_ALERT': {
       if (state.availAlerts.some((a) => a.itemId === action.itemId)) return state
       return { ...state, availAlerts: [...state.availAlerts, { id: uid(), itemId: action.itemId, notifyAt: Date.now() + 25000 }] }
+    }
+
+    case 'ADD_EVIDENCE': {
+      const text = action.text.trim()
+      if (!text) return state
+      return {
+        ...state,
+        reports: state.reports.map((r) =>
+          r.id === action.reportId
+            ? { ...r, evidence: [...(r.evidence ?? []), { id: uid(), text, at: Date.now() }] }
+            : r
+        ),
+      }
     }
 
     case 'CLEAR_TIER_UP':
