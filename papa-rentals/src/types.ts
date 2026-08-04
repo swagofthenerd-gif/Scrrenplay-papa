@@ -283,7 +283,18 @@ export interface AppNotification {
   at: number
   read: boolean
   link?: string // hash route to open
+  /** Which Settings toggle governs this. Absent means "always deliver" — used
+      for the handful that are not really optional, like a tier being reached. */
+  channel?: NotifyChannel
 }
+
+export type NotifyChannel = 'orders' | 'offers' | 'chat' | 'deals'
+
+/** Mirrors the Notifications toggles in Settings. Held in app state rather than
+    only in the settings screen's own storage, because the reducer is what has to
+    honour them — while they lived solely in Settings the switches changed a
+    stored boolean and nothing else, and every notification arrived regardless. */
+export type NotifyPrefs = Record<NotifyChannel, boolean>
 
 export type OwnerBookingStatus = 'pending' | 'accepted' | 'declined' | 'completed' | 'paid_out'
 
@@ -454,6 +465,7 @@ export interface AppState {
   /** Set when points cross into a new tier, cleared once the celebration has
       been shown. Without it the banner reappears on every visit. */
   tierReached?: string
+  notifyPrefs: NotifyPrefs
   referralRedeemed: boolean
   referrals: ReferralFriend[]
   /** Set the first time the code is shared; nobody joins before you tell them. */

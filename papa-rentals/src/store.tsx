@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { DRIVER_POOL, PROMO_CODES, RENTER_POOL, getItem, getOwner, syncUserListings } from './data/catalog'
 import type {
   Address, AppNotification, AppState, Booking, ChatMessage, ChatThread,
-  CategoryId, Item, LedgerEntry, Offer, Order, OrderStatus, OwnerBooking, Review, SavedCard, SavedSearch, UserReport,
+  CategoryId, Item, LedgerEntry, NotifyChannel, Offer, Order, OrderStatus, OwnerBooking, Review, SavedCard, SavedSearch, UserReport,
 } from './types'
 import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, money, recommendedRate, todayISO, uid, tierOf } from './utils'
 import type { IconName } from './components/icons'
@@ -46,6 +46,7 @@ const initialState: AppState = {
   claims: [],
   availAlerts: [],
   priceAlerts: [],
+  notifyPrefs: { orders: true, offers: true, chat: true, deals: false },
   referralRedeemed: false,
   referrals: [],
   referralPending: false,
@@ -105,6 +106,7 @@ type Action =
   | { type: 'SHARE_REFERRAL' }
   | { type: 'CLEAR_TIER_UP' }
   | { type: 'ADD_EVIDENCE'; reportId: string; text: string }
+  | { type: 'SET_NOTIFY_PREF'; channel: NotifyChannel; on: boolean }
   | { type: 'TICK'; now: number }
 
 /* One number, used by the code copy, the tracking list and the payout. It was
@@ -132,6 +134,10 @@ function tierUpState(state: AppState, newPoints: number): AppState {
 }
 
 function notify(state: AppState, n: Omit<AppNotification, 'id' | 'at' | 'read'>): AppNotification[] {
+  /* A channel the person switched off is dropped here rather than filtered at
+     render time, so a muted channel does not sit in state inflating the unread
+     badge for alerts they asked not to receive. */
+  if (n.channel && !state.notifyPrefs[n.channel]) return state.notifications
   return [{ id: uid(), at: Date.now(), read: false, ...n }, ...state.notifications].slice(0, 40)
 }
 
@@ -158,7 +164,7 @@ function logStatus(o: Order, status: OrderStatus, at: number): { status: OrderSt
 function stepOrderForward(o: Order): { order: Order; notifs: NotifSpec[] } {
   const notifs: NotifSpec[] = []
   if (o.status === 'requested') {
-    notifs.push({ icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
+    notifs.push({ channel: 'orders' as const, icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
     const at = Date.now()
     return { order: { ...o, status: 'confirmed', approveAt: undefined, statusAt: at, autoAdvanceAt: at + 30000, statusLog: logStatus(o, 'confirmed', at) }, notifs }
   }
@@ -170,11 +176,11 @@ function stepOrderForward(o: Order): { order: Order; notifs: NotifSpec[] } {
   if (next === 'in_transit' && !o.driver) {
     const d = DRIVER_POOL[Math.floor(Math.random() * DRIVER_POOL.length)]
     patch = { ...patch, driver: { ...d, pin: String(1000 + Math.floor(Math.random() * 9000)) } }
-    notifs.push({ icon: 'van', title: `${o.id} is on the way`, body: `${d.name} is driving your gear over. Handover PIN inside.`, link: `#/order/${o.id}` })
+    notifs.push({ channel: 'orders' as const, icon: 'van', title: `${o.id} is on the way`, body: `${d.name} is driving your gear over. Handover PIN inside.`, link: `#/order/${o.id}` })
   }
   if (next === 'completed') {
     patch = { ...patch, depositReleased: true }
-    notifs.push({ icon: 'flag-checkered', title: `${o.id} complete — deposit hold released`, body: 'Rate your experience while it’s fresh!', link: `#/order/${o.id}` })
+    notifs.push({ channel: 'orders' as const, icon: 'flag-checkered', title: `${o.id} complete — deposit hold released`, body: 'Rate your experience while it’s fresh!', link: `#/order/${o.id}` })
   }
   return { order: { ...o, ...patch }, notifs }
 }
@@ -320,7 +326,7 @@ function reducer(state: AppState, action: Action): AppState {
       const item = getItem(action.itemId)
       let notifications = state.notifications
       if (adding && dealActive(action.itemId)) {
-        notifications = notify(state, {
+        notifications = notify(state, { channel: 'deals',
           icon: 'coins', title: `Price drop on ${item.name}`,
           body: `${item.flashDeal!.percentOff}% off right now — the deal is ticking.`,
           link: `#/item/${item.id}`,
@@ -386,8 +392,8 @@ function reducer(state: AppState, action: Action): AppState {
           : state.promoCodesUsed,
         freeVanPerkMonth: t.usedVanPerk ? todayISO().slice(0, 7) : state.freeVanPerkMonth,
         notifications: notify(tiered, needsApproval
-          ? { icon: 'hourglass', title: `Booking ${order.id} requested`, body: 'Waiting for owner approval — usually a few minutes.', link: `#/order/${order.id}` }
-          : { icon: 'check-circle', title: `Order ${order.id} confirmed`, body: 'Gear is being reserved for your dates.', link: `#/order/${order.id}` }),
+          ? { channel: 'orders' as const, icon: 'hourglass', title: `Booking ${order.id} requested`, body: 'Waiting for owner approval — usually a few minutes.', link: `#/order/${order.id}` }
+          : { channel: 'orders' as const, icon: 'check-circle', title: `Order ${order.id} confirmed`, body: 'Gear is being reserved for your dates.', link: `#/order/${order.id}` }),
       }
     }
 
@@ -436,7 +442,7 @@ function reducer(state: AppState, action: Action): AppState {
           { kind: 'wallet', amount: refund, label: fee > 0 ? `Refund for ${o.id} (less ${fee.toLocaleString()} fee)` : `Refund for ${o.id}`, cash: true, orderId: o.id },
           { kind: 'points', amount: o.pointsUsed - o.pointsEarned, label: `Points reversed on ${o.id}`, orderId: o.id },
         ]),
-        notifications: notify(state, {
+        notifications: notify(state, { channel: 'orders',
           icon: 'undo', title: `${o.id} cancelled`,
           body: fee > 0 ? `Refunded ${refund.toLocaleString()} to wallet (10% late-cancel fee applied).` : `Fully refunded to your wallet. Deposit hold released.`,
           link: `#/order/${o.id}`,
@@ -469,7 +475,7 @@ function reducer(state: AppState, action: Action): AppState {
         orders: state.orders.map((x) =>
           x.id === o.id ? { ...x, lines, total: x.total + cost, extendedDays: (x.extendedDays ?? 0) + action.days } : x
         ),
-        notifications: notify(state, {
+        notifications: notify(state, { channel: 'orders',
           icon: 'calendar', title: `${o.id} extended by ${action.days} day${action.days > 1 ? 's' : ''}`,
           body: fromWallet >= cost ? `Rs ${cost.toLocaleString()} paid from wallet.` : `Rs ${cost.toLocaleString()} charged (Rs ${fromWallet.toLocaleString()} from wallet).`,
           link: `#/order/${o.id}`,
@@ -734,6 +740,9 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, availAlerts: [...state.availAlerts, { id: uid(), itemId: action.itemId, notifyAt: Date.now() + 25000 }] }
     }
 
+    case 'SET_NOTIFY_PREF':
+      return { ...state, notifyPrefs: { ...state.notifyPrefs, [action.channel]: action.on } }
+
     case 'ADD_EVIDENCE': {
       const text = action.text.trim()
       if (!text) return state
@@ -806,10 +815,10 @@ function reducer(state: AppState, action: Action): AppState {
             const item = getItem(of.itemId)
             const resolved: Offer = { ...of, status: verdict.status, counterRate: verdict.counter, resolveAt: undefined }
             const msg: Omit<AppNotification, 'id' | 'at' | 'read'> = verdict.status === 'accepted'
-              ? { icon: 'check-circle', title: `Offer accepted on ${item.name}`, body: `Locked at Rs ${of.offeredRate.toLocaleString()}/${of.unit} for 24h.`, link: `#/item/${of.itemId}` }
+              ? { channel: 'offers' as const, icon: 'check-circle', title: `Offer accepted on ${item.name}`, body: `Locked at Rs ${of.offeredRate.toLocaleString()}/${of.unit} for 24h.`, link: `#/item/${of.itemId}` }
               : verdict.status === 'countered'
-                ? { icon: 'undo', title: `Counter-offer on ${item.name}`, body: `Owner suggests Rs ${verdict.counter!.toLocaleString()}/${of.unit}.`, link: `#/item/${of.itemId}` }
-                : { icon: 'x-circle', title: `Offer declined on ${item.name}`, body: 'Try something closer to the recommended fare.', link: `#/item/${of.itemId}` }
+                ? { channel: 'offers' as const, icon: 'undo', title: `Counter-offer on ${item.name}`, body: `Owner suggests Rs ${verdict.counter!.toLocaleString()}/${of.unit}.`, link: `#/item/${of.itemId}` }
+                : { channel: 'offers' as const, icon: 'x-circle', title: `Offer declined on ${item.name}`, body: 'Try something closer to the recommended fare.', link: `#/item/${of.itemId}` }
             notifications = notify({ ...next, notifications }, msg)
             return resolved
           }
@@ -836,6 +845,7 @@ function reducer(state: AppState, action: Action): AppState {
           /* Linking to Profile dropped you a screen short of the reply you just
              tapped. Deep-link to the thread itself, not the list. */
           notifications = notify({ ...next, notifications }, {
+            channel: 'chat',
             icon: 'chat',
             title: `${threadPeer(next, ownerId).name} replied`,
             body: reply.text,
@@ -852,7 +862,7 @@ function reducer(state: AppState, action: Action): AppState {
         let notifications = next.notifications
         const orders = next.orders.map((o) => {
           if (!dueOrders.includes(o)) return o
-          notifications = notify({ ...next, notifications }, { icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
+          notifications = notify({ ...next, notifications }, { channel: 'orders', icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
           /* This is the second route from requested to confirmed and it used to
              set neither statusAt nor a log entry, so an order the owner approved
              on the heartbeat showed no "Confirmed since" time while an identical
@@ -1058,7 +1068,7 @@ function reducer(state: AppState, action: Action): AppState {
         let notifications = next.notifications
         for (const a of dropped) {
           const item = getItem(a.itemId)
-          notifications = notify({ ...next, notifications }, {
+          notifications = notify({ ...next, notifications }, { channel: 'deals',
             icon: 'coins', title: `Price drop on ${item.name}`,
             body: `Now ${money(recommendedRate(a.itemId, 1))}/day, down from ${money(a.price)}.`,
             link: `#/item/${a.itemId}`,
@@ -1124,6 +1134,19 @@ const LEGACY_SPACE: Record<string, IconName> = {
 }
 
 function migrate(s: any): any {
+  /* Notification switches used to live only in the settings screen's own storage
+     key. Carry a returning user's choices across rather than silently switching
+     everything back on the first time they open the app after this change. */
+  if (!s.notifyPrefs) {
+    let old: any = {}
+    try { old = JSON.parse(localStorage.getItem('papa-settings-v1') || '{}') } catch { /* unreadable */ }
+    s.notifyPrefs = {
+      orders: old.notifyOrders ?? true,
+      offers: old.notifyOffers ?? true,
+      chat: old.notifyChat ?? true,
+      deals: old.notifyDeals ?? false,
+    }
+  }
   // cart lines gained stable ids; backfill so older saved carts stay editable
   const withLineId = (b: any) => (b?.id ? b : { ...b, id: uid() })
   if (Array.isArray(s.cart)) s.cart = s.cart.map(withLineId)

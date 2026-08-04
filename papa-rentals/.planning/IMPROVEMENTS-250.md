@@ -395,7 +395,7 @@ claiming an item, re-verify it in the code.
 ### Future-facing
 47. [ ] Verification center (ID, phone, payment) that actually unlocks the promised "instant-book on premium gear".
 48. [ ] Saved crew/collaborators so producers can share a wallet or approve on someone's behalf.
-49. [ ] Notification preferences tied to the existing notification center.
+49. [x] Notification preferences tied to the existing notification center.
 50. [ ] Public profile / renter reputation page owners can view — the two-way rating system is begging for it.
 
 ---
