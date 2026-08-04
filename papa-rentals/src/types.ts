@@ -187,6 +187,10 @@ export interface Order {
   statusAt?: number
   driver?: Driver
   lineRatings?: number[]
+  /** The note left against each line, parallel to lineRatings. Kept on the order
+      because "Edit your rating" reopened the form with the stars restored and the
+      words gone, so editing a typo meant retyping the review. */
+  lineReviews?: string[]
   myRatingOfOwner?: number
   ownerRatingOfMe?: number
   reported?: boolean

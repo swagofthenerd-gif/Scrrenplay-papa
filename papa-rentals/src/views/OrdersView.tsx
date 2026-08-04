@@ -685,31 +685,45 @@ function ClaimModal({ order, onClose }: { order: Order; onClose: () => void }) {
 function RateModal({ order, ownerName, onClose, onDone }: { order: Order; ownerName: string; onClose: () => void; onDone: () => void }) {
   const { dispatch } = useStore()
   const [ratings, setRatings] = useState<number[]>(order.lines.map((_, i) => order.lineRatings?.[i] ?? 5))
-  const [text, setText] = useState('')
+  const [texts, setTexts] = useState<string[]>(order.lines.map((_, i) => order.lineReviews?.[i] ?? ''))
+  const multi = order.lines.length > 1
 
   return (
     <Modal title={`Rate ${ownerName}`} onClose={onClose}>
       <p className="muted" style={{ fontSize: 14, marginTop: 0 }}>
         Ratings are two-way and blind: the owner has already rated you, and both publish the moment you submit — nobody can retaliate.
       </p>
+      {/* The note used to be one field labelled "applies to each item", and it did
+          — the same sentence was published as a review of the camera and of the
+          tripod. A note belongs to the thing it was written about, so each line
+          gets its own and blank lines publish nothing. */}
       {order.lines.map((l, i) => {
         const item = getItem(l.itemId)
         return (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: i > 0 ? '1px solid var(--line)' : 'none' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}><ItemArt item={item} size="thumb" /> <b>{item.name}</b></span>
-            <Stars value={ratings[i]} size={13} onChange={(v) => setRatings(ratings.map((r, j) => (j === i ? v : r)))} />
+          <div key={i} style={{ padding: '10px 0', borderTop: i > 0 ? '1px solid var(--line)' : 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, minWidth: 0 }}>
+                <ItemArt item={item} size="thumb" /> <b style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</b>
+              </span>
+              <Stars value={ratings[i]} size={13} onChange={(v) => setRatings(ratings.map((r, j) => (j === i ? v : r)))} />
+            </div>
+            <label className="field" style={{ marginTop: 6 }}>
+              <span className="sr-only">Review of {item.name} (optional)</span>
+              <input
+                value={texts[i]}
+                placeholder={multi ? `How was the ${item.name}?` : 'How was the gear and the handover?'}
+                enterKeyHint="done"
+                onChange={(e) => setTexts(texts.map((t, j) => (j === i ? e.target.value : t)))}
+              />
+            </label>
           </div>
         )
       })}
-      <label className="field" style={{ marginTop: 6 }}>
-        Review (optional, applies to each item)
-        <input value={text} placeholder="How was the gear and the handover?" enterKeyHint="done" onChange={(e) => setText(e.target.value)} />
-      </label>
       <button
         className="btn btn-primary btn-block" style={{ marginTop: 14 }}
         onClick={() => {
           buzz()
-          dispatch({ type: 'RATE_ORDER', orderId: order.id, ratings, text })
+          dispatch({ type: 'RATE_ORDER', orderId: order.id, ratings, texts })
           onDone()
           onClose()
         }}

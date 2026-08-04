@@ -68,7 +68,7 @@ type Action =
   | { type: 'ADVANCE_ORDER'; orderId: string }
   | { type: 'CANCEL_ORDER'; orderId: string }
   | { type: 'EXTEND_ORDER'; orderId: string; days: number }
-  | { type: 'RATE_ORDER'; orderId: string; ratings: number[]; text?: string }
+  | { type: 'RATE_ORDER'; orderId: string; ratings: number[]; texts: string[] }
   | { type: 'ADD_OFFER'; offer: Offer }
   | { type: 'ACCEPT_COUNTER'; offerId: string }
   | { type: 'ADD_CHAT'; ownerId: string; message: ChatMessage }
@@ -417,13 +417,20 @@ function reducer(state: AppState, action: Action): AppState {
       const avg = action.ratings.reduce((a, b) => a + b, 0) / Math.max(1, action.ratings.length)
       // blind two-way rating: the owner's rating of you publishes at the same moment yours does
       const ownerRating = 4 + (o.id.charCodeAt(o.id.length - 1) % 2)
+      /* The note used to be a single field stamped onto every line, so renting a
+         camera and a tripod together published the same sentence as a review of
+         both. A note now belongs to the item it was written about, and lines left
+         blank publish nothing rather than inheriting someone else's words. */
       let myReviews = state.myReviews
-      if (action.text?.trim()) {
+      const texts = action.texts ?? []
+      if (texts.some((t) => t?.trim())) {
         myReviews = { ...myReviews }
         o.lines.forEach((l, i) => {
+          const text = texts[i]?.trim()
+          if (!text) return
           const review: Review = {
             id: uid(), author: state.profile.name || 'You', rating: action.ratings[i] ?? Math.round(avg),
-            text: action.text!.trim(), date: todayISO(), role: 'renter',
+            text, date: todayISO(), role: 'renter',
           }
           myReviews[l.itemId] = [review, ...(myReviews[l.itemId] ?? [])]
         })
@@ -432,7 +439,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         myReviews,
         orders: state.orders.map((x) =>
-          x.id === o.id ? { ...x, lineRatings: action.ratings, myRatingOfOwner: avg, ownerRatingOfMe: ownerRating } : x
+          x.id === o.id ? { ...x, lineRatings: action.ratings, lineReviews: texts, myRatingOfOwner: avg, ownerRatingOfMe: ownerRating } : x
         ),
       }
     }

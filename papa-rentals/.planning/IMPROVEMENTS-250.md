@@ -272,7 +272,7 @@ claiming an item, re-verify it in the code.
 
 ### Ratings
 19. [x] `ownerRatingOfMe ?? 5` — a missing owner rating silently shows 5 stars. Misleading.
-20. [ ] Rating is per-item but review text "applies to each item" — allow per-item notes.
+20. [x] Rating is per-item but review text "applies to each item" — allow per-item notes.
 21. [x] No way to edit/withdraw a rating after publishing. *(edit done; withdraw outstanding)*
 22. [x] Completed orders show "+N PapaPoints earned" with no link to where points went.
 
