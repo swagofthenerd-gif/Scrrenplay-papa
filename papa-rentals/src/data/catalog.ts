@@ -15,16 +15,16 @@ function rel(startOffset: number, endOffset: number) {
 export const CURRENCY = 'Rs'
 
 export const CATEGORIES: Category[] = [
-  { id: 'cameras', name: 'Cameras', icon: 'camera', gradient: 'linear-gradient(135deg,#ff9a5a,#ff6b2c)' },
-  { id: 'lenses', name: 'Lenses', icon: 'lens', gradient: 'linear-gradient(135deg,#7f7fd5,#5a5ade)' },
-  { id: 'lighting', name: 'Lighting', icon: 'bulb', gradient: 'linear-gradient(135deg,#f7b733,#fc4a1a)' },
-  { id: 'audio', name: 'Audio', icon: 'mic', gradient: 'linear-gradient(135deg,#43cea2,#185a9d)' },
-  { id: 'grip', name: 'Grip & Rigs', icon: 'clapperboard', gradient: 'linear-gradient(135deg,#606c88,#3f4c6b)' },
-  { id: 'drones', name: 'Drones', icon: 'drone', gradient: 'linear-gradient(135deg,#36d1dc,#5b86e5)' },
-  { id: 'transport', name: 'Transport', icon: 'van', gradient: 'linear-gradient(135deg,#f857a6,#ff5858)' },
-  { id: 'studios', name: 'Studios & Spaces', icon: 'building', gradient: 'linear-gradient(135deg,#c471f5,#fa71cd)' },
-  { id: 'props', name: 'Props & Sets', icon: 'armchair', gradient: 'linear-gradient(135deg,#b79891,#94716b)' },
-  { id: 'crew', name: 'Crew Gear', icon: 'wrench', gradient: 'linear-gradient(135deg,#11998e,#38ef7d)' },
+  { id: 'cameras', name: 'Cameras', icon: 'camera' },
+  { id: 'lenses', name: 'Lenses', icon: 'lens' },
+  { id: 'lighting', name: 'Lighting', icon: 'bulb' },
+  { id: 'audio', name: 'Audio', icon: 'mic' },
+  { id: 'grip', name: 'Grip & Rigs', icon: 'clapperboard' },
+  { id: 'drones', name: 'Drones', icon: 'drone' },
+  { id: 'transport', name: 'Transport', icon: 'van' },
+  { id: 'studios', name: 'Studios & Spaces', icon: 'building' },
+  { id: 'props', name: 'Props & Sets', icon: 'armchair' },
+  { id: 'crew', name: 'Crew Gear', icon: 'wrench' },
 ]
 
 export const OWNERS: Owner[] = [
@@ -287,7 +287,7 @@ export const ITEMS: Item[] = [
   },
 ]
 
-// attach curated photography (see images.ts); gradient art remains the fallback
+// attach curated photography (see images.ts); the drawn art remains the fallback
 for (const item of ITEMS) {
   const ids = ITEM_IMAGES[item.id]
   if (ids?.length) {

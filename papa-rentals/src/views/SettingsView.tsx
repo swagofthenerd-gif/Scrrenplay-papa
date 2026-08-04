@@ -3,6 +3,7 @@ import { useNav } from '../nav'
 import { useStore } from '../store'
 import { money } from '../utils'
 import { Badge, Modal } from '../components/ui'
+import { ThemeRow } from '../components/ThemeToggle'
 import { Icon } from '../components/icons'
 
 const PREFS_KEY = 'papa-settings-v1'
@@ -88,6 +89,11 @@ export default function SettingsView() {
           <span><Icon name="shield" size={16} /> Verification</span>
           <span className="muted"><Badge tone="green"><Icon name="check" size={13} /> ID verified</Badge> <Icon name="chevron-right" size={14} /></span>
         </button>
+      </div>
+
+      <div className="panel" style={{ marginTop: 14 }}>
+        <h3 style={{ fontSize: 15 }}><Icon name="sun" size={16} /> Appearance</h3>
+        <ThemeRow />
       </div>
 
       <div className="panel" style={{ marginTop: 14 }}>

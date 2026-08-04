@@ -92,9 +92,9 @@ export function VendorTile({ vendor }: { vendor: Vendor }) {
       <span className="vendor-tile-meta">
         <RatingCompact rating={owner.rating} count={owner.ratingCount} />
       </span>
-      <span className="vendor-tile-sub muted small">
-        {vendor.count} listings · from {money(vendor.minPrice)}
-      </span>
+      {/* The count is in the label for anyone who needs it. On a 160px tile the
+          useful half of that sentence is the price floor. */}
+      <span className="vendor-tile-sub muted small nowrap">from {money(vendor.minPrice)}</span>
       {(owner.superOwner || owner.verified) && (
         <span className="vendor-tile-badge">
           <Icon name={owner.superOwner ? 'crown' : 'check'} size={11} />

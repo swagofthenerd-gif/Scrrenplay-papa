@@ -4,7 +4,7 @@ import { useNav } from '../nav'
 import { forYou, similarItems } from '../recs'
 import { vendors } from '../vendors'
 import { useStore } from '../store'
-import { buzz, bundleDiscount, dealActive, dealEndsAt, fmtCountdown, fmtDate, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
+import { buzz, bundleDiscount, dealActive, fmtDate, money, savedLabel, todayISO, uid, weightedRating } from '../utils'
 import { ItemArt, ItemCard, ListingPromo, Modal } from '../components/ui'
 import { DeptRow } from '../components/DeptRow'
 import { Chip, SectionHeader } from '../components/primitives'
@@ -109,11 +109,27 @@ function Rail({
         title={title}
         sub={sub}
         action={
-          action && (
-            <button className="link-btn" onClick={action.onClick}>
-              {action.label} <Icon name="arrow-right" size={13} />
-            </button>
-          )
+          <div className="section-actions">
+            {action && (
+              <button className="link-btn" onClick={action.onClick}>
+                {action.label} <Icon name="arrow-right" size={13} />
+              </button>
+            )}
+            {/* Arrows are for pointers, not thumbs — CSS hides them on touch,
+                where the masked edge says the same thing. They sit in the
+                header because centred on the track they landed on a card's
+                title and price, which is the content they exist to reveal. */}
+            {overflows && (
+              <span className="rail-nav">
+                <button className="rail-arrow" onClick={() => nudge(-1)} disabled={atStart} aria-label={`Scroll ${title} back`}>
+                  <Icon name="chevron-left" size={16} />
+                </button>
+                <button className="rail-arrow" onClick={() => nudge(1)} disabled={atEnd} aria-label={`Scroll ${title} forward`}>
+                  <Icon name="chevron-right" size={16} />
+                </button>
+              </span>
+            )}
+          </div>
         }
       />
       {filters && <div className="rail-filters">{filters}</div>}
@@ -128,18 +144,6 @@ function Rail({
         >
           {children}
         </div>
-        {/* Arrows are for pointers, not thumbs — CSS hides them on touch, where
-            the masked edge says the same thing without stealing a line. */}
-        {overflows && !atStart && (
-          <button className="rail-arrow prev" onClick={() => nudge(-1)} aria-label={`Scroll ${title} back`}>
-            <Icon name="chevron-left" size={18} />
-          </button>
-        )}
-        {overflows && !atEnd && (
-          <button className="rail-arrow next" onClick={() => nudge(1)} aria-label={`Scroll ${title} forward`}>
-            <Icon name="chevron-right" size={18} />
-          </button>
-        )}
       </div>
       {/* Was a "Swipe for more" line under every rail — the same sentence five
           times down one page, explaining a gesture the fade already implies.
@@ -157,17 +161,6 @@ function RailSkeleton({ count = 4 }: { count?: number }) {
       {Array.from({ length: count }, (_, i) => <div key={i} className="card-skeleton" />)}
     </div>
   )
-}
-
-/* A deal without a visible clock is just a badge. */
-function DealCountdown({ itemId }: { itemId: string }) {
-  const [left, setLeft] = useState(() => dealEndsAt(itemId) - Date.now())
-  useEffect(() => {
-    const t = setInterval(() => setLeft(dealEndsAt(itemId) - Date.now()), 1000)
-    return () => clearInterval(t)
-  }, [itemId])
-  if (left <= 0) return null
-  return <span className="muted small"><Icon name="clock" size={12} /> {fmtCountdown(left)} left</span>
 }
 
 export default function Home() {
@@ -505,12 +498,10 @@ export default function Home() {
           icon="bolt"
           action={{ label: 'See all', onClick: () => go({ name: 'browse', dealsOnly: true }) }}
         >
-          {deals.map((item, idx) => (
-            <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <ItemCard {...cardProps(item, idx)} />
-              <DealCountdown itemId={item.id} />
-            </div>
-          ))}
+          {/* The clock used to be repeated under each card, which said the same
+              minutes as the ribbon on the artwork and left every deal card
+              standing on a different baseline to the rest of the rail. */}
+          {deals.map((item, idx) => <ItemCard key={item.id} {...cardProps(item, idx)} />)}
         </Rail>
       )}
 
@@ -662,7 +653,7 @@ export default function Home() {
           mark: the drawing carries the noun, so the words "listings",
           "vendors" and "shoots supplied" can go. Each mark keeps its meaning
           in a label for anyone who can't see it. */}
-      <div className="proof-row" role="note">
+      <div className="proof-row paper-strip" role="note">
         <span className="proof-item">
           <Icon name="stack" size={15} aria-hidden="true" />
           <b>{proof.listings}</b>
@@ -697,14 +688,14 @@ export default function Home() {
           They are all still here, behind one deliberate tap, which also means
           the cards inside them are never built for someone who didn't ask.
           Each still mounts a screen ahead of the scroll once opened. */}
-      <div className="section">
+      <div className="section more-row">
         <button
           className="more-toggle"
           aria-expanded={moreOpen}
           onClick={() => { buzz(); setMoreOpen((v) => !v) }}
         >
-          <b>{moreOpen ? 'Fewer ways to browse' : 'More ways to browse'}</b>
-          <Icon name={moreOpen ? 'chevron-up' : 'chevron-down'} size={18} />
+          {moreOpen ? 'Fewer ways to browse' : 'More ways to browse'}
+          <Icon name={moreOpen ? 'chevron-up' : 'chevron-down'} size={16} />
         </button>
       </div>
 

@@ -16,7 +16,6 @@ export interface Category {
   id: CategoryId
   name: string
   icon: IconName
-  gradient: string
 }
 
 export interface Owner {
@@ -69,7 +68,7 @@ export interface Item {
   specs: string[]
   description: string
   tags: string[]
-  image?: string // hero/card photo URL; gradient+icon art is the fallback
+  image?: string // hero/card photo URL; the drawn art is the fallback
   images?: string[] // detail-page gallery (first entry === image)
   timesRented: number
   /** When the listing went live (epoch ms). Drives "New this week" and lets

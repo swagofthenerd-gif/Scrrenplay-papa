@@ -755,7 +755,12 @@ export function Icon({
 
 /* ---------------- monogram avatar (replaces emoji owner avatars) ---------------- */
 export function Avatar({ name, id, size = 46 }: { name: string; id: string; size?: number }) {
-  const hue = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
+  /* The rolling hash alone put every vendor in the same colour: ids run o1, o2,
+     o3, so the hash landed one degree apart and a rail of avatars came out as
+     six identical greens. Spreading the result by a step co-prime with 360
+     turns those neighbours into different hues. */
+  const raw = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
+  const hue = (raw * 137) % 360
   const initials = name
     .split(/\s+/)
     .slice(0, 2)

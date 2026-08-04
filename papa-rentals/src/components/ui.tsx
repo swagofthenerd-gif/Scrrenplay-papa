@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { getCategory, getOwner } from '../data/catalog'
+import { getOwner } from '../data/catalog'
 import { useStore } from '../store'
 import type { Item } from '../types'
 import { buzz, dealActive, dealEndsAt, fmtCountdown, money, scarcityNote } from '../utils'
@@ -67,19 +67,22 @@ export function ListingPromo({
   style?: CSSProperties
 }) {
   return (
-    <div className="kit-card promo-card" style={style}>
+    /* One target, not a card with a button in the corner: the whole thing was
+       already the same single action, and splitting it left the copy wrapping
+       to three lines against a button sitting on its own optical baseline. */
+    <button className="kit-card promo-card" style={style} onClick={onClick}>
       <span className="promo-ico"><Icon name={icon} size={25} /></span>
-      <div className="promo-body">
+      <span className="promo-body">
         <b>{title}</b>
-        <div className="muted small">{blurb}</div>
-      </div>
-      <button className="btn btn-primary btn-sm" onClick={onClick}>{cta}</button>
-    </div>
+        <span className="muted small">{blurb}</span>
+      </span>
+      <span className="promo-cta">{cta} <Icon name="arrow-right" size={14} /></span>
+    </button>
   )
 }
 
 /* ---------------- live flash-deal countdown ---------------- */
-export function DealCountdown({ itemId, prefix }: { itemId: string; prefix?: ReactNode }) {
+export function DealCountdown({ itemId, prefix, compact }: { itemId: string; prefix?: ReactNode; compact?: boolean }) {
   const [, force] = useState(0)
   useEffect(() => {
     const t = setInterval(() => force((x) => x + 1), 1000)
@@ -87,6 +90,9 @@ export function DealCountdown({ itemId, prefix }: { itemId: string; prefix?: Rea
   }, [])
   const left = dealEndsAt(itemId) - Date.now()
   if (left <= 0) return null
+  /* "20% OFF · ends in 4h 59m" was two lines on a rail card. On the artwork the
+     ribbon has one line and no room for grammar — the clock is the message. */
+  if (compact) return <span>{fmtCountdown(left)}</span>
   return <span>{prefix} ends in {fmtCountdown(left)}</span>
 }
 
@@ -198,14 +204,20 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   )
 }
 
-/* ---------------- item art: photo-first, gradient+icon fallback ---------------- */
+/* ---------------- item art: photo-first, drawn fallback ---------------- */
+/*
+ * The fallback used to be a full-bleed category gradient with a white glyph on
+ * it, which made a missing photo the loudest object on the page — a card whose
+ * image had not loaded shouted louder than one that had. It is paper and pencil
+ * now, the same surface as the hero, so an absent photo reads as a drawing
+ * somebody made rather than as an error state that won the layout.
+ */
 const ART_GLYPH_SIZE = { card: 60, hero: 104, thumb: 26 } as const
 
 export function ItemArt({ item, size = 'card' }: { item: Item; size?: 'card' | 'hero' | 'thumb' }) {
-  const cat = getCategory(item.category)
   const ribbon = item.flashDeal && dealActive(item.id) && size !== 'thumb' && (
     <div className="deal-ribbon">
-      <Icon name="bolt" size={11} /> {item.flashDeal.percentOff}% OFF · <DealCountdown itemId={item.id} />
+      <Icon name="bolt" size={11} /> −{item.flashDeal.percentOff}% · <DealCountdown itemId={item.id} compact />
     </div>
   )
   const glyph = <Icon name={item.icon} className="art-glyph" size={ART_GLYPH_SIZE[size]} />
@@ -217,18 +229,14 @@ export function ItemArt({ item, size = 'card' }: { item: Item; size?: 'card' | '
         images={item.images}
         alt={item.name}
         overlay={ribbon || undefined}
-        fallback={
-          <div className="grad-fill" style={{ background: cat.gradient }} aria-hidden="true">
-            {glyph}
-          </div>
-        }
+        fallback={<div className="grad-fill art-paper" aria-hidden="true">{glyph}</div>}
       />
     )
   }
 
-  // card/thumb (and photo-less hero): gradient+icon base, photo fades in on top
+  // card/thumb (and photo-less hero): drawn base, photo fades in on top
   return (
-    <div className={`item-art art-${size}`} style={{ background: cat.gradient }} role="img" aria-label={item.name}>
+    <div className={`item-art art-paper art-${size}`} role="img" aria-label={item.name}>
       {glyph}
       {item.image && <SmartImage src={item.image} alt="" fallback={null} box={size} />}
       {ribbon}
@@ -368,7 +376,9 @@ export function ItemCard({
             <b>{money(item.pricePerDay)}</b>
           )}
           <span className="muted"> /day</span>
-          <span className="muted small"> · {owner.distanceKm} km</span>
+          {/* Distance is context a grid can give room to and a rail cannot —
+              the class is what lets the compact rail card drop it. */}
+          <span className="muted small item-km"> · {owner.distanceKm} km</span>
         </div>
         {scarcity && (
           <div className="item-scarcity"><Icon name="clock" size={11} /> {scarcity}</div>
