@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useState } from 'react'
 import { getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
-import { useStore } from '../store'
+import { driverThreadId, useStore } from '../store'
 import type { Order, OrderStatus } from '../types'
 import { buzz, downloadReceipt, fmtCountdown, fmtDate, money, shiftBooking, todayISO, uid } from '../utils'
 import { Badge, ItemArt, Modal, Stars } from '../components/ui'
@@ -200,6 +200,7 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
     () => [...new Map(lines.map(({ item }) => { const o = getOwner(item.ownerId); return [o.id, o] as const })).values()],
     [lines]
   )
+  const driverUnread = state.chats[driverThreadId(order.id)]?.unread ?? 0
   const done = order.status === 'completed'
   const orderClaims = state.claims.filter((c) => c.orderId === order.id)
   const hasClaim = orderClaims.length > 0
@@ -339,7 +340,7 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
             <Icon name="driver" size={26} />
             <div style={{ minWidth: 0 }}>
               <b style={{ fontSize: 14 }}>{order.driver.name}</b>
-              <div className="muted small">{order.driver.vehicle} · <a href={`tel:${order.driver.phone.replace(/\s/g, '')}`} style={{ color: 'var(--accent)', fontWeight: 700 }}><Icon name="phone" size={14} /> Call</a></div>
+              <div className="muted small">{order.driver.vehicle}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div className="muted small">Handover PIN</div>
@@ -362,6 +363,19 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
               >
                 {order.driver.pin}
               </button>
+            </div>
+            {/* Calling was the only way to reach the driver, which is the wrong
+                default on a shoot: you are often somewhere too loud to talk, and
+                "gate code is 4417, come to the back" is a thing you want written
+                down rather than shouted once. Call stays for when it's urgent. */}
+            <div className="driver-contact">
+              <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'inbox', ownerId: driverThreadId(order.id) })}>
+                <Icon name="chat" size={14} /> Message {order.driver.name.split(' ')[0]}
+                {driverUnread > 0 && <Badge tone="orange">{driverUnread}</Badge>}
+              </button>
+              <a className="btn btn-outline btn-sm" href={`tel:${order.driver.phone.replace(/\s/g, '')}`}>
+                <Icon name="phone" size={14} /> Call
+              </a>
             </div>
           </div>
           {order.autoAdvanceAt && <Eta at={order.autoAdvanceAt} />}

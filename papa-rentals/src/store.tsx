@@ -155,6 +155,44 @@ const SUPPORT_RULES: [RegExp, string][] = [
 ]
 const SUPPORT_FALLBACK = 'I’ve opened a ticket for a human specialist — they’ll follow up shortly. Meanwhile the Help Center FAQ might have your answer.'
 
+/* Chat threads are keyed by who you are talking to, and that is not always a
+   vendor: 'support' was already a special case, and a driver is a third. Prefixing
+   the order id keeps one driver conversation per delivery — the driver on
+   Thursday's shoot is not the driver on Friday's, and merging them would put two
+   deliveries' handover instructions in one thread. */
+export const DRIVER_THREAD = 'driver:'
+export const driverThreadId = (orderId: string) => `${DRIVER_THREAD}${orderId}`
+
+/** Who a thread id refers to. Three call sites derived this independently and the
+    one in the reducer named support after a random vendor, because getOwner falls
+    back to the first vendor for an id it doesn't recognise. */
+export function threadPeer(state: AppState, id: string): { name: string; subtitle: string; kind: 'support' | 'driver' | 'owner' } {
+  if (id === 'support') return { name: 'Papa Support', subtitle: 'Replies 24/7', kind: 'support' }
+  if (id.startsWith(DRIVER_THREAD)) {
+    const order = state.orders.find((o) => o.id === id.slice(DRIVER_THREAD.length))
+    const d = order?.driver
+    return {
+      name: d?.name ?? 'Your driver',
+      subtitle: d ? `${d.vehicle} · delivering ${order!.id}` : 'Delivery driver',
+      kind: 'driver',
+    }
+  }
+  const o = getOwner(id)
+  return { name: o.name, subtitle: `Usually replies in ${o.responseMins} min`, kind: 'owner' }
+}
+
+/* A driver is mid-delivery with a phone in a van, so the replies are short and
+   about the next ten minutes. Vendor replies talk about rates and availability,
+   which is the wrong register entirely for someone already on the road. */
+const DRIVER_REPLIES = [
+  'On my way — I’ll ring the bell when I’m outside.',
+  'Traffic on the canal, but still on schedule.',
+  'Noted. I’ll call when I’m 5 minutes out.',
+  'Please keep the handover PIN ready, I can’t release the gear without it.',
+  'I’m at the gate — which floor should I bring it to?',
+  'Understood, I’ll wait. Take your time.',
+]
+
 function pickReply(ownerId: string, t: ChatThread): string {
   if (ownerId === 'support') {
     const lastMe = [...t.messages].reverse().find((m) => m.from === 'me')
@@ -163,6 +201,7 @@ function pickReply(ownerId: string, t: ChatThread): string {
     }
     return SUPPORT_FALLBACK
   }
+  if (ownerId.startsWith(DRIVER_THREAD)) return DRIVER_REPLIES[t.messages.length % DRIVER_REPLIES.length]
   return OWNER_REPLIES[t.messages.length % OWNER_REPLIES.length]
 }
 
@@ -690,13 +729,12 @@ function reducer(state: AppState, action: Action): AppState {
           }
           chats[ownerId] = { messages: [...t.messages, reply], unread: t.unread + 1, typingUntil: undefined, pendingReplyAt: undefined }
           /* Linking to Profile dropped you a screen short of the reply you just
-             tapped. Inbox is where the thread actually is. getOwner falls back to
-             the first vendor for unknown ids, which named support after a stranger. */
+             tapped. Deep-link to the thread itself, not the list. */
           notifications = notify({ ...next, notifications }, {
             icon: 'chat',
-            title: `${ownerId === 'support' ? 'Papa Support' : getOwner(ownerId).name} replied`,
+            title: `${threadPeer(next, ownerId).name} replied`,
             body: reply.text,
-            link: '#/inbox',
+            link: `#/inbox/${ownerId}`,
           })
         }
         next = { ...next, chats, notifications }

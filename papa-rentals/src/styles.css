@@ -1774,3 +1774,13 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
 }
 .watch-row + .watch-row { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
 .watch-row .btn { flex: none; }
+
+/* Message and Call get their own full-width line rather than sharing the identity
+   row. Squeezed into that row they were narrow enough to wrap their own icon onto
+   a second line, and they pushed "Handover PIN" into wrapping too — the PIN is the
+   one thing on this card that has to stay instantly readable at a van door. */
+.driver-card { flex-wrap: wrap; }
+.driver-contact { display: flex; gap: 8px; flex: 1 0 100%; margin-top: 2px; }
+/* btn-sm is 40px, and these two are tapped one-handed at a van door — hold them
+   to the 44px target even though the rest of the card's buttons are small. */
+.driver-contact > * { flex: 1; justify-content: center; white-space: nowrap; text-decoration: none; min-height: 44px; }
