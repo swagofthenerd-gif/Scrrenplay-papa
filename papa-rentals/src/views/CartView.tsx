@@ -17,6 +17,8 @@ import {
   todayISO,
   uid,
   canInstantBook,
+  splitPayment,
+  balanceDueDate,
 } from '../utils'
 import { Badge, ItemArt, ItemCard, Modal } from '../components/ui'
 import { Icon } from '../components/icons'
@@ -129,6 +131,12 @@ export default function CartView() {
      against a bank statement — name the card that was actually used. */
   const payName = PAY_BY_ID.get(payMethod)?.name ?? 'Card'
   const payLabel = payMethod === 'card' && card ? `${card.brand} ••${card.last4}` : payName
+  /* Gear for a big shoot is often booked weeks ahead, and the whole cost landing
+     the moment you press confirm is the reason a cart gets abandoned and put
+     back together closer to the day. */
+  const [splitPay, setSplitPay] = useState(false)
+  const parts = splitPayment(t.total)
+  const dueOn = balanceDueDate(state.cart.map((b) => b.startDate))
   /* Card and COD both settle against a card — one is the payment, the other is
      the deposit hold. Letting the order through with no card just fails later. */
   const needsCard = (payMethod === 'card' || payMethod === 'cod') && !card
@@ -321,6 +329,7 @@ export default function CartView() {
       opts: {
         ...opts,
         paymentMethod: payLabel,
+        split: splitPay,
         address: needsDelivery && address
           ? `${address.label} — ${address.detail}${addrNote.trim() ? ` (${addrNote.trim()})` : ''}${address.geo ? ` [pin ${address.geo.lat},${address.geo.lng}]` : ''}`
           : 'Self pickup',
@@ -847,11 +856,36 @@ export default function CartView() {
             {needsDelivery && address ? `Delivering to ${address.label} — ${address.detail}. ` : 'Self pickup from the vendor. '}
             Paying by {payLabel}.
           </p>
+          <div className="split-pick">
+            <button
+              className={`split-opt ${!splitPay ? 'active' : ''}`}
+              aria-pressed={!splitPay}
+              onClick={() => setSplitPay(false)}
+            >
+              <b>Pay in full</b>
+              <span className="muted small">{money(t.total)} now</span>
+            </button>
+            <button
+              className={`split-opt ${splitPay ? 'active' : ''}`}
+              aria-pressed={splitPay}
+              onClick={() => setSplitPay(true)}
+            >
+              <b>Pay {money(parts.paidNow)} now</b>
+              <span className="muted small">{money(parts.balance)} on {fmtDate(dueOn)}</span>
+            </button>
+          </div>
+          {splitPay && (
+            <p className="muted small" style={{ marginTop: 8 }}>
+              The rest is due the day before pickup. The security deposit is a hold either way — it is never a charge.
+            </p>
+          )}
           <p className="muted small">
             By continuing you accept the cancellation policy: free until 48h before your start date, 10% fee inside 48h.
           </p>
           <button className="btn btn-primary btn-block" onClick={placeOrder}>
-            {needsApproval ? `Request booking · ${money(t.total)}` : `Confirm & pay ${money(t.total)}`}
+            {needsApproval
+              ? `Request booking · ${money(splitPay ? parts.paidNow : t.total)}`
+              : `Confirm & pay ${money(splitPay ? parts.paidNow : t.total)}`}
           </button>
         </Modal>
       )}

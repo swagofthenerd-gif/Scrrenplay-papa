@@ -5,7 +5,7 @@ import type {
   Address, AppNotification, AppState, Booking, ChatMessage, ChatThread,
   CategoryId, CrewMember, Item, LedgerEntry, NotifyChannel, Offer, Order, OrderStatus, OwnerBooking, Review, SavedCard, SavedSearch, UserReport,
 } from './types'
-import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, money, recommendedRate, todayISO, uid, tierOf, verifiedCount, VERIFY_STEPS } from './utils'
+import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, money, recommendedRate, todayISO, uid, tierOf, verifiedCount, VERIFY_STEPS, splitPayment, balanceDueDate } from './utils'
 import type { IconName } from './components/icons'
 import type { TotalsInput, VerifyStep } from './utils'
 
@@ -56,6 +56,8 @@ const initialState: AppState = {
 export interface PlaceOrderOpts extends TotalsInput {
   paymentMethod: string
   address: string
+  /** Take a third now and the rest the day before pickup. */
+  split?: boolean
 }
 
 type Action =
@@ -112,6 +114,7 @@ type Action =
   | { type: 'ADD_CREW'; member: CrewMember }
   | { type: 'SET_CREW_ACCESS'; id: string; access: CrewMember['access'] }
   | { type: 'REMOVE_CREW'; id: string }
+  | { type: 'PAY_BALANCE'; orderId: string }
   | { type: 'TICK'; now: number }
 
 /* One number, used by the code copy, the tracking list and the payout. It was
@@ -395,6 +398,9 @@ function reducer(state: AppState, action: Action): AppState {
         pointsEarned,
         paymentMethod: action.opts.paymentMethod,
         address: action.opts.address,
+        split: action.opts.split
+          ? { ...splitPayment(t.total), dueDate: balanceDueDate(state.cart.map((b) => b.startDate)) }
+          : undefined,
       }
       /* tierUpState both records the new tier and queues its notification, so it
          has to be threaded through as state — using it only for its notifications
@@ -763,6 +769,28 @@ function reducer(state: AppState, action: Action): AppState {
     case 'ADD_AVAIL_ALERT': {
       if (state.availAlerts.some((a) => a.itemId === action.itemId)) return state
       return { ...state, availAlerts: [...state.availAlerts, { id: uid(), itemId: action.itemId, notifyAt: Date.now() + 25000 }] }
+    }
+
+    case 'PAY_BALANCE': {
+      const o = state.orders.find((x) => x.id === action.orderId)
+      if (!o?.split || o.split.settledAt) return state
+      const { balance } = o.split
+      /* Wallet first, same as checkout — otherwise someone with credit sitting
+         there gets charged the card for money they have already given us. */
+      const fromWallet = Math.min(state.walletBalance, balance)
+      return {
+        ...state,
+        walletBalance: state.walletBalance - fromWallet,
+        orders: state.orders.map((x) =>
+          x.id === o.id ? { ...x, split: { ...o.split!, settledAt: Date.now() } } : x
+        ),
+        ledger: record(state, [{ kind: 'wallet', amount: -fromWallet, label: `Balance on ${o.id}`, orderId: o.id }]),
+        notifications: notify(state, {
+          channel: 'orders', icon: 'check-circle', title: `Balance settled on ${o.id}`,
+          body: `${money(balance)} paid in full. Nothing else is owed on this booking.`,
+          link: `#/order/${o.id}`,
+        }),
+      }
     }
 
     case 'ADD_CREW':

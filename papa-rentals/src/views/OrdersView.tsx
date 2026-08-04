@@ -371,6 +371,32 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
         </>
       )}
 
+      {/* An outstanding balance is the one thing on this card that can cost you
+          the booking if you miss it, so it sits above the timeline rather than
+          in the totals where it would read as a line item already dealt with. */}
+      {order.split && !order.split.settledAt && order.status !== 'cancelled' && (
+        <div className="balance-due">
+          <Icon name="wallet" size={18} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <b style={{ fontSize: 13 }}>{money(order.split.balance)} still to pay</b>
+            <div className="muted small">
+              Due {fmtDate(order.split.dueDate)} · {money(order.split.paidNow)} paid at booking
+            </div>
+          </div>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => { buzz(); dispatch({ type: 'PAY_BALANCE', orderId: order.id }); toast('Balance settled — nothing else owed') }}
+          >
+            Pay now
+          </button>
+        </div>
+      )}
+      {order.split?.settledAt && (
+        <p className="muted small" style={{ margin: '0 0 8px' }}>
+          <Icon name="check" size={13} /> Paid in full — {money(order.split.paidNow)} at booking, {money(order.split.balance)} on the balance.
+        </p>
+      )}
+
       {order.status === 'in_transit' && order.driver && (
         <>
           {/* A multi-vendor order is one van doing a round, so naming only the

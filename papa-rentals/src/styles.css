@@ -1868,3 +1868,18 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
 .crew-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; flex-wrap: wrap; }
 .crew-actions { display: flex; align-items: center; gap: 6px; }
 .crew-actions select { font-size: 12px; padding: 7px 8px; min-height: 36px; }
+
+/* ---------- Split payment ---------- */
+.split-pick { display: flex; gap: 8px; margin: 12px 0 0; }
+.split-opt {
+  flex: 1; display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  padding: 11px 12px; min-height: 56px; border-radius: var(--r-md); cursor: pointer;
+  background: var(--card-2); border: 2px solid transparent; color: inherit; font: inherit; text-align: left;
+}
+/* The selected side carries a border rather than only a tint: on the cheapest
+   screens this ships to, two tints of the same warm grey are indistinguishable. */
+.split-opt.active { border-color: var(--accent); background: var(--accent-soft); }
+.balance-due {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 11px 13px;
+  border-radius: var(--r-md); background: var(--accent-soft); border: 1px solid var(--accent);
+}

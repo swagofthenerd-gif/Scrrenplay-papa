@@ -483,6 +483,32 @@ export const AVATAR_PX = 256
     actually about. */
 export const PREMIUM_DEPOSIT = 100000
 
+/** Share of the total taken at checkout on a split payment. A third is enough to
+    be a real commitment — it is the number a vendor would accept as one — while
+    leaving the bulk of the cost until the shoot is actually happening. */
+export const SPLIT_UPFRONT = 1 / 3
+
+/** Split a total into what is taken now and what is owed later.
+    Rounded so the two halves add back to the total exactly: computing each side
+    independently left a rupee unaccounted for on roughly half of all totals. */
+export function splitPayment(total: number): { paidNow: number; balance: number } {
+  const paidNow = Math.round(total * SPLIT_UPFRONT)
+  return { paidNow, balance: total - paidNow }
+}
+
+/** The balance falls due the day before the earliest pickup — late enough to be
+    worth deferring, early enough that a failed payment is still fixable before
+    anyone is standing at a gate waiting for gear. */
+export function balanceDueDate(startDates: string[]): string {
+  const earliest = [...startDates].sort()[0] ?? todayISO()
+  const d = new Date(`${earliest}T00:00:00`)
+  d.setDate(d.getDate() - 1)
+  const iso = toISO(d)
+  /* Booking for tomorrow (or today) would put the due date in the past, which
+     would show as already overdue the moment the order was placed. */
+  return iso < todayISO() ? todayISO() : iso
+}
+
 export function isPremium(item: { deposit: number }): boolean {
   return item.deposit >= PREMIUM_DEPOSIT
 }

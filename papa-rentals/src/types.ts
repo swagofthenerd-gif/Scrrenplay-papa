@@ -189,6 +189,10 @@ export interface Order {
   /** Every status this order has entered, with when. statusAt only remembers the
       current one, so "how long did approval actually take" was unanswerable the
       moment the order moved on. Append-only. */
+  /** Set when the order was taken on a split: what was charged at checkout,
+      what is still owed, and when it falls due. The deposit hold is separate and
+      unaffected — it was never a charge in the first place. */
+  split?: { paidNow: number; balance: number; dueDate: string; settledAt?: number }
   statusLog?: { status: OrderStatus; at: number }[]
   lineRatings?: number[]
   /** The note left against each line, parallel to lineRatings. Kept on the order

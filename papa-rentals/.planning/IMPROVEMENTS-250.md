@@ -231,7 +231,7 @@ claiming an item, re-verify it in the code.
 42. [x] Number/points values aren't announced on change — add `aria-live` on the total.
 
 ### Future-facing
-43. [ ] Split-payment / pay-deposit-now-rest-later.
+43. [x] Split-payment / pay-deposit-now-rest-later.
 44. [x] Group cart by shoot date for multi-day productions.
 45. [x] "Request quote" path for very large carts routing to a human.
 46. [x] Save cart as a named "kit" — bridges to Home "build your own kit".
