@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CATEGORIES, ITEMS, KITS, getItem, getOwner } from '../data/catalog'
-import { activePromo } from '../data/promos'
 import { useNav } from '../nav'
 import { forYou, similarItems } from '../recs'
 import { vendors } from '../vendors'
@@ -199,11 +198,6 @@ export default function Home() {
     () => builderIds.map((id) => ITEMS.find((i) => i.id === id)).filter((i): i is Item => Boolean(i)),
     [builderIds]
   )
-  /* Recomputed per render off today's date: the app can sit open past midnight
-     on a phone that never gets closed, and a promo whose season ended overnight
-     should stop claiming it's on. */
-  const promo = activePromo(todayISO(0))
-
   const builderFull = builderItems.reduce((s, i) => s + i.pricePerDay, 0)
   const builderDiscount = bundleDiscount(builderItems.length)
   const builderPrice = Math.round(builderFull * (1 - builderDiscount / 100))
@@ -499,26 +493,9 @@ export default function Home() {
       )}
 
 
-      {/* Sits under Departments rather than over them: it is the one thing on
-          this page that's only true this month, but it is merchandising, and it
-          was crowding the hero. Nothing renders out of season — an empty slot
-          beats a banner for a season that ended. */}
-      {promo && (
-        <button
-          className="season-promo"
-          onClick={() => { buzz(); go({ name: 'browse', ...promo.target }) }}
-        >
-          <Icon name={promo.icon} size={22} className="season-promo-ico" />
-          {/* The blurb explained the season in two lines above a call to action
-              that already says what happens next. Title and destination are the
-              whole message; the explanation lives on the page it opens. */}
-          <span className="season-promo-text">
-            <span className="season-promo-title">{promo.title}</span>
-          </span>
-          <span className="season-promo-cta">{promo.cta} <Icon name="arrow-right" size={13} /></span>
-        </button>
-      )}
-
+      {/* The seasonal banner used to sit here, under Departments. It is a
+          promotion, and promotions are what the hero is for now — running it
+          twice on one screen was the clutter, not the banner. */}
 
       {/* ---- Promoted offers & packages come first ---- */}
       {deals.length > 0 && (

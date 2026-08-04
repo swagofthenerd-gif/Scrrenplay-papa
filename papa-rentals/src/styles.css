@@ -1047,12 +1047,12 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   will-change: transform; transform-origin: 0 0; pointer-events: none;
 }
 .studio-layer.back { opacity: 0.62; }
-/* the establishing wide shot: one drawn set, shown only on frame 0 and
-   dissolved away as the camera pushes in on the first station */
+/* the establishing wide shot — now the whole backdrop, drifting a little as the
+   cards are swiped so the panel reads as one place rather than a wallpaper */
 .studio-wide {
   position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background-position: center 62%; background-size: cover; background-repeat: no-repeat;
-  will-change: opacity, transform; transform-origin: 50% 70%;
+  will-change: transform; transform-origin: 50% 70%;
 }
 /* paper grain */
 .studio-stage::before {
@@ -1060,9 +1060,11 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   background-image: radial-gradient(rgba(120, 105, 80, 0.10) 1px, transparent 1px);
   background-size: 4px 4px;
 }
+/* Held, not animated: the vignette used to bloom as a station settled, but with
+   one held drawing it is simply how the panel is lit — and it is what keeps the
+   corners dark enough for the slug and the pager to sit on. */
 .studio-spot {
-  position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0;
-  transition: opacity var(--dur) var(--ease-out);
+  position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0.55;
   background:
     radial-gradient(circle at 50% 62%, rgba(255, 233, 190, 0.30) 0%, rgba(255, 233, 190, 0) 42%),
     radial-gradient(circle at 50% 58%, rgba(60, 48, 30, 0) 34%, rgba(60, 48, 30, 0.22) 100%);
@@ -1100,13 +1102,14 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   content: ''; position: absolute; left: -14px; right: -30px; top: -10px; bottom: -26px; z-index: -1;
   background: radial-gradient(120% 100% at 8% 26%, rgba(249, 244, 233, 0.94) 0%, rgba(249, 244, 233, 0.72) 46%, rgba(249, 244, 233, 0) 100%);
 }
-.studio-sc {
-  font-size: 10.5px; font-weight: 800; letter-spacing: 2.4px; color: #6b6357; text-transform: uppercase;
-}
-.studio-title h1 {
+.studio-title h1,
+.studio-title h2 {
   font-size: clamp(19px, 5.6vw, 25px); line-height: 1.14; letter-spacing: -0.6px; color: #2e2921;
   margin-top: 6px; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
+/* A news card leads with what kind of news it is, so its tag sits above the
+   headline rather than under it. */
+.studio-card .studio-tag { margin-bottom: 4px; }
 .studio-offers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .studio-tag {
   display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700;
@@ -1114,50 +1117,40 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   border-radius: 4px; padding: 4px 9px; transform: rotate(-1deg);
 }
 .studio-tag.deal { background: #fff1e8; color: var(--accent-dark); border-color: rgba(255, 107, 44, 0.4); transform: rotate(1deg); }
-.studio-hint { margin-top: 12px; font-size: 12px; font-weight: 700; color: #6b6357; display: flex; align-items: center; gap: 5px; }
 
-/* settled-station slug, written on the panel itself */
+/* the caption scrap, written on the panel itself */
 .studio-slug {
-  position: absolute; left: 20px; bottom: 20px; right: 20px; max-width: 300px; z-index: 6; pointer-events: none;
+  position: absolute; left: 20px; bottom: 20px; z-index: 6; pointer-events: none;
+  max-width: calc(100% - 40px);
   background: rgba(255, 253, 246, 0.9); border: 1.2px solid rgba(65, 59, 51, 0.34);
-  border-radius: 3px; padding: 7px 11px 9px; transform: rotate(-0.5deg);
+  border-radius: 3px; padding: 7px 11px; transform: rotate(-0.5deg);
   box-shadow: 0 2px 8px rgba(60, 48, 30, 0.13);
 }
-/* the pencil rule a director writes the slug on */
-.studio-slug::after {
-  content: ''; position: absolute; left: 11px; right: 11px; top: 25px; height: 1px;
-  background: rgba(65, 59, 51, 0.16);
-}
 
-.studio-caption-main { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin-top: 2px; color: #3b352d; }
-.studio-caption-main b { font-size: 16px; letter-spacing: -0.2px; color: #2e2921; }
-.studio-caption-main .muted { color: #6b6357; font-size: 12.5px; font-weight: 600; }
 .studio-caption-cta {
-  font-size: 11.5px; font-weight: 700; color: var(--accent-dark);
-  display: flex; align-items: center; gap: 4px; margin-top: 4px;
-  background: none; border: 0; padding: 4px 0; cursor: pointer; font-family: inherit;
+  font-size: 12px; font-weight: 800; color: var(--accent-dark);
+  display: flex; align-items: center; gap: 5px;
 }
-.studio-caption-cta:active { opacity: .6; }
+/* The hint on the establishing shot. It is one word and a drawn arrow because
+   there is nothing else worth saying about a card you are meant to push. */
+.studio-swipe {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 800; letter-spacing: 2.2px; color: #6b6357;
+}
+.studio-swipe .swipe-arrow { animation: swipe-nudge 2.4s var(--ease-out) infinite; }
+@keyframes swipe-nudge {
+  0%, 55%, 100% { transform: translateX(0); }
+  30% { transform: translateX(6px); }
+}
 
-/* filmstrip */
-.studio-strip {
-  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 10px 2px 2px;
+/* Pager, top-right: a count you can see without reading, kept clear of the
+   caption scrap in the opposite corner. */
+.studio-dots { position: absolute; top: 18px; right: 18px; z-index: 6; display: flex; gap: 5px; pointer-events: none; }
+.studio-dot {
+  width: 6px; height: 6px; border-radius: 50%; border: 1.2px solid rgba(65, 59, 51, 0.45);
+  transition: background var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
 }
-.studio-strip::-webkit-scrollbar { display: none; }
-/* Eleven bordered boxes under a photographic hero read as a toolbar and made
-   the top of Home look busy before a single listing appeared. This is a pager,
-   so it should look like one: no chrome until a stop is the current one. The
-   40px box stays — it is the touch target, and shrinking it to a dot would put
-   eleven sub-44px controls in a row. */
-.studio-stop {
-  flex: none; width: 40px; height: 40px; border-radius: var(--r-sm); cursor: pointer;
-  border: 1px solid transparent; background: none; color: var(--muted); opacity: 0.55;
-  display: inline-flex; align-items: center; justify-content: center;
-  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease, opacity var(--dur-fast) ease;
-}
-.studio-stop:active { transform: scale(0.92); }
-.studio-stop.active { background: var(--accent-soft); color: var(--accent-dark); border-color: var(--accent); opacity: 1; }
-.studio-stop:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: 2px; }
+.studio-dot.on { background: #3b352d; transform: scale(1.15); }
 
 /* ---------- Services band ---------- */
 .svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; }
@@ -1406,26 +1399,6 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
 .builder-summary {
   display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
   margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
-}
-
-/* Seasonal promo slot. Tinted rather than gradient-filled: it sits directly
-   under the hero, and a second loud block there competes with it. */
-.season-promo {
-  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer;
-  margin: 0 0 12px; padding: 12px 14px;
-  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
-  border-radius: var(--r-md);
-}
-.season-promo:active { transform: scale(0.995); }
-.season-promo-ico { flex: none; color: var(--accent); }
-.season-promo-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.season-promo-title { font-weight: 700; font-size: 14px; }
-.season-promo-cta { flex: none; display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 650; color: var(--accent); }
-@media (max-width: 520px) {
-  /* The CTA wraps under the text rather than squeezing the blurb to two words. */
-  .season-promo { flex-wrap: wrap; }
-  .season-promo-cta { width: 100%; justify-content: flex-end; }
 }
 
 /* Scarcity line on catalogue cards. Amber rather than red: it's a nudge about
