@@ -201,6 +201,15 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
     [lines]
   )
   const driverUnread = state.chats[driverThreadId(order.id)]?.unread ?? 0
+  /* Only a request-to-book has an approval to measure — an instant-book order was
+     confirmed at checkout, and reporting "approved in 0 min" for it would be
+     dressing up a step that never happened. */
+  const approvalMins = useMemo(() => {
+    const log = order.statusLog
+    if (!log || log[0]?.status !== 'requested') return null
+    const confirmed = log.find((e) => e.status === 'confirmed')
+    return confirmed ? Math.round((confirmed.at - log[0].at) / 60000) : null
+  }, [order.statusLog])
   const done = order.status === 'completed'
   const orderClaims = state.claims.filter((c) => c.orderId === order.id)
   const hasClaim = orderClaims.length > 0
@@ -305,6 +314,15 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
               </div>
             ))}
           </div>
+          {/* Every duration the app showed was derived from statusAt, which only
+              remembers the current stage — so "approved in 4 min" was unanswerable
+              the moment the order moved past approval. With the transitions logged
+              it is a measurement rather than a claim. */}
+          {approvalMins != null && (
+            <p className="small" style={{ margin: '4px 0 0', fontWeight: 700 }}>
+              <Icon name="handshake" size={13} /> Owner approved this in {approvalMins < 1 ? 'under a minute' : `${approvalMins} min`}
+            </p>
+          )}
           <p className="muted small" style={{ margin: '4px 0 10px' }}>
             {STATUS_HINT[order.status]}
             {/* A stage with a start time reads as somebody working on it; the same

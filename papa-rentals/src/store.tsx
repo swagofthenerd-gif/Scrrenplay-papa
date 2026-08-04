@@ -119,6 +119,12 @@ function record(state: AppState, entries: Omit<LedgerEntry, 'id' | 'at'>[]): Led
   return rows.length ? [...rows, ...state.ledger].slice(0, 200) : state.ledger
 }
 
+/** Append a transition. The log is how any real SLA gets computed later; without
+    it every duration in the app is a guess made from the one timestamp we kept. */
+function logStatus(o: Order, status: OrderStatus, at: number): { status: OrderStatus; at: number }[] {
+  return [...(o.statusLog ?? []), { status, at }]
+}
+
 /** One step forward on the order timeline — used by the manual button AND the auto-advance heartbeat.
     Notifications here name a specific order, so they link straight to it: the Orders
     list splits across Active/Completed tabs, and a "complete" alert landed on the
@@ -127,12 +133,14 @@ function stepOrderForward(o: Order): { order: Order; notifs: NotifSpec[] } {
   const notifs: NotifSpec[] = []
   if (o.status === 'requested') {
     notifs.push({ icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
-    return { order: { ...o, status: 'confirmed', approveAt: undefined, statusAt: Date.now(), autoAdvanceAt: Date.now() + 30000 }, notifs }
+    const at = Date.now()
+    return { order: { ...o, status: 'confirmed', approveAt: undefined, statusAt: at, autoAdvanceAt: at + 30000, statusLog: logStatus(o, 'confirmed', at) }, notifs }
   }
   const idx = STATUS_FLOW.indexOf(o.status)
   if (idx < 0 || idx >= STATUS_FLOW.length - 1) return { order: o, notifs }
   const next = STATUS_FLOW[idx + 1]
-  let patch: Partial<Order> = { status: next, statusAt: Date.now(), autoAdvanceAt: next === 'completed' ? undefined : Date.now() + 35000 }
+  const now = Date.now()
+  let patch: Partial<Order> = { status: next, statusAt: now, autoAdvanceAt: next === 'completed' ? undefined : now + 35000, statusLog: logStatus(o, next, now) }
   if (next === 'in_transit' && !o.driver) {
     const d = DRIVER_POOL[Math.floor(Math.random() * DRIVER_POOL.length)]
     patch = { ...patch, driver: { ...d, pin: String(1000 + Math.floor(Math.random() * 9000)) } }
@@ -312,6 +320,7 @@ function reducer(state: AppState, action: Action): AppState {
         status: needsApproval ? 'requested' : 'confirmed',
         approveAt: needsApproval ? Date.now() + 12000 : undefined,
         statusAt: Date.now(),
+        statusLog: [{ status: needsApproval ? 'requested' : 'confirmed', at: Date.now() }],
         autoAdvanceAt: needsApproval ? undefined : Date.now() + 25000,
         subtotal: t.subtotal,
         transportFee: t.transportFee,
@@ -382,11 +391,12 @@ function reducer(state: AppState, action: Action): AppState {
       const startsSoon = o.lines.some((l) => l.startDate <= todayISO(2))
       const fee = o.status === 'requested' || !startsSoon ? 0 : Math.round(o.total * 0.1)
       const refund = o.total - fee + o.walletUsed
+      const cancelledAt = Date.now()
       return {
         ...state,
         orders: state.orders.map((x) =>
           x.id === o.id
-            ? { ...x, status: 'cancelled', cancelledAt: new Date().toISOString(), cancellationFee: fee, refundedToWallet: refund, depositReleased: true }
+            ? { ...x, status: 'cancelled', cancelledAt: new Date(cancelledAt).toISOString(), cancellationFee: fee, refundedToWallet: refund, depositReleased: true, statusLog: logStatus(x, 'cancelled', cancelledAt) }
             : x
         ),
         walletBalance: state.walletBalance + refund,
@@ -780,7 +790,14 @@ function reducer(state: AppState, action: Action): AppState {
         const orders = next.orders.map((o) => {
           if (!dueOrders.includes(o)) return o
           notifications = notify({ ...next, notifications }, { icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
-          return { ...o, status: 'confirmed' as OrderStatus, approveAt: undefined, autoAdvanceAt: now + 25000 }
+          /* This is the second route from requested to confirmed and it used to
+             set neither statusAt nor a log entry, so an order the owner approved
+             on the heartbeat showed no "Confirmed since" time while an identical
+             one advanced by hand did. */
+          return {
+            ...o, status: 'confirmed' as OrderStatus, approveAt: undefined,
+            statusAt: now, autoAdvanceAt: now + 25000, statusLog: logStatus(o, 'confirmed', now),
+          }
         })
         next = { ...next, orders, notifications }
       }

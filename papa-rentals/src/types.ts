@@ -186,6 +186,10 @@ export interface Order {
       difference between a progress bar and knowing somebody is on it. */
   statusAt?: number
   driver?: Driver
+  /** Every status this order has entered, with when. statusAt only remembers the
+      current one, so "how long did approval actually take" was unanswerable the
+      moment the order moved on. Append-only. */
+  statusLog?: { status: OrderStatus; at: number }[]
   lineRatings?: number[]
   /** The note left against each line, parallel to lineRatings. Kept on the order
       because "Edit your rating" reopened the form with the stars restored and the
