@@ -404,6 +404,11 @@ export interface Profile {
   phone?: string
   email?: string
   onboarded: boolean
+  /** A data: URL, downscaled before it is stored. There is no file host in a
+      client-only app, so the picture has to live in localStorage alongside
+      everything else — which is a hard few-megabyte budget shared with orders
+      and chat history, hence the downscale rather than keeping the original. */
+  avatar?: string
   /** Whether the renter has completed ID verification. There is no real KYC in
       a client-only app, so this is a simulated one-tap step — but the badge that
       reads it must tell the truth rather than claim everyone is verified. */

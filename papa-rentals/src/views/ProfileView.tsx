@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { REFERRAL_BONUS, useStore } from '../store'
-import { GOLD_POINTS, SILVER_POINTS, buzz, fmtTimeAgo, money, displayName } from '../utils'
+import { GOLD_POINTS, SILVER_POINTS, NAME_FALLBACK, buzz, fmtTimeAgo, money, displayName, toAvatarDataUrl } from '../utils'
 import { Badge, ItemArt, Modal, Stars, useCountUp } from '../components/ui'
 import { Icon, Avatar, type IconName } from '../components/icons'
 import type { UserReport } from '../types'
@@ -83,7 +83,7 @@ export default function ProfileView() {
 
       <div className="panel">
         <div className="owner-row">
-          <Avatar name={displayName(state.profile.name)} id="me" size={46} />
+          <Avatar name={displayName(state.profile.name)} id="me" size={46} src={state.profile.avatar} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <b>{displayName(state.profile.name)}{' '}
               {state.profile.idVerified
@@ -451,13 +451,43 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
   const [city, setCity] = useState(state.profile.city)
   const [phone, setPhone] = useState(state.profile.phone ?? '')
   const [email, setEmail] = useState(state.profile.email ?? '')
+  const [avatar, setAvatar] = useState<string | null>(state.profile.avatar ?? null)
   const emailValid = !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 
   return (
     <Modal title="Edit your profile" onClose={onClose}>
-      <label className="field">
+      {/* Everyone got a generated monogram and no way past it. There is no file
+          host here, so the picture is downscaled and stored with the rest of the
+          state — see toAvatarDataUrl for why it cannot be kept as picked. */}
+      <div className="avatar-edit">
+        <Avatar name={displayName(name)} id="me" size={64} src={avatar ?? undefined} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}>
+            <Icon name="camera" size={14} /> {avatar ? 'Change photo' : 'Add a photo'}
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                e.target.value = '' // so picking the same file twice still fires
+                if (!file) return
+                try {
+                  setAvatar(await toAvatarDataUrl(file))
+                } catch (err) {
+                  toast(err instanceof Error ? err.message : 'Could not use that image.')
+                }
+              }}
+            />
+          </label>
+          {avatar && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setAvatar(null)}>Remove</button>
+          )}
+        </div>
+      </div>
+      <label className="field" style={{ marginTop: 10 }}>
         Name
-        <input value={name} placeholder="Your name" onChange={(e) => setName(e.target.value)} />
+        <input value={name} placeholder={NAME_FALLBACK} onChange={(e) => setName(e.target.value)} />
       </label>
       <label className="field" style={{ marginTop: 10 }}>
         City
@@ -483,6 +513,7 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
             city: city.trim(),
             phone: phone.trim(),
             email: email.trim(),
+            avatar,
           })
           toast('Profile updated')
           onClose()

@@ -469,6 +469,46 @@ export function highlightMatch(text: string, query: string): { text: string; hit
    "Your name" as the placeholder — so the word you were shown while signing up
    was not the word you were then called. One default, used everywhere. */
 export const NAME_FALLBACK = 'Filmmaker'
+
+/** Longest edge of a stored avatar. A modern phone camera JPEG is 3-8 MB and
+    localStorage is a few MB for the WHOLE app — orders, chats, ledger included —
+    so storing the file as picked would blow the quota and take the rest of the
+    app's state down with it. At 256px a 46px avatar is still crisp on a 3x
+    screen. */
+export const AVATAR_PX = 256
+
+/** Downscale a picked image to a data: URL small enough to persist.
+    Rejects rather than resolving to something unusable, so the caller can say
+    what went wrong instead of silently storing nothing. */
+export function toAvatarDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) return reject(new Error('That file is not an image.'))
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, AVATAR_PX / Math.max(img.width, img.height))
+      const w = Math.max(1, Math.round(img.width * scale))
+      const h = Math.max(1, Math.round(img.height * scale))
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return reject(new Error('Could not process that image.'))
+      ctx.drawImage(img, 0, 0, w, h)
+      try {
+        /* JPEG, not PNG: a PNG of a photo is several times larger for no visible
+           gain at this size, and the difference is the difference between fitting
+           in the quota and not. */
+        resolve(canvas.toDataURL('image/jpeg', 0.82))
+      } catch {
+        reject(new Error('Could not process that image.'))
+      }
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That image could not be opened.')) }
+    img.src = url
+  })
+}
 export const displayName = (name?: string) => (name?.trim() ? name.trim() : NAME_FALLBACK)
 
 export function downloadOrShow(filename: string, body: string, mime: string) {

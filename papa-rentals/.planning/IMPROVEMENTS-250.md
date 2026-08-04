@@ -325,7 +325,7 @@ claiming an item, re-verify it in the code.
 ### Account & identity
 1. [x] Profile is read-only — name/city set once in onboarding, never editable. Add "Edit profile".
 2. [x] "ID Verified" badge always shown regardless of any verification — misleading.
-3. [ ] No avatar upload — everyone gets a generated `Avatar`.
+3. [x] No avatar upload — everyone gets a generated `Avatar`.
 4. [x] No phone/email fields, yet orders imply contactability and COD implies a card on file.
 5. [x] No logout / account / switch-account concept.
 6. [x] No settings screen (notifications, language, currency, theme). *(`SettingsView.tsx`)*

@@ -58,7 +58,7 @@ export interface PlaceOrderOpts extends TotalsInput {
 }
 
 type Action =
-  | { type: 'SET_PROFILE'; name: string; city: string; onboarded?: boolean; phone?: string; email?: string }
+  | { type: 'SET_PROFILE'; name: string; city: string; onboarded?: boolean; phone?: string; email?: string; avatar?: string | null }
   | { type: 'VERIFY_ID' }
   | { type: 'ADD_TO_CART'; booking: Booking }
   | { type: 'UPDATE_CART_LINE'; lineId: string; patch: Partial<Booking> }
@@ -290,6 +290,9 @@ function reducer(state: AppState, action: Action): AppState {
         profile: {
           ...state.profile,
           name: action.name,
+          /* null means "remove it" and undefined means "leave it alone" — an
+             edit that doesn't touch the picture must not wipe one. */
+          avatar: action.avatar === null ? undefined : action.avatar ?? state.profile.avatar,
           city: action.city,
           onboarded: action.onboarded ?? true,
           phone: action.phone ?? state.profile.phone,
