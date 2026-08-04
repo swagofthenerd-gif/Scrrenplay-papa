@@ -368,7 +368,7 @@ claiming an item, re-verify it in the code.
 31. [ ] No privacy/data controls (download my data, delete account).
 
 ### Empty & first-run states
-32. [ ] A new user sees 0/0/0 tiles and lots of "None yet" — design a welcoming empty profile that guides first actions.
+32. [x] A new user sees 0/0/0 tiles and lots of "None yet" — design a welcoming empty profile that guides first actions.
 33. [x] `myRating` defaults to 5.0 with zero completed orders — "5.0 · 0 completed" implies a rating that doesn't exist. Show "New renter".
 
 ### Visual & layout

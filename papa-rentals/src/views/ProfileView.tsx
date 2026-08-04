@@ -4,7 +4,7 @@ import { useNav } from '../nav'
 import { useStore } from '../store'
 import { GOLD_POINTS, SILVER_POINTS, buzz, fmtTimeAgo, money } from '../utils'
 import { Badge, ItemArt, Modal, Stars, useCountUp } from '../components/ui'
-import { Icon, Avatar } from '../components/icons'
+import { Icon, Avatar, type IconName } from '../components/icons'
 
 const REFERRAL_CODE = 'PAPA-FRIEND-500'
 
@@ -49,6 +49,17 @@ export default function ProfileView() {
     .reduce((sum, b) => sum + Math.round(b.total * 0.9), 0)
   const chatThreads = Object.entries(state.chats).filter(([, t]) => t.messages.length > 0)
   const unreadTotal = chatThreads.reduce((s, [, t]) => s + t.unread, 0)
+  /* A brand-new renter met three tiles reading zero and four rows reading
+     "None yet" — a profile that describes an absence. The same screen can hand
+     them the four things worth doing instead, ticking off as they do them. */
+  const firstRun: { label: string; hint: string; icon: IconName; done: boolean; run: () => void }[] = [
+    { label: 'Verify your ID', hint: 'Faster approvals, instant-book access', icon: 'shield', done: Boolean(state.profile.idVerified), run: () => setEditOpen(true) },
+    { label: 'Save something you like', hint: 'Tap the heart on any listing', icon: 'heart', done: state.wishlist.length > 0, run: () => go({ name: 'browse' }) },
+    { label: 'Book your first rental', hint: 'Or offer your own price for it', icon: 'cart', done: state.orders.length > 0, run: () => go({ name: 'browse' }) },
+    { label: 'Rent out your own gear', hint: 'Keep 90% of every booking', icon: 'truck', done: state.myListings.length > 0, run: () => go({ name: 'post' }) },
+  ]
+  const settingIn = firstRun.filter((t) => t.done).length < 2
+
   const shownBalance = useCountUp(state.walletBalance)
   const shownPoints = useCountUp(state.points)
 
@@ -105,6 +116,26 @@ export default function ProfileView() {
           </div>
         )}
       </div>
+
+      {settingIn && (
+        <div className="panel" style={{ marginTop: 14 }}>
+          <h3 style={{ fontSize: 15 }}><Icon name="sparkles" size={16} /> Get set up</h3>
+          <p className="muted small" style={{ marginTop: 0 }}>Four things, and the app starts working for you.</p>
+          <ul className="perk-list">
+            {firstRun.map((t) => (
+              <li key={t.label} className={t.done ? 'held' : ''}>
+                <Icon name={t.done ? 'check-circle' : 'dot'} size={15} />
+                <span className="perk-text">
+                  {t.done
+                    ? <b>{t.label}</b>
+                    : <button className="link-btn first-run-go" onClick={() => { buzz(); t.run() }}>{t.label} <Icon name="arrow-right" size={12} /></button>}
+                  <span className="muted small">{t.done ? 'Done' : t.hint}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Everything below used to be one flat stack of rows and panels, mixing
           navigation with data with forms — a wallet card, then a link, then a
