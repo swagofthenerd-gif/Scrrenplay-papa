@@ -507,16 +507,45 @@ function CancelModal({ order, onClose }: { order: Order; onClose: () => void }) 
 /* ---------------- extend mid-shoot ---------------- */
 function ExtendModal({ order, onClose }: { order: Order; onClose: () => void }) {
   const { state, dispatch } = useStore()
-  const { toast } = useNav()
+  const { go, toast } = useNav()
   const [days, setDays] = useState(1)
   const dayLines = order.lines.filter((l) => l.unit === 'day')
   const cost = dayLines.reduce((s, l) => s + l.rate * l.qty * days, 0)
   const fromWallet = Math.min(state.walletBalance, cost)
 
+  /* An hourly booking genuinely can't be stretched — the slot after yours may
+     belong to somebody else. But "make a fresh booking instead" was a dead end
+     that handed the work back: the same gear, the same dates to re-pick, found
+     again by hand. The one thing this sheet can still do is put it in the cart. */
   if (dayLines.length === 0) {
+    const hourly = order.lines.filter((l) => l.unit === 'hour')
     return (
-      <Modal title="Extend rental" onClose={onClose}>
-        <p className="muted">Hourly bookings can’t be extended — make a fresh booking instead.</p>
+      <Modal title="Book another block" onClose={onClose}>
+        <p className="muted" style={{ fontSize: 14, marginTop: 0 }}>
+          Hourly slots can't be stretched — the block after yours may already belong to another crew. Same gear, fresh
+          hours, and your dates are yours to set in the cart.
+        </p>
+        {hourly.map((l) => (
+          <div key={l.id} className="price-line">
+            <span>{getItem(l.itemId).name} <span className="muted small">· {l.hours}h × {l.qty}</span></span>
+            <b>{money(l.rate)}/hr</b>
+          </div>
+        ))}
+        <button
+          className="btn btn-primary btn-block"
+          style={{ marginTop: 12 }}
+          onClick={() => {
+            buzz()
+            for (const l of hourly) {
+              dispatch({ type: 'ADD_TO_CART', booking: { ...shiftBooking(l, todayISO(0)), id: uid(), negotiated: false } })
+            }
+            toast(`${hourly.length} item${hourly.length > 1 ? 's' : ''} in your cart — pick the hours before paying`)
+            onClose()
+            go({ name: 'cart' })
+          }}
+        >
+          Add {hourly.length > 1 ? `all ${hourly.length}` : 'it'} to cart again
+        </button>
       </Modal>
     )
   }

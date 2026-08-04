@@ -4,9 +4,18 @@ import { useNav } from '../nav'
 import { useStore } from '../store'
 import { GOLD_POINTS, SILVER_POINTS, buzz, fmtTimeAgo, money } from '../utils'
 import { Badge, ItemArt, Modal, Stars, useCountUp } from '../components/ui'
-import { Icon, Avatar } from '../components/icons'
+import { Icon, Avatar, type IconName } from '../components/icons'
 
 const REFERRAL_CODE = 'PAPA-FRIEND-500'
+
+/* One source for what each tier buys you, read by both the perk list and the
+   progress line. Written out twice, they drifted the moment one changed. */
+const TIER_PERKS: { at: number; label: string }[] = [
+  { at: 0, label: 'Redeem points against any booking' },
+  { at: SILVER_POINTS, label: 'A free van delivery every month' },
+  { at: GOLD_POINTS, label: '5% off every rental' },
+  { at: GOLD_POINTS, label: 'Priority support and early access to new gear' },
+]
 const TOP_UPS = [2000, 5000, 10000, 25000]
 
 export default function ProfileView() {
@@ -21,14 +30,36 @@ export default function ProfileView() {
     ? { name: 'Gold', at: GOLD_POINTS }
     : { name: 'Silver', at: SILVER_POINTS }
   const acceptedOffers = state.offers.filter((o) => o.status === 'accepted').length
+  /* A countered offer is a question waiting on the renter — the dashboard gives
+     that kind of number a pill, and it should mean the same thing here. */
+  const waitingOffers = state.offers.filter((o) => o.status === 'countered').length
   const [refCode, setRefCode] = useState('')
   const [editOpen, setEditOpen] = useState(false)
   const [topUpOpen, setTopUpOpen] = useState(false)
   const [showOffers, setShowOffers] = useState(false)
   const [copied, setCopied] = useState(false)
   const pendingRequests = state.ownerBookings.filter((b) => b.status === 'pending').length
+  /* Hosting had a door to the dashboard and no number beside it, so the one
+     question a host opens this screen with — did it make anything — needed a
+     tap to answer. Counted from the bookings that actually completed or paid
+     out this calendar month; anything still pending is not money. */
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()
+  const earnedThisMonth = state.ownerBookings
+    .filter((b) => ['completed', 'paid_out'].includes(b.status) && (b.payoutAt ?? b.completesAt ?? b.requestedAt) >= monthStart)
+    .reduce((sum, b) => sum + Math.round(b.total * 0.9), 0)
   const chatThreads = Object.entries(state.chats).filter(([, t]) => t.messages.length > 0)
   const unreadTotal = chatThreads.reduce((s, [, t]) => s + t.unread, 0)
+  /* A brand-new renter met three tiles reading zero and four rows reading
+     "None yet" — a profile that describes an absence. The same screen can hand
+     them the four things worth doing instead, ticking off as they do them. */
+  const firstRun: { label: string; hint: string; icon: IconName; done: boolean; run: () => void }[] = [
+    { label: 'Verify your ID', hint: 'Faster approvals, instant-book access', icon: 'shield', done: Boolean(state.profile.idVerified), run: () => setEditOpen(true) },
+    { label: 'Save something you like', hint: 'Tap the heart on any listing', icon: 'heart', done: state.wishlist.length > 0, run: () => go({ name: 'browse' }) },
+    { label: 'Book your first rental', hint: 'Or offer your own price for it', icon: 'cart', done: state.orders.length > 0, run: () => go({ name: 'browse' }) },
+    { label: 'Rent out your own gear', hint: 'Keep 90% of every booking', icon: 'truck', done: state.myListings.length > 0, run: () => go({ name: 'post' }) },
+  ]
+  const settingIn = firstRun.filter((t) => t.done).length < 2
+
   const shownBalance = useCountUp(state.walletBalance)
   const shownPoints = useCountUp(state.points)
 
@@ -86,6 +117,41 @@ export default function ProfileView() {
         )}
       </div>
 
+      {settingIn && (
+        <div className="panel" style={{ marginTop: 14 }}>
+          <h3 style={{ fontSize: 15 }}><Icon name="sparkles" size={16} /> Get set up</h3>
+          <p className="muted small" style={{ marginTop: 0 }}>Four things, and the app starts working for you.</p>
+          <ul className="perk-list">
+            {firstRun.map((t) => (
+              <li key={t.label} className={t.done ? 'held' : ''}>
+                <Icon name={t.done ? 'check-circle' : 'dot'} size={15} />
+                <span className="perk-text">
+                  {t.done
+                    ? <b>{t.label}</b>
+                    : <button className="link-btn first-run-go" onClick={() => { buzz(); t.run() }}>{t.label} <Icon name="arrow-right" size={12} /></button>}
+                  <span className="muted small">{t.done ? 'Done' : t.hint}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Everything below used to be one flat stack of rows and panels, mixing
+          navigation with data with forms — a wallet card, then a link, then a
+          form, then a link. Five headings, and each row sits with the rows that
+          answer the same question. */}
+      <h3 className="profile-group"><Icon name="user" size={14} /> You</h3>
+      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'browse', wishlistOnly: true })}>
+        <span><Icon name="heart-filled" size={16} /> Your wishlist</span><span className="muted">{state.wishlist.length} items <Icon name="arrow-right" size={14} /></span>
+      </button>
+      <button className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => go({ name: 'settings' })}>
+        <span><Icon name="sliders" size={16} /> Settings</span>
+        <span className="muted">Notifications, payouts, privacy <Icon name="chevron-right" size={14} /></span>
+      </button>
+
+
+      <h3 className="profile-group"><Icon name="wallet" size={14} /> Money</h3>
       <div className="wallet-card">
         <div style={{ color: '#d6d3d1', fontSize: 13 }}><Icon name="wallet" size={14} /> Papa Wallet</div>
         <div className="balance">{money(shownBalance)}</div>
@@ -95,10 +161,22 @@ export default function ProfileView() {
         </div>
       </div>
 
+      {/* role=group with a label ties the number to its noun. Read as three
+          loose nodes, a screen reader gives you "800", "PapaPoints" — and the
+          count-up animation means the first one is often mid-flight. */}
       <div className="stat-row">
-        <div className="stat-tile"><div className="stat-num"><Icon name="trophy" size={16} /> {shownPoints}</div><div className="muted small">PapaPoints</div></div>
-        <div className="stat-tile"><div className="stat-num"><Icon name="box" size={16} /> {state.orders.length}</div><div className="muted small">Orders</div></div>
-        <div className="stat-tile"><div className="stat-num"><Icon name="heart-filled" size={16} /> {state.wishlist.length}</div><div className="muted small">Wishlist</div></div>
+        <div className="stat-tile" role="group" aria-label={`${state.points} PapaPoints`}>
+          <div className="stat-num" aria-hidden="true"><Icon name="trophy" size={16} /> {shownPoints}</div>
+          <div className="muted small" aria-hidden="true">PapaPoints</div>
+        </div>
+        <div className="stat-tile" role="group" aria-label={`${state.orders.length} orders`}>
+          <div className="stat-num" aria-hidden="true"><Icon name="box" size={16} /> {state.orders.length}</div>
+          <div className="muted small" aria-hidden="true">Orders</div>
+        </div>
+        <div className="stat-tile" role="group" aria-label={`${state.wishlist.length} items wishlisted`}>
+          <div className="stat-num" aria-hidden="true"><Icon name="heart-filled" size={16} /> {state.wishlist.length}</div>
+          <div className="muted small" aria-hidden="true">Wishlist</div>
+        </div>
       </div>
 
       {nextTier && (
@@ -123,17 +201,28 @@ export default function ProfileView() {
         </div>
       )}
 
-      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'dashboard' })}>
-        <span><Icon name="chart" size={16} /> Host dashboard</span>
-        <span className="muted">{pendingRequests > 0 ? <>{pendingRequests} request{pendingRequests > 1 ? 's' : ''} waiting <Icon name="arrow-right" size={14} /></> : <>Earnings &amp; requests <Icon name="arrow-right" size={14} /></>}</span>
-      </button>
-      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'support' })}>
-        <span><Icon name="headset" size={16} /> Help Center</span><span className="muted">24/7 support <Icon name="arrow-right" size={14} /></span>
-      </button>
-
-      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'browse', wishlistOnly: true })}>
-        <span><Icon name="heart-filled" size={16} /> Your wishlist</span><span className="muted">{state.wishlist.length} items <Icon name="arrow-right" size={14} /></span>
-      </button>
+      {/* Perks were a paragraph of bolded fragments, and the two thresholds were
+          written out again after the progress panel above had already said them.
+          One list, ticked against the points actually held, with the numbers
+          coming from the same constants the checkout maths uses. */}
+      <div className="panel" style={{ marginTop: 14 }}>
+        <h3 style={{ fontSize: 15 }}><Icon name="trophy" size={16} /> Your perks</h3>
+        <p className="muted small" style={{ marginTop: 0 }}>1 point per Rs 100 spent · 1 point = Rs 1 at checkout.</p>
+        <ul className="perk-list">
+          {TIER_PERKS.map((perk) => {
+            const held = state.points >= perk.at
+            return (
+              <li key={perk.label} className={held ? 'held' : ''}>
+                <Icon name={held ? 'check-circle' : 'ban'} size={15} />
+                <span className="perk-text">
+                  <b>{perk.label}</b>
+                  <span className="muted small">{held ? 'Yours now' : `at ${perk.at.toLocaleString('en-GB')} pts`}</span>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
       <button
         className="list-row"
         style={{ cursor: 'pointer', width: '100%' }}
@@ -193,47 +282,16 @@ export default function ProfileView() {
           <span className="muted small">Rs 500 · unlocks on your first completed rental</span>
         </div>
       )}
-      <button
-        className="list-row"
-        style={{ width: '100%', cursor: state.offers.length ? 'pointer' : 'default' }}
-        aria-expanded={showOffers}
-        disabled={state.offers.length === 0}
-        onClick={() => setShowOffers(!showOffers)}
-      >
-        <span><Icon name="handshake" size={16} /> Offers you've made</span>
-        <span className="muted">
-          {state.offers.length === 0 ? 'None yet' : <>{acceptedOffers}/{state.offers.length} accepted <Icon name={showOffers ? 'chevron-down' : 'chevron-right'} size={14} /></>}
-        </span>
-      </button>
-      {showOffers && state.offers.length > 0 && (
-        <div className="panel" style={{ marginTop: 8 }}>
-          {[...state.offers].sort((a, b) => b.createdAt - a.createdAt).map((o) => (
-            <button
-              key={o.id}
-              className="list-row"
-              style={{ width: '100%', cursor: 'pointer' }}
-              onClick={() => go({ name: 'item', id: o.itemId })}
-            >
-              <span style={{ minWidth: 0 }}>
-                <b>{getItem(o.itemId).name}</b>
-                <span className="muted small"> · {money(o.offeredRate)}/{o.unit} offered {fmtTimeAgo(o.createdAt)}</span>
-              </span>
-              <Badge tone={o.status === 'accepted' ? 'green' : o.status === 'declined' || o.status === 'expired' ? 'red' : 'orange'}>{o.status}</Badge>
-            </button>
-          ))}
-        </div>
-      )}
-      <button className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => go({ name: 'inbox' })}>
-        <span><Icon name="chat" size={16} /> Messages</span>
-        <span className="muted">
-          {chatThreads.length === 0 ? 'None yet' : <>{chatThreads.length} thread{chatThreads.length > 1 ? 's' : ''}{unreadTotal > 0 ? ` · ${unreadTotal} unread` : ''}</>} <Icon name="chevron-right" size={14} />
-        </span>
-      </button>
-      <button className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => go({ name: 'settings' })}>
-        <span><Icon name="sliders" size={16} /> Settings</span>
-        <span className="muted">Notifications, payouts, privacy <Icon name="chevron-right" size={14} /></span>
-      </button>
 
+      <h3 className="profile-group"><Icon name="store" size={14} /> Hosting</h3>
+      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'dashboard' })}>
+        <span><Icon name="chart" size={16} /> Host dashboard</span>
+        <span className="muted">
+          {pendingRequests > 0 && <span className="count-pill">{pendingRequests} waiting</span>}
+          {earnedThisMonth > 0 ? <>{money(earnedThisMonth)} this month</> : <>Earnings &amp; requests</>}{' '}
+          <Icon name="chevron-right" size={14} />
+        </span>
+      </button>
       <div className="panel" style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ fontSize: 15 }}><Icon name="home" size={16} /> Your listings</h3>
@@ -269,6 +327,50 @@ export default function ProfileView() {
         )}
       </div>
 
+
+      <h3 className="profile-group"><Icon name="clock" size={14} /> Activity</h3>
+      <button
+        className="list-row"
+        style={{ width: '100%', cursor: state.offers.length ? 'pointer' : 'default' }}
+        aria-expanded={showOffers}
+        disabled={state.offers.length === 0}
+        onClick={() => setShowOffers(!showOffers)}
+      >
+        <span><Icon name="handshake" size={16} /> Offers you've made</span>
+        <span className="muted">
+          {state.offers.length === 0
+            ? 'None yet'
+            : <>{waitingOffers > 0 && <span className="count-pill">{waitingOffers} to answer</span>}{acceptedOffers}/{state.offers.length} accepted</>}{' '}
+          <Icon name={showOffers ? 'chevron-down' : 'chevron-right'} size={14} />
+        </span>
+      </button>
+      {showOffers && state.offers.length > 0 && (
+        <div className="panel" style={{ marginTop: 8 }}>
+          {[...state.offers].sort((a, b) => b.createdAt - a.createdAt).map((o) => (
+            <button
+              key={o.id}
+              className="list-row"
+              style={{ width: '100%', cursor: 'pointer' }}
+              onClick={() => go({ name: 'item', id: o.itemId })}
+            >
+              <span style={{ minWidth: 0 }}>
+                <b>{getItem(o.itemId).name}</b>
+                <span className="muted small"> · {money(o.offeredRate)}/{o.unit} offered {fmtTimeAgo(o.createdAt)}</span>
+              </span>
+              <Badge tone={o.status === 'accepted' ? 'green' : o.status === 'declined' || o.status === 'expired' ? 'red' : 'orange'}>{o.status}</Badge>
+            </button>
+          ))}
+        </div>
+      )}
+      <button className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => go({ name: 'inbox' })}>
+        <span><Icon name="chat" size={16} /> Messages</span>
+        <span className="muted">
+          {chatThreads.length === 0
+            ? 'None yet'
+            : <>{unreadTotal > 0 && <span className="count-pill">{unreadTotal} unread</span>}{chatThreads.length} thread{chatThreads.length > 1 ? 's' : ''}</>}{' '}
+          <Icon name="chevron-right" size={14} />
+        </span>
+      </button>
       {state.reports.length > 0 && (
         <div className="panel" style={{ marginTop: 14 }}>
           <h3 style={{ fontSize: 15 }}><Icon name="flag" size={16} /> Your reports</h3>
@@ -284,6 +386,12 @@ export default function ProfileView() {
         </div>
       )}
 
+
+      <h3 className="profile-group"><Icon name="headset" size={14} /> Support</h3>
+      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'support' })}>
+        <span><Icon name="headset" size={16} /> Help Center</span><span className="muted">24/7 support <Icon name="arrow-right" size={14} /></span>
+      </button>
+
       {state.blockedOwners.length > 0 && (
         <div className="panel" style={{ marginTop: 14 }}>
           <h3 style={{ fontSize: 15 }}><Icon name="ban" size={16} /> Blocked</h3>
@@ -298,12 +406,7 @@ export default function ProfileView() {
         </div>
       )}
 
-      <div className="panel" style={{ marginTop: 14 }}>
-        <h3 style={{ fontSize: 15 }}><Icon name="trophy" size={16} /> PapaPoints perks</h3>
-        <p className="muted small">Earn 1 point per Rs 100 spent. Redeem anytime at checkout — 1 point = Rs 1.</p>
-        <div className="list-row"><span><Icon name="medal" size={16} /> Silver — 500 pts</span><span className="muted">One free van delivery a month, applied automatically</span></div>
-        <div className="list-row"><span><Icon name="crown" size={16} /> Gold — 2,000 pts</span><span className="muted">5% off everything, priority support, early access</span></div>
-      </div>
+
 
       {editOpen && <EditProfileModal onClose={() => setEditOpen(false)} />}
       {topUpOpen && <TopUpModal onClose={() => setTopUpOpen(false)} />}
