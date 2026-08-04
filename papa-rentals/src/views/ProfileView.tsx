@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { REFERRAL_BONUS, useStore } from '../store'
-import { GOLD_POINTS, SILVER_POINTS, NAME_FALLBACK, buzz, fmtTimeAgo, money, displayName, toAvatarDataUrl } from '../utils'
+import { GOLD_POINTS, SILVER_POINTS, NAME_FALLBACK, VERIFY_STEPS, verifiedCount, buzz, fmtTimeAgo, money, displayName, toAvatarDataUrl } from '../utils'
 import { Badge, ItemArt, Modal, Stars, useCountUp } from '../components/ui'
 import { Icon, Avatar, type IconName } from '../components/icons'
 import type { UserReport } from '../types'
@@ -57,7 +57,7 @@ export default function ProfileView() {
      "None yet" — a profile that describes an absence. The same screen can hand
      them the four things worth doing instead, ticking off as they do them. */
   const firstRun: { label: string; hint: string; icon: IconName; done: boolean; run: () => void }[] = [
-    { label: 'Verify your ID', hint: 'Faster approvals, instant-book access', icon: 'shield', done: Boolean(state.profile.idVerified), run: () => setEditOpen(true) },
+    { label: 'Verify your account', hint: 'Instant-book on premium gear', icon: 'shield', done: verifiedCount(state.profile) === VERIFY_STEPS.length, run: () => go({ name: 'verify' }) },
     { label: 'Save something you like', hint: 'Tap the heart on any listing', icon: 'heart', done: state.wishlist.length > 0, run: () => go({ name: 'browse' }) },
     { label: 'Book your first rental', hint: 'Or offer your own price for it', icon: 'cart', done: state.orders.length > 0, run: () => go({ name: 'browse' }) },
     { label: 'Rent out your own gear', hint: 'Keep 90% of every booking', icon: 'truck', done: state.myListings.length > 0, run: () => go({ name: 'post' }) },
@@ -69,7 +69,7 @@ export default function ProfileView() {
      joined. */
   const earnFaster: { label: string; icon: IconName; run: () => void }[] = [
     ...(state.referrals.length < 3 ? [{ label: `Refer a friend · +${REFERRAL_BONUS}`, icon: 'gift' as IconName, run: () => go({ name: 'referrals' }) }] : []),
-    ...(state.profile.idVerified ? [] : [{ label: 'Verify your ID', icon: 'shield' as IconName, run: () => setEditOpen(true) }]),
+    ...(verifiedCount(state.profile) === VERIFY_STEPS.length ? [] : [{ label: 'Verify your account', icon: 'shield' as IconName, run: () => go({ name: 'verify' }) }]),
     ...(completed.some((o) => !o.myRatingOfOwner) ? [{ label: 'Review a rental', icon: 'star' as IconName, run: () => go({ name: 'orders' }) }] : []),
     { label: 'Book something', icon: 'cart' as IconName, run: () => go({ name: 'browse' }) },
   ].slice(0, 3)
@@ -86,9 +86,9 @@ export default function ProfileView() {
           <Avatar name={displayName(state.profile.name)} id="me" size={46} src={state.profile.avatar} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <b>{displayName(state.profile.name)}{' '}
-              {state.profile.idVerified
-                ? <Badge tone="green"><Icon name="check" size={14} /> ID Verified</Badge>
-                : <Badge tone="default"><Icon name="shield" size={14} /> Unverified</Badge>}{' '}
+              {verifiedCount(state.profile) === VERIFY_STEPS.length
+                ? <Badge tone="green"><Icon name="check" size={14} /> Verified</Badge>
+                : <Badge tone="default"><Icon name="shield" size={14} /> {verifiedCount(state.profile)}/{VERIFY_STEPS.length} verified</Badge>}{' '}
               <Badge tone="purple">{tier}</Badge></b>
             <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span className="ellipsis" style={{ maxWidth: '40%' }}><Icon name="pin" size={14} /> {state.profile.city}</span> ·{' '}
@@ -113,27 +113,22 @@ export default function ProfileView() {
           </div>
           <button className="btn btn-outline btn-sm" onClick={() => setEditOpen(true)}>Edit</button>
         </div>
-        <p className="muted small" style={{ marginBottom: state.profile.idVerified ? 0 : 10 }}>
+        <p className="muted small" style={{ marginBottom: verifiedCount(state.profile) === VERIFY_STEPS.length ? 0 : 10 }}>
           A strong renter score unlocks instant-book on premium gear.
         </p>
-        {!state.profile.idVerified && (
-          <div className="list-row" style={{ alignItems: 'center', gap: 10, margin: 0 }}>
+        {/* Verifying was a single button that set one flag nothing read. It is a
+            three-step centre now, and the row reports real progress against it. */}
+        {verifiedCount(state.profile) < VERIFY_STEPS.length && (
+          <button className="list-row" style={{ alignItems: 'center', gap: 10, margin: 0, width: '100%', cursor: 'pointer' }} onClick={() => go({ name: 'verify' })}>
             <Icon name="shield" size={18} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <b style={{ fontSize: 13 }}>Verify your ID</b>
-              <div className="muted small" style={{ margin: 0 }}>Verified renters get faster owner approvals and instant-book access.</div>
-            </div>
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => {
-                buzz()
-                dispatch({ type: 'VERIFY_ID' })
-                toast('ID verified')
-              }}
-            >
-              Verify
-            </button>
-          </div>
+            <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+              <b style={{ fontSize: 13 }}>Verify your account</b>
+              <span className="muted small" style={{ display: 'block', margin: 0 }}>
+                {verifiedCount(state.profile)} of {VERIFY_STEPS.length} done — unlocks instant-book on premium gear.
+              </span>
+            </span>
+            <Icon name="chevron-right" size={16} />
+          </button>
         )}
       </div>
 

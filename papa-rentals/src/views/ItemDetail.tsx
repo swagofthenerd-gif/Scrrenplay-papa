@@ -8,6 +8,7 @@ import {
   INSURANCE_RATE, OFFER_TTL_MS, OPERATOR_FEE_PER_DAY, buzz, daysBetween, dealActive,
   findConflict, fmtCountdown, fmtDate, hourlyRate, money, nextAvailable, ratingHistogram,
   recommendedRate, stockOf, stockRemaining, todayISO, toISO, uid, unavailableRanges, rangesOverlap,
+  canInstantBook,
 } from '../utils'
 import { Badge, DealCountdown, ItemArt, ItemCard, Modal, RatingCompact, Stars } from '../components/ui'
 import { Avatar, Icon } from '../components/icons'
@@ -154,7 +155,11 @@ export default function ItemDetail({ id, from, to }: { id: string; from?: string
                 <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <Stars value={item.rating} />
                   <span className="muted small">{item.rating} · {item.ratingCount} ratings · rented {item.timesRented}×</span>
-                  {item.instantBook ? <Badge tone="green"><Icon name="bolt" size={14} /> Instant book</Badge> : <Badge tone="purple"><Icon name="handshake" size={14} /> Owner approval</Badge>}
+                  {canInstantBook(item, state.profile)
+                    ? <Badge tone="green"><Icon name="bolt" size={14} /> Instant book</Badge>
+                    : item.instantBook
+                      ? <Badge tone="purple"><Icon name="shield" size={14} /> Verify to instant-book</Badge>
+                      : <Badge tone="purple"><Icon name="handshake" size={14} /> Owner approval</Badge>}
                   {item.offersAccepted && <Badge tone="purple"><Icon name="coins" size={14} /> Offers OK</Badge>}
                 </div>
               </div>

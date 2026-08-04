@@ -477,6 +477,38 @@ export const NAME_FALLBACK = 'Filmmaker'
     screen. */
 export const AVATAR_PX = 256
 
+/** Above this deposit, an instant-book listing is "premium" and wants a fully
+    verified renter. The number is the deposit, not the rate: what the owner is
+    exposed to if the gear does not come back is the thing verification is
+    actually about. */
+export const PREMIUM_DEPOSIT = 100000
+
+export function isPremium(item: { deposit: number }): boolean {
+  return item.deposit >= PREMIUM_DEPOSIT
+}
+
+/** Whether this renter can skip owner approval on this listing.
+
+    The profile has promised since day one that verifying "unlocks instant-book
+    on premium gear", and nothing anywhere read the flag — every instant-book
+    listing instant-booked for everyone, verified or not, so the promise was
+    describing a gate that did not exist. */
+export function canInstantBook(
+  item: { instantBook: boolean; deposit: number },
+  profile: { idVerified?: boolean; phoneVerified?: boolean; paymentVerified?: boolean }
+): boolean {
+  if (!item.instantBook) return false
+  if (!isPremium(item)) return true
+  return Boolean(profile.idVerified && profile.phoneVerified && profile.paymentVerified)
+}
+
+export const VERIFY_STEPS = ['id', 'phone', 'payment'] as const
+export type VerifyStep = (typeof VERIFY_STEPS)[number]
+
+export function verifiedCount(p: { idVerified?: boolean; phoneVerified?: boolean; paymentVerified?: boolean }): number {
+  return [p.idVerified, p.phoneVerified, p.paymentVerified].filter(Boolean).length
+}
+
 /** Downscale a picked image to a data: URL small enough to persist.
     Rejects rather than resolving to something unusable, so the caller can say
     what went wrong instead of silently storing nothing. */

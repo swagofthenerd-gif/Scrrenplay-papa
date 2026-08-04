@@ -409,6 +409,11 @@ export interface Profile {
       everything else — which is a hard few-megabyte budget shared with orders
       and chat history, hence the downscale rather than keeping the original. */
   avatar?: string
+  /** Phone and payment verification, alongside idVerified. Kept as separate
+      steps because they unlock different things and people complete them at
+      different times. */
+  phoneVerified?: boolean
+  paymentVerified?: boolean
   /** Whether the renter has completed ID verification. There is no real KYC in
       a client-only app, so this is a simulated one-tap step — but the badge that
       reads it must tell the truth rather than claim everyone is verified. */

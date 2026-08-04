@@ -5,9 +5,9 @@ import type {
   Address, AppNotification, AppState, Booking, ChatMessage, ChatThread,
   CategoryId, Item, LedgerEntry, NotifyChannel, Offer, Order, OrderStatus, OwnerBooking, Review, SavedCard, SavedSearch, UserReport,
 } from './types'
-import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, money, recommendedRate, todayISO, uid, tierOf } from './utils'
+import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, money, recommendedRate, todayISO, uid, tierOf, verifiedCount, VERIFY_STEPS } from './utils'
 import type { IconName } from './components/icons'
-import type { TotalsInput } from './utils'
+import type { TotalsInput, VerifyStep } from './utils'
 
 const STORAGE_KEY = 'papa-rentals-v2'
 
@@ -60,6 +60,7 @@ export interface PlaceOrderOpts extends TotalsInput {
 type Action =
   | { type: 'SET_PROFILE'; name: string; city: string; onboarded?: boolean; phone?: string; email?: string; avatar?: string | null }
   | { type: 'VERIFY_ID' }
+  | { type: 'VERIFY_STEP'; step: VerifyStep }
   | { type: 'ADD_TO_CART'; booking: Booking }
   | { type: 'UPDATE_CART_LINE'; lineId: string; patch: Partial<Booking> }
   | { type: 'REMOVE_FROM_CART'; lineId: string }
@@ -302,6 +303,23 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'VERIFY_ID':
       return { ...state, profile: { ...state.profile, idVerified: true } }
+
+    case 'VERIFY_STEP': {
+      const key = action.step === 'id' ? 'idVerified' : action.step === 'phone' ? 'phoneVerified' : 'paymentVerified'
+      const profile = { ...state.profile, [key]: true }
+      const done = verifiedCount(profile) === VERIFY_STEPS.length
+      return {
+        ...state,
+        profile,
+        notifications: done && verifiedCount(state.profile) < VERIFY_STEPS.length
+          ? notify(state, {
+              icon: 'shield', title: 'You’re fully verified',
+              body: 'Premium gear now books instantly — no waiting on owner approval.',
+              link: '#/verify',
+            })
+          : state.notifications,
+      }
+    }
 
     case 'ADD_TO_CART':
       return {

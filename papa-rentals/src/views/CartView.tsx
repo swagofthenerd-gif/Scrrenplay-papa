@@ -16,6 +16,7 @@ import {
   shiftBooking,
   todayISO,
   uid,
+  canInstantBook,
 } from '../utils'
 import { Badge, ItemArt, ItemCard, Modal } from '../components/ui'
 import { Icon } from '../components/icons'
@@ -120,7 +121,10 @@ export default function CartView() {
   const address = state.addresses.find((a) => a.id === state.selectedAddressId) ?? state.addresses[0]
   const card = state.cards.find((c) => c.id === state.selectedCardId) ?? state.cards[0]
   const needsDelivery = state.cart.some((b) => b.transport !== 'pickup')
-  const needsApproval = state.cart.some((b) => !getItem(b.itemId).instantBook)
+  /* Was `!item.instantBook`, which ignored the renter entirely — so "verify to
+     unlock instant-book on premium gear" unlocked nothing, because premium gear
+     already instant-booked for everybody. */
+  const needsApproval = state.cart.some((b) => !canInstantBook(getItem(b.itemId), state.profile))
   /* "Card" in an order record is useless a month later when you're reconciling
      against a bank statement — name the card that was actually used. */
   const payName = PAY_BY_ID.get(payMethod)?.name ?? 'Card'
@@ -339,7 +343,12 @@ export default function CartView() {
         <div className="cart-line-info">
           <b style={{ fontSize: 14, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.name}>{item.name}</b>
           {b.negotiated && <Badge tone="purple"><Icon name="handshake" size={14} /> Negotiated</Badge>}
-          {!item.instantBook && <Badge tone="orange"><Icon name="hourglass" size={14} /> Needs approval</Badge>}
+          {!canInstantBook(item, state.profile) && (
+            <Badge tone="orange">
+              <Icon name="hourglass" size={14} />{' '}
+              {item.instantBook ? 'Needs approval — verify to skip' : 'Needs approval'}
+            </Badge>
+          )}
           <div className="muted small">
             {b.unit === 'hour'
               ? `${fmtDate(b.startDate)} · ${b.hours}h from ${b.pickupTime}`
