@@ -21,6 +21,22 @@ import { Badge, ItemArt, ItemCard, Modal } from '../components/ui'
 import { Icon } from '../components/icons'
 import type { Address, Booking, TransportId } from '../types'
 
+/* A total that recomputes in silence is a total nobody trusts. Toggling the
+   wallet or applying a code moves one line in the summary, and this is what
+   makes the eye land on the line that moved rather than hunting the panel. */
+function useFlash(value: number): string {
+  const [on, setOn] = useState(false)
+  const prev = useRef(value)
+  useEffect(() => {
+    if (prev.current === value) return
+    prev.current = value
+    setOn(true)
+    const t = setTimeout(() => setOn(false), 800)
+    return () => clearTimeout(t)
+  }, [value])
+  return on ? ' flash' : ''
+}
+
 /* Lookup maps built once — the option arrays never change at runtime. */
 const TRANSPORT_BY_ID = new Map(TRANSPORT_OPTIONS.map((t) => [t.id, t]))
 const PAY_BY_ID = new Map(PAYMENT_METHODS.map((p) => [p.id, p]))
@@ -53,6 +69,9 @@ export default function CartView() {
   const [quoteOpen, setQuoteOpen] = useState(false)
   const [kitOpen, setKitOpen] = useState(false)
   const [addrNote, setAddrNote] = useState('')
+  /* Vendor grouping answers "who am I paying"; day grouping answers "what
+     arrives on Tuesday". A one-day cart only has the first question. */
+  const [groupBy, setGroupBy] = useState<'vendor' | 'day'>('vendor')
   const [kits, setKits] = useState<SavedKit[]>(loadKits)
   /* Removals are reversible for a few seconds instead of being a dead end.
      The undo carries its own restore closure, so anything destructive here can
@@ -137,7 +156,10 @@ export default function CartView() {
       }
     }
     return out.slice(0, 6)
-  }, [state])
+  /* Keyed on what similarItems actually reads. On `state` it re-scored the whole
+     catalogue on every heartbeat — once a second, for an identical answer. */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.cart, state.wishlist, state.recentlyViewed, state.blockedOwners, state.myListings])
 
   /* Dates can go stale between adding to cart and paying — somebody else may have
      booked the same item. Re-check right before the money moves. */
@@ -168,9 +190,26 @@ export default function CartView() {
 
   const silverGap = state.points < SILVER_POINTS ? SILVER_POINTS - state.points : 0
 
+  const flashPromo = useFlash(t.promoDiscount)
+  const flashPoints = useFlash(t.pointsUsed)
+  const flashWallet = useFlash(t.walletUsed)
+  const flashIns = useFlash(t.insuranceFee)
+  const flashTotal = useFlash(t.total)
+
+  /* A disabled button with no reason beside it is a dead end. Three things can
+     block payment and each one has a different fix, so name the one in the way. */
+  const blockedWhy = t.promoError
+    ? 'Remove or fix the promo code to continue.'
+    : conflicts.length > 0
+      ? 'Some dates are no longer free — edit those lines to continue.'
+      : needsCard
+        ? 'Add a card first — the deposit hold needs one.'
+        : null
+
   function applyPromo() {
     const code = promoInput.trim().toUpperCase()
     if (!code) return
+    buzz()
     setPromoCode(code)
     const check = cartTotals(state.cart, { ...opts, promoCode: code })
     if (check.promoError) toast(check.promoError)
@@ -180,6 +219,13 @@ export default function CartView() {
   const shootDays = useMemo(
     () => [...new Set(state.cart.map((b) => b.startDate))].sort(),
     [state.cart]
+  )
+
+  /* A line spanning three days belongs to the day it starts — that is the
+     morning somebody has to be on set to receive it. */
+  const dayGroups = useMemo(
+    () => shootDays.map((day) => ({ day, lines: state.cart.filter((b) => b.startDate === day) })),
+    [shootDays, state.cart]
   )
 
   /* Shift each line to the earliest start, keeping its own length — a 3-day
@@ -252,6 +298,7 @@ export default function CartView() {
   }
 
   function clearAll() {
+    buzz(18)
     const snapshot = state.cart.map((booking, index) => ({ booking, index }))
     dispatch({ type: 'CLEAR_CART' })
     setConfirmClear(false)
@@ -279,8 +326,62 @@ export default function CartView() {
     go({ name: 'orders' })
   }
 
+  /* One line renderer, two groupings. When this was written inline inside the
+     vendor map, grouping by anything else meant copying eighty lines of it. */
+  const renderLine = (b: Booking) => {
+    const item = getItem(b.itemId)
+    const dur = lineDuration(b)
+    const transport = TRANSPORT_BY_ID.get(b.transport)
+    const open = editing === b.id
+    return (
+      <div className="cart-line" key={b.id}>
+        <ItemArt item={item} size="thumb" />
+        <div className="cart-line-info">
+          <b style={{ fontSize: 14, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.name}>{item.name}</b>
+          {b.negotiated && <Badge tone="purple"><Icon name="handshake" size={14} /> Negotiated</Badge>}
+          {!item.instantBook && <Badge tone="orange"><Icon name="hourglass" size={14} /> Needs approval</Badge>}
+          <div className="muted small">
+            {b.unit === 'hour'
+              ? `${fmtDate(b.startDate)} · ${b.hours}h from ${b.pickupTime}`
+              : `${fmtDate(b.startDate)} to ${fmtDate(b.endDate)} at ${b.pickupTime}`} · ×{b.qty}
+            {transport && <> · <Icon name={transport.icon} size={14} /> {transport.name}</>}
+          </div>
+          <div className="muted small">
+            {b.insurance && <><Icon name="shield" size={14} /> Papa Protection · </>}
+            {b.operator && <><Icon name="wrench" size={14} /> Operator · </>}
+            {money(b.rate)}/{b.unit} × {dur}
+          </div>
+        </div>
+        <div className="cart-line-actions">
+          <b style={{ fontSize: 14 }}>{money(lineSubtotal(b))}</b>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <button className="link-btn" aria-expanded={open} onClick={() => setEditing(open ? null : b.id)}>
+              {open ? 'Done' : 'Edit'}
+            </button>
+            <button className="link-btn" onClick={() => saveForLater(b)}>Save for later</button>
+            <button className="link-btn" onClick={() => removeLine(b)}>Remove</button>
+          </div>
+        </div>
+        {item.timesRented > 40 && (
+          <div className="muted small" style={{ flexBasis: '100%' }}>
+            <Icon name="flame" size={13} /> Booked {item.timesRented} times — dates like these usually go within a day.
+          </div>
+        )}
+        {open && <LineEditor booking={b} insuranceLocked={Boolean(item.insuranceRequired)} />}
+      </div>
+    )
+  }
+
   if (state.cart.length === 0) {
     const saved = state.wishlist.map((id) => getItem(id)).filter(Boolean).slice(0, 6)
+    /* Wishlist first — it is a deliberate list. Recently viewed is the fallback
+       for someone who has never saved anything, and "Browse gear" on its own
+       sends them back to the top of a catalogue they have already walked. */
+    const recent = state.recentlyViewed
+      .filter((id) => !state.wishlist.includes(id))
+      .map((id) => getItem(id))
+      .filter(Boolean)
+      .slice(0, 6)
     return (
       <div className="section">
         <div className="empty-state">
@@ -320,6 +421,22 @@ export default function CartView() {
             </div>
           </div>
         )}
+        {recent.length > 0 && (
+          <div className="section">
+            <div className="section-head"><h2><Icon name="eye" className="h-ico" size={18} /> Pick up where you left off</h2></div>
+            <div className="h-scroll">
+              {recent.map((i) => (
+                <ItemCard
+                  key={i.id}
+                  item={i}
+                  onOpen={() => go({ name: 'item', id: i.id })}
+                  wishlisted={state.wishlist.includes(i.id)}
+                  onToggleWish={() => dispatch({ type: 'TOGGLE_WISHLIST', itemId: i.id })}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -333,6 +450,24 @@ export default function CartView() {
           <button className="link-btn" onClick={() => setConfirmClear(true)}>Clear all</button>
         </span>
       </div>
+
+      {shootDays.length > 1 && (
+        <div className="group-switch">
+          <span className="muted small"><Icon name="calendar" size={13} /> Group by</span>
+          <span className="seg">
+            {([['vendor', 'Vendor'], ['day', 'Shoot day']] as const).map(([id, label]) => (
+              <button
+                key={id}
+                className={`seg-btn${groupBy === id ? ' on' : ''}`}
+                aria-pressed={groupBy === id}
+                onClick={() => { buzz(); setGroupBy(id) }}
+              >
+                {label}
+              </button>
+            ))}
+          </span>
+        </div>
+      )}
 
       {shootDays.length > 1 && (
         <p className="muted small" style={{ margin: '0 0 8px' }}>
@@ -355,7 +490,20 @@ export default function CartView() {
 
       <div className="detail-grid">
         <div>
-          {groups.map(({ owner, lines }) => (
+          {groupBy === 'day' && dayGroups.map(({ day, lines }) => (
+            <div className="panel" key={day}>
+              <div className="muted small" style={{ fontWeight: 700, marginBottom: 8 }}>
+                <Icon name="calendar" size={14} /> {fmtDate(day)}
+                {' · '}{lines.length} line{lines.length > 1 ? 's' : ''}
+                {' · '}{money(lines.reduce((sum, l) => sum + lineSubtotal(l), 0))}
+                {' · '}from {new Set(lines.map((l) => getItem(l.itemId).ownerId)).size} vendor
+                {new Set(lines.map((l) => getItem(l.itemId).ownerId)).size > 1 ? 's' : ''}
+              </div>
+              {lines.map(renderLine)}
+            </div>
+          ))}
+
+          {groupBy === 'vendor' && groups.map(({ owner, lines }) => (
             <div className="panel" key={owner.id}>
               {groups.length > 1 && (
                 <div className="muted small" style={{ fontWeight: 700, marginBottom: 8 }}>
@@ -367,53 +515,14 @@ export default function CartView() {
                     : `arrives in ${TRANSPORT_BY_ID.get(lines[0].transport)?.eta ?? 'a few hours'}`}
                 </div>
               )}
-              {lines.map((b) => {
-                const item = getItem(b.itemId)
-                const dur = lineDuration(b)
-                const transport = TRANSPORT_BY_ID.get(b.transport)
-                const open = editing === b.id
-                return (
-                  <div className="cart-line" key={b.id}>
-                    <ItemArt item={item} size="thumb" />
-                    <div className="cart-line-info">
-                      <b style={{ fontSize: 14, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.name}>{item.name}</b>
-                      {b.negotiated && <Badge tone="purple"><Icon name="handshake" size={14} /> Negotiated</Badge>}
-                      {!item.instantBook && <Badge tone="orange"><Icon name="hourglass" size={14} /> Needs approval</Badge>}
-                      <div className="muted small">
-                        {b.unit === 'hour'
-                          ? `${fmtDate(b.startDate)} · ${b.hours}h from ${b.pickupTime}`
-                          : `${fmtDate(b.startDate)} to ${fmtDate(b.endDate)} at ${b.pickupTime}`} · ×{b.qty}
-                        {transport && <> · <Icon name={transport.icon} size={14} /> {transport.name}</>}
-                      </div>
-                      <div className="muted small">
-                        {b.insurance && <><Icon name="shield" size={14} /> Damage protection · </>}
-                        {b.operator && <><Icon name="wrench" size={14} /> Operator · </>}
-                        {money(b.rate)}/{b.unit} × {dur}
-                      </div>
-                    </div>
-                    <div className="cart-line-actions">
-                      <b style={{ fontSize: 14 }}>{money(lineSubtotal(b))}</b>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                        <button className="link-btn" aria-expanded={open} onClick={() => setEditing(open ? null : b.id)}>
-                          {open ? 'Done' : 'Edit'}
-                        </button>
-                        <button className="link-btn" onClick={() => saveForLater(b)}>Save for later</button>
-                        <button className="link-btn" onClick={() => removeLine(b)}>Remove</button>
-                      </div>
-                    </div>
-                    {item.timesRented > 40 && (
-                      <div className="muted small" style={{ flexBasis: '100%' }}>
-                        <Icon name="flame" size={13} /> Booked {item.timesRented} times — dates like these usually go within a day.
-                      </div>
-                    )}
-                    {open && <LineEditor booking={b} insuranceLocked={Boolean(item.insuranceRequired)} />}
-                  </div>
-                )
-              })}
+              {lines.map(renderLine)}
             </div>
           ))}
 
           <div className="panel">
+            {/* A code field and two checkboxes read as three unrelated rows
+                until something names what they have in common. */}
+            <h3 style={{ fontSize: 15 }}><Icon name="ticket" className="h-ico" size={15} /> Discounts &amp; credit</h3>
             <div className="promo-row">
               <input
                 placeholder="Promo code (try PAPA10)"
@@ -571,18 +680,18 @@ export default function CartView() {
             <div className="price-summary" style={{ borderTop: 'none', marginTop: 4 }}>
               <div className="price-line"><span>Rental subtotal</span><b>{money(t.subtotal)}</b></div>
               <div className="price-line"><span>Delivery (charged once per vendor)</span>{t.transportFee === 0 ? <b className="free">Free</b> : <b>{money(t.transportFee)}</b>}</div>
-              {t.insuranceFee > 0 && <div className="price-line"><span>Damage protection</span><b>{money(t.insuranceFee)}</b></div>}
+              {t.insuranceFee > 0 && <div className={`price-line${flashIns}`}><span>Papa Protection</span><b>{money(t.insuranceFee)}</b></div>}
               {t.operatorFee > 0 && <div className="price-line"><span>Operators</span><b>{money(t.operatorFee)}</b></div>}
               <div className="price-line"><span title="Covers payment processing, verification and GST.">Service fee ({Math.round(SERVICE_FEE_RATE * 100)}%, incl. GST)</span><b>{money(t.serviceFee)}</b></div>
               {(t.promoDiscount > 0 || t.tierDiscount > 0 || t.vanPerk > 0 || t.pointsUsed > 0 || t.walletUsed > 0) && (
                 <div className="price-line"><span className="muted small" style={{ fontWeight: 800 }}>Discounts</span><span /></div>
               )}
-              {t.promoDiscount > 0 && <div className="price-line"><span>Promo discount</span><b className="credit">−{money(t.promoDiscount)}</b></div>}
+              {t.promoDiscount > 0 && <div className={`price-line${flashPromo}`}><span>Promo discount</span><b className="credit">−{money(t.promoDiscount)}</b></div>}
               {t.tierDiscount > 0 && <div className="price-line"><span><Icon name="medal" size={14} /> Gold perk (5% off)</span><b className="credit">−{money(t.tierDiscount)}</b></div>}
               {t.vanPerk > 0 && <div className="price-line"><span><Icon name="medal" size={14} /> Free van delivery perk</span><b className="credit">−{money(t.vanPerk)}</b></div>}
-              {t.pointsUsed > 0 && <div className="price-line"><span>PapaPoints</span><b className="credit">−{money(t.pointsUsed)}</b></div>}
-              {t.walletUsed > 0 && <div className="price-line"><span>Wallet credit</span><b className="credit">−{money(t.walletUsed)}</b></div>}
-              <div className="price-line total" aria-live="polite"><span>Charged now</span><span>{money(t.total)}</span></div>
+              {t.pointsUsed > 0 && <div className={`price-line${flashPoints}`}><span>PapaPoints</span><b className="credit">−{money(t.pointsUsed)}</b></div>}
+              {t.walletUsed > 0 && <div className={`price-line${flashWallet}`}><span>Wallet credit</span><b className="credit">−{money(t.walletUsed)}</b></div>}
+              <div className={`price-line total${flashTotal}`} aria-live="polite"><span>Charged now</span><span>{money(t.total)}</span></div>
               <div className="price-line">
                 <span className="muted" title="An authorization hold on your card — no money leaves your account.">Deposit hold (not charged)</span>
                 <span className="muted">{money(t.depositHold)}</span>
@@ -595,11 +704,11 @@ export default function CartView() {
             <button
               className="btn btn-primary btn-block"
               onClick={() => setReviewOpen(true)}
-              disabled={Boolean(t.promoError) || conflicts.length > 0 || needsCard}
+              disabled={Boolean(blockedWhy)}
             >
               {needsApproval ? `Review & request · ${money(t.total)}` : `Review & pay ${money(t.total)}`}
             </button>
-            {t.promoError && <p className="muted small" style={{ textAlign: 'center' }}>Remove or fix the promo code to continue.</p>}
+            {blockedWhy && <p className="muted small" style={{ textAlign: 'center' }}>{blockedWhy}</p>}
             {conflicts.length === 0 && state.cart.length > 1 && (
               <button className="btn btn-ghost btn-block" style={{ marginTop: 8 }} onClick={() => setQuoteOpen(true)}>
                 <Icon name="scroll" size={14} /> Request a quote instead
@@ -631,15 +740,17 @@ export default function CartView() {
 
       <div className="pay-bar">
         <div style={{ minWidth: 0 }}>
-          <b>{money(t.total)}</b>
+          <b aria-live="polite">{money(t.total)}</b>
           <span className="muted small" style={{ display: 'block' }}>
-            {state.cart.length} line{state.cart.length > 1 ? 's' : ''} · {money(t.depositHold)} hold
+            {/* The bar is the only summary in view on a phone, so the reason the
+                button is dead has to live here too, not only in the panel. */}
+            {blockedWhy ?? `${state.cart.length} line${state.cart.length > 1 ? 's' : ''} · ${money(t.depositHold)} hold`}
           </span>
         </div>
         <button
           className="btn btn-primary"
           onClick={() => setReviewOpen(true)}
-          disabled={Boolean(t.promoError) || conflicts.length > 0 || needsCard}
+          disabled={Boolean(blockedWhy)}
         >
           {needsApproval ? 'Review & request' : 'Review & pay'}
         </button>
@@ -664,7 +775,20 @@ export default function CartView() {
             For multi-day or multi-vendor shoots we'll send a single itemised quote you can forward to production. Nothing is
             booked and nothing is charged until you accept it.
           </p>
-          {groups.map(({ owner, lines }) => (
+          {groupBy === 'day' && dayGroups.map(({ day, lines }) => (
+            <div className="panel" key={day}>
+              <div className="muted small" style={{ fontWeight: 700, marginBottom: 8 }}>
+                <Icon name="calendar" size={14} /> {fmtDate(day)}
+                {' · '}{lines.length} line{lines.length > 1 ? 's' : ''}
+                {' · '}{money(lines.reduce((sum, l) => sum + lineSubtotal(l), 0))}
+                {' · '}from {new Set(lines.map((l) => getItem(l.itemId).ownerId)).size} vendor
+                {new Set(lines.map((l) => getItem(l.itemId).ownerId)).size > 1 ? 's' : ''}
+              </div>
+              {lines.map(renderLine)}
+            </div>
+          ))}
+
+          {groupBy === 'vendor' && groups.map(({ owner, lines }) => (
             <div key={owner.id} className="price-line">
               <span>{owner.name} <span className="muted small">· {lines.length} line{lines.length > 1 ? 's' : ''}</span></span>
               <b>{money(lines.reduce((sum, l) => sum + lineSubtotal(l), 0))}</b>
@@ -808,7 +932,7 @@ function LineEditor({ booking, insuranceLocked }: { booking: Booking; insuranceL
           onChange={(e) => patch({ insurance: e.target.checked })}
         />
         <span>
-          <b><Icon name="shield" size={14} /> Damage protection</b>
+          <b><Icon name="shield" size={14} /> Papa Protection</b>
           {insuranceLocked && <span className="muted small"> — required on high-deposit gear</span>}
         </span>
       </label>

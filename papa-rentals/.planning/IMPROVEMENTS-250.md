@@ -196,49 +196,49 @@ claiming an item, re-verify it in the code.
 19. [x] No cancellation-policy acknowledgment checkbox — policy is muted text.
 20. [x] "Clear all" wipes the cart instantly with no undo/confirm.
 21. [x] `Remove` is instant with no undo.
-22. [ ] No stock/availability re-check at checkout — an item could be booked between add and place.
+22. [x] No stock/availability re-check at checkout — an item could be booked between add and place.
 
 ### Empty & edge states
-23. [ ] Empty cart doesn't surface wishlist or last-viewed as a fast path back in.
-24. [ ] No handling for a line whose item became unavailable/paused after add — it'll still try to book.
-25. [ ] Cross-sell ("Complete your setup") only keys off the last cart line — blend signals across all lines.
+23. [x] Empty cart doesn't surface wishlist or last-viewed as a fast path back in.
+24. [x] No handling for a line whose item became unavailable/paused after add — it'll still try to book.
+25. [x] Cross-sell ("Complete your setup") only keys off the last cart line — blend signals across all lines.
 
 ### Layout & responsiveness
-26. [ ] `detail-grid` puts summary in a second column — confirm the CTA isn't below the fold on narrow phones.
-27. [ ] Pay CTA is inside the summary panel — make it a sticky bottom bar with the live total.
-28. [ ] Long item names in `cart-line-info` — verify truncation.
-29. [ ] Promo input and toggles are visually similar rows — group under a "Discounts" subheader.
+26. [x] `detail-grid` puts summary in a second column — confirm the CTA isn't below the fold on narrow phones.
+27. [x] Pay CTA is inside the summary panel — make it a sticky bottom bar with the live total.
+28. [x] Long item names in `cart-line-info` — verify truncation.
+29. [x] Promo input and toggles are visually similar rows — group under a "Discounts" subheader.
 
 ### Feedback & motion
-30. [ ] Applying a promo toasts but the summary doesn't animate the discount line in.
-31. [ ] Toggling wallet/points recomputes silently — flash the affected summary line.
-32. [ ] No haptic on remove (you `buzz()` on place order only).
+30. [x] Applying a promo toasts but the summary doesn't animate the discount line in.
+31. [x] Toggling wallet/points recomputes silently — flash the affected summary line.
+32. [x] No haptic on remove (you `buzz()` on place order only).
 
 ### Copy
-33. [ ] "Transport (per owner)" is jargon — "Delivery (charged once per vendor)".
-34. [ ] "Damage protection" vs "Papa Protection" vs "insurance" — three names for one thing. Pick one.
-35. [ ] "You'll earn +N PapaPoints" — add "→ Rs N off next time" to make value concrete.
+33. [x] "Transport (per owner)" is jargon — "Delivery (charged once per vendor)".
+34. [x] "Damage protection" vs "Papa Protection" vs "insurance" — three names for one thing. Pick one.
+35. [x] "You'll earn +N PapaPoints" — add "→ Rs N off next time" to make value concrete.
 
 ### Performance & correctness
-36. [ ] `cartTotals` called twice in `applyPromo` and again on render — memoize.
-37. [ ] `similarItems(...).filter(...).slice(6)` runs every render — memoize on cart contents.
-38. [ ] `PAYMENT_METHODS.find(...)` / `TRANSPORT_OPTIONS.find(...)` run per line/render — precompute maps.
-39. [ ] `address` falls back to `addresses[0]` but `placeOrder` can still send "Self pickup" — make delivery-vs-pickup explicit.
+36. [x] `cartTotals` called twice in `applyPromo` and again on render — memoize.
+37. [x] `similarItems(...).filter(...).slice(6)` runs every render — memoize on cart contents.
+38. [x] `PAYMENT_METHODS.find(...)` / `TRANSPORT_OPTIONS.find(...)` run per line/render — precompute maps.
+39. [x] `address` falls back to `addresses[0]` but `placeOrder` can still send "Self pickup" — make delivery-vs-pickup explicit.
 
 ### Accessibility
-40. [ ] Toggle rows use real checkboxes (good), but pay-method and address rows are click-divs — unify to real inputs.
-41. [ ] Disabled pay button (on `promoError`) gives no explanation next to it.
-42. [ ] Number/points values aren't announced on change — add `aria-live` on the total.
+40. [x] Toggle rows use real checkboxes (good), but pay-method and address rows are click-divs — unify to real inputs.
+41. [x] Disabled pay button (on `promoError`) gives no explanation next to it.
+42. [x] Number/points values aren't announced on change — add `aria-live` on the total.
 
 ### Future-facing
 43. [ ] Split-payment / pay-deposit-now-rest-later.
-44. [ ] Group cart by shoot date for multi-day productions.
-45. [ ] "Request quote" path for very large carts routing to a human.
-46. [ ] Save cart as a named "kit" — bridges to Home "build your own kit".
-47. [ ] Estimated delivery ETA per vendor in cart, not just fees.
-48. [ ] Tax/GST line for real invoicing — summary structure is ready.
-49. [ ] Abandoned-cart reminder via the existing notification center.
-50. [ ] "Someone else is viewing this" / low-stock nudge at checkout.
+44. [x] Group cart by shoot date for multi-day productions.
+45. [x] "Request quote" path for very large carts routing to a human.
+46. [x] Save cart as a named "kit" — bridges to Home "build your own kit".
+47. [x] Estimated delivery ETA per vendor in cart, not just fees.
+48. [x] Tax/GST line for real invoicing — summary structure is ready.
+49. [x] Abandoned-cart reminder via the existing notification center.
+50. [x] "Someone else is viewing this" / low-stock nudge at checkout.
 
 ---
 

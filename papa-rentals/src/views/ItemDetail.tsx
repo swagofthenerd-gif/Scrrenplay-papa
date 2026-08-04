@@ -447,7 +447,7 @@ export default function ItemDetail({ id, from, to }: { id: string; from?: string
                 onChange={(e) => setInsurance(e.target.checked)}
               />
               <span>
-                <b><Icon name="shield" size={14} /> Papa Damage Protection</b> — {Math.round(INSURANCE_RATE * 100)}% of rental. Covers accidental damage up to full value.
+                <b><Icon name="shield" size={14} /> Papa Protection</b> — {Math.round(INSURANCE_RATE * 100)}% of rental. Covers accidental damage up to full value.
                 {item.insuranceRequired && (
                   <b style={{ color: 'var(--accent-dark)' }}>
                     {' '}Required by the vendor on this item — it carries a {money(item.deposit)} deposit.
@@ -498,7 +498,7 @@ export default function ItemDetail({ id, from, to }: { id: string; from?: string
 
             <div className="price-summary">
               <div className="price-line"><span>{money(rate)} × {duration} {unit}{duration > 1 ? 's' : ''} × {qty}</span><b>{money(sub)}</b></div>
-              {(insurance || item.insuranceRequired) && <div className="price-line"><span>Damage protection</span><b>{money(insuranceFee)}</b></div>}
+              {(insurance || item.insuranceRequired) && <div className="price-line"><span>Papa Protection</span><b>{money(insuranceFee)}</b></div>}
               {operator && <div className="price-line"><span>Operator ({days}d)</span><b>{money(operatorFee)}</b></div>}
               <div className="price-line"><span>Transport</span>{transportFee === 0 ? <b className="free">Free</b> : <b>{money(transportFee)}</b>}</div>
               <div className="price-line"><span>Deposit (hold only — released after return)</span><b>{money(item.deposit * qty)}</b></div>

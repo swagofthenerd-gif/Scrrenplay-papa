@@ -23,7 +23,7 @@ import { Icon, type IconName } from './icons'
    renter eventually reads all four reasons to stay. */
 const VALUE_PROPS: { icon: IconName; label: string }[] = [
   { icon: 'handshake', label: 'Offer your price' },
-  { icon: 'shield', label: 'Damage protection included' },
+  { icon: 'shield', label: 'Papa Protection included' },
   { icon: 'truck', label: 'Delivered to set' },
   { icon: 'check-circle', label: 'Verified vendors only' },
 ]

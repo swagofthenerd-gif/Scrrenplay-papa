@@ -1454,6 +1454,17 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 /* Refresh feedback: dim the content that is about to change. */
 .is-refreshing .section { opacity: 0.55; transition: opacity 0.2s ease; }
 
+/* A summary line that just changed. Green because every line that can move
+   here moves in the customer's favour — a discount, credit, or the total
+   coming down with it. */
+@keyframes line-flash {
+  0%   { background: color-mix(in srgb, var(--green) 20%, transparent); }
+  100% { background: transparent; }
+}
+.price-line.flash { animation: line-flash 0.8s var(--ease-out); border-radius: 6px; }
+
+.group-switch { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+
 /* Compact results: one listing per row for scanning long result sets. */
 .dense-list { display: flex; flex-direction: column; gap: 8px; }
 .dense-list .item-card { display: flex; flex-direction: row; align-items: center; gap: 10px; min-width: 0; }
