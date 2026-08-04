@@ -182,6 +182,9 @@ export interface Order {
   paymentMethod: string
   address: string
   approveAt?: number // for request-to-book orders
+  /** When the order entered its current status. "Preparing since 2:14pm" is the
+      difference between a progress bar and knowing somebody is on it. */
+  statusAt?: number
   driver?: Driver
   lineRatings?: number[]
   myRatingOfOwner?: number

@@ -3,7 +3,7 @@ import { getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { useStore } from '../store'
 import type { Order, OrderStatus } from '../types'
-import { buzz, daysBetween, downloadReceipt, fmtCountdown, fmtDate, money, shiftBooking, todayISO, uid } from '../utils'
+import { buzz, downloadReceipt, fmtCountdown, fmtDate, money, shiftBooking, todayISO, uid } from '../utils'
 import { Badge, ItemArt, Modal, Stars } from '../components/ui'
 import { Icon, type IconName } from '../components/icons'
 import { ReportModal } from './ItemDetail'
@@ -17,10 +17,13 @@ const STEPS: { id: OrderStatus; label: string; icon: IconName }[] = [
   { id: 'completed', label: 'Done', icon: 'flag-checkered' },
 ]
 
+/* "Returned — owner is inspecting; deposit hold release is queued" is the line
+   the rest of these are measured against: it names who is doing what, and what
+   happens next. A status that only names itself makes people refresh. */
 const STATUS_HINT: Record<OrderStatus, string> = {
-  requested: 'Waiting for the owner to approve — usually just a few minutes.',
-  confirmed: 'Owner has confirmed your booking. Gear is being reserved.',
-  preparing: 'Gear is being tested, charged and packed for you.',
+  requested: 'With the owner for approval — they have your dates and your rate. Most reply inside ten minutes.',
+  confirmed: 'Owner has accepted. Your dates are held against this gear and nobody else can book them.',
+  preparing: 'Being tested, charged and packed — batteries topped up, media formatted, case checked off.',
   in_transit: 'Your gear is on the way — share the PIN at handover.',
   in_use: 'Shoot day! Gear is with you. Support is one tap away.',
   returned: 'Gear returned. Owner is inspecting; deposit hold release is queued.',
@@ -197,7 +200,13 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
     [lines]
   )
   const done = order.status === 'completed'
-  const hasClaim = state.claims.some((c) => c.orderId === order.id)
+  const orderClaims = state.claims.filter((c) => c.orderId === order.id)
+  const hasClaim = orderClaims.length > 0
+  /* A three-item order can have two broken items. Blocking the whole order after
+     one claim meant the second one had to go through support as a message. */
+  const claimableLeft = order.lines.filter(
+    (l) => l.insurance && !orderClaims.some((c) => c.itemName === getItem(l.itemId).name)
+  ).length
   const cancelled = order.status === 'cancelled'
   const cancellable = ['requested', 'confirmed', 'preparing'].includes(order.status)
 
@@ -231,8 +240,12 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
   for (const o of vendors) {
     actions.push({ label: `Message ${o.name}`, icon: 'chat', run: () => go({ name: 'inbox', ownerId: o.id }) })
   }
-  if ((done || order.status === 'returned' || order.status === 'in_use') && order.lines.some((l) => l.insurance) && !hasClaim) {
-    actions.push({ label: 'File a damage claim', icon: 'shield', run: () => setClaimOpen(true) })
+  if ((done || order.status === 'returned' || order.status === 'in_use') && claimableLeft > 0) {
+    actions.push({
+      label: hasClaim ? 'File another damage claim' : 'File a damage claim',
+      icon: 'shield',
+      run: () => setClaimOpen(true),
+    })
   }
   actions.push({ label: `Get help with ${order.id}`, icon: 'headset', run: () => go({ name: 'support', orderId: order.id }) })
   actions.push({ label: cancelled ? 'Download cancellation receipt' : 'Download receipt', icon: 'receipt', run: () => downloadReceipt(order) })
@@ -292,8 +305,20 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
           </div>
           <p className="muted small" style={{ margin: '4px 0 10px' }}>
             {STATUS_HINT[order.status]}
+            {/* A stage with a start time reads as somebody working on it; the same
+                stage with no time reads as a progress bar that might be stuck. */}
+            {order.statusAt && order.status !== 'completed' && (
+              <> · {STEPS.find((s) => s.id === order.status)?.label ?? 'In progress'} since{' '}
+                {new Date(order.statusAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</>
+            )}
             {' · '}Ordered {new Date(order.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
           </p>
+          {/* ORDERS-25: nobody should feel they have to keep this screen open. */}
+          {['requested', 'confirmed', 'preparing'].includes(order.status) && (
+            <p className="muted small" style={{ margin: '-6px 0 10px' }}>
+              <Icon name="bell" size={13} /> You'll get a notification the moment it's on the way — no need to watch this page.
+            </p>
+          )}
         </>
       )}
 
@@ -317,6 +342,7 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
               <div className="muted small">Handover PIN</div>
               <button
                 className="pin"
+                aria-label={`Handover PIN ${String(order.driver.pin).split('').join(' ')} — tap to copy`}
                 title="Tap to copy — read it out to the driver at handover"
                 style={{ border: 0, cursor: 'pointer' }}
                 onClick={async () => {
@@ -398,7 +424,11 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
 
       {done && (
         <p className="small" style={{ color: 'var(--green)', fontWeight: 700, margin: '10px 0 0' }}>
-          <Icon name="trophy" size={14} /> +{order.pointsEarned} PapaPoints earned · deposit hold of {money(order.depositHold)} released back to your card <Icon name="check" size={14} />
+          <Icon name="trophy" size={14} />{' '}
+          <button className="link-btn" style={{ padding: 0, minHeight: 0 }} onClick={() => go({ name: 'wallet' })}>
+            +{order.pointsEarned} PapaPoints earned
+          </button>{' '}
+          · deposit hold of {money(order.depositHold)} released back to your card <Icon name="check" size={14} />
         </p>
       )}
 
@@ -438,8 +468,13 @@ function Eta({ at }: { at: number }) {
 function CancelModal({ order, onClose }: { order: Order; onClose: () => void }) {
   const { dispatch } = useStore()
   const { toast } = useNav()
-  // inside 48 hours means the start date is today, tomorrow, or already past
-  const startsSoon = order.lines.some((l) => daysBetween(todayISO(0), l.startDate) <= 2)
+  /* Counting calendar days made "inside 48h" mean anything from 24 to 72,
+     depending on the hour you cancelled — and the fee is real money. Pickup
+     time is on every line, so the window can be the window. */
+  const hoursToStart = Math.min(
+    ...order.lines.map((l) => (new Date(`${l.startDate}T${l.pickupTime || '09:00'}`).getTime() - Date.now()) / 3600000)
+  )
+  const startsSoon = hoursToStart < 48
   const fee = order.status === 'requested' || !startsSoon ? 0 : Math.round(order.total * 0.1)
   const refund = order.total - fee + order.walletUsed
 
@@ -522,15 +557,21 @@ function ExtendModal({ order, onClose }: { order: Order; onClose: () => void }) 
 const CLAIM_REASONS = ['Arrived damaged', 'Failed during shoot', 'Missing accessory', 'Damaged in transit back']
 
 function ClaimModal({ order, onClose }: { order: Order; onClose: () => void }) {
-  const { dispatch } = useStore()
+  const { state, dispatch } = useStore()
   const { toast } = useNav()
-  const insuredLines = order.lines.filter((l) => l.insurance)
+  /* Insured lines that haven't already been claimed. Offering one that has been
+     is offering a form that will be rejected. */
+  const filed = state.claims.filter((c) => c.orderId === order.id).map((c) => c.itemName)
+  const insuredLines = order.lines.filter((l) => l.insurance && !filed.includes(getItem(l.itemId).name))
   const [lineIdx, setLineIdx] = useState(0)
   const [reason, setReason] = useState(CLAIM_REASONS[0])
   const line = insuredLines[lineIdx]
   const item = getItem(line.itemId)
   const maxAmount = item.deposit * line.qty
-  const [amount, setAmount] = useState(Math.min(10000, maxAmount))
+  /* Most approved claims are a repair, not a write-off, so the field opens on a
+     repair-shaped number rather than on a round ten thousand that means nothing. */
+  const typical = Math.round((maxAmount * 0.25) / 500) * 500
+  const [amount, setAmount] = useState(Math.min(typical || 5000, maxAmount))
   const [photos, setPhotos] = useState(0)
 
   return (
@@ -571,6 +612,13 @@ function ClaimModal({ order, onClose }: { order: Order; onClose: () => void }) {
           onChange={(e) => setAmount(Math.min(maxAmount, Math.max(0, Number(e.target.value) || 0)))}
         />
       </label>
+      {/* The ceiling is the deposit, which is the write-off price. Naming the
+          shape of a normal claim is what stops people either lowballing a real
+          repair or asking for the whole deposit over a scratched lens hood. */}
+      <p className="muted small" style={{ margin: '4px 0 0' }}>
+        Most claims are repairs — around {money(typical)} for this item. Ask for the full {money(maxAmount)} only if it can't be repaired.
+        Assessors settle on the repair quote, so an honest number is approved faster.
+      </p>
       <button
         className="btn btn-primary btn-block" style={{ marginTop: 14 }}
         disabled={amount < 500}

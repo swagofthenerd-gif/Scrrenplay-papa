@@ -247,39 +247,39 @@ claiming an item, re-verify it in the code.
 ### Organization & findability
 1. [x] Flat list with no tabs — add Active / Completed / Cancelled segments.
 2. [x] No search or date filter — a user with 40 orders can't find one.
-3. [ ] No sort control (newest/oldest/amount).
+3. [x] No sort control (newest/oldest/amount).
 4. [x] Orders aren't grouped by month.
 5. [x] No order-detail screen — everything crammed into the card. *(`OrderDetailView.tsx`)*
 
 ### The "Skip ahead" debug control
-6. [ ] "Skip ahead" manually advances order status — a demo shortcut in production UI. Gate behind a dev flag.
+6. [x] "Skip ahead" manually advances order status — a demo shortcut in production UI. Gate behind a dev flag.
 7. [ ] Same for auto-advance (`autoAdvanceAt`) — make simulated progression invisible to end users.
 
 ### Live tracking
 8. [ ] In-transit map is a decorative SVG path, not a real route — even a static map thumbnail with two pins feels more real.
-9. [ ] Driver PIN shown but no "copy PIN" or confirm-handover action.
+9. [x] Driver PIN shown but no "copy PIN" or confirm-handover action.
 10. [ ] Driver "Call" is a `tel:` link — add in-app chat with the driver.
 11. [x] No live ETA countdown during transit.
-12. [ ] Timeline steps don't show timestamps — "Preparing since 2:14pm" builds confidence.
+12. [x] Timeline steps don't show timestamps — "Preparing since 2:14pm" builds confidence.
 
 ### Actions on a card
 13. [x] Action row can show 8+ buttons wrapping messily — prioritize 1 primary + overflow menu.
 14. [x] "Get help" routes to generic Support — pass order context so support opens pre-filled.
-15. [ ] "Report" and "File claim" overlap conceptually — clarify when to use which.
-16. [ ] Cancel fee threshold (`startsSoon = startDate <= todayISO(2)`) is a rough proxy for "48h" — make it a real hour-level check.
+15. [x] "Report" and "File claim" overlap conceptually — clarify when to use which.
+16. [x] Cancel fee threshold (`startsSoon = startDate <= todayISO(2)`) is a rough proxy for "48h" — make it a real hour-level check.
 17. [ ] Extend modal blocks hourly bookings entirely — offer one-tap re-book from there.
 18. [x] "Book again" silently drops the negotiated rate (`negotiated:false`) — tell the user.
 
 ### Ratings
-19. [ ] `ownerRatingOfMe ?? 5` — a missing owner rating silently shows 5 stars. Misleading.
+19. [x] `ownerRatingOfMe ?? 5` — a missing owner rating silently shows 5 stars. Misleading.
 20. [ ] Rating is per-item but review text "applies to each item" — allow per-item notes.
 21. [x] No way to edit/withdraw a rating after publishing. *(edit done; withdraw outstanding)*
-22. [ ] Completed orders show "+N PapaPoints earned" with no link to where points went.
+22. [x] Completed orders show "+N PapaPoints earned" with no link to where points went.
 
 ### Status clarity
 23. [x] "requested" orders show only a banner and no timeline — show a greyed-out timeline.
 24. [ ] Cancelled orders show fee/refund inline but no receipt/breakdown link.
-25. [ ] No notification tie-in on the card ("we'll notify you when it ships").
+25. [x] No notification tie-in on the card ("we'll notify you when it ships").
 
 ### Receipts & records
 26. [ ] `downloadReceipt` — verify it works in Android WebView (blob download from `appassets` can fail silently). Offer share/email fallback.
@@ -287,30 +287,30 @@ claiming an item, re-verify it in the code.
 28. [ ] Receipt is per-order; no monthly statement.
 
 ### Claims
-29. [ ] Claim amount defaults to `min(10000, maxAmount)` with no guidance on typical payouts.
-30. [ ] Claim offers 4 canned reasons and one amount field — no photo upload, the crux of a real damage claim.
+29. [x] Claim amount defaults to `min(10000, maxAmount)` with no guidance on typical payouts.
+30. [x] Claim offers 4 canned reasons and one amount field — no photo upload, the crux of a real damage claim.
 31. [x] After filing, users told to "track it in Help Center" but claims aren't clearly linked from this screen.
-32. [ ] `hasClaim` blocks a second claim on the whole order — a multi-item order might need two.
+32. [x] `hasClaim` blocks a second claim on the whole order — a multi-item order might need two.
 
 ### Layout & performance
-33. [ ] Every `OrderCard` mounts 5 conditional modals; whole list re-renders on any store change — memoize cards by order id + status.
-34. [ ] `getItem`/`getOwner` called repeatedly per line per render.
-35. [ ] Timeline + route SVG animate continuously off-screen — pause when not visible.
+33. [x] Every `OrderCard` mounts 5 conditional modals; whole list re-renders on any store change — memoize cards by order id + status.
+34. [x] `getItem`/`getOwner` called repeatedly per line per render.
+35. [x] Timeline + route SVG animate continuously off-screen — pause when not visible.
 36. [ ] No virtualization for long order histories.
 
 ### Accessibility
-37. [ ] Timeline steps convey state by color + filled bubble — add `aria-current` and text ("step 3 of 6").
+37. [x] Timeline steps convey state by color + filled bubble — add `aria-current` and text ("step 3 of 6").
 38. [ ] Action buttons wrap with no logical grouping for screen readers.
-39. [ ] Animated transit dot has no reduced-motion guard.
-40. [ ] PIN is visually prominent but not labeled for screen readers ("handover PIN 4821").
+39. [x] Animated transit dot has no reduced-motion guard.
+40. [x] PIN is visually prominent but not labeled for screen readers ("handover PIN 4821").
 
 ### Copy & trust
-41. [ ] "updates automatically" hints at the simulation — reword to sound like real logistics.
-42. [ ] "Owner is inspecting; deposit hold release is queued" is great copy — mirror that specificity in requested/confirmed states.
-43. [ ] Clarify deposit hold vs charge consistently with Cart.
+41. [x] "updates automatically" hints at the simulation — reword to sound like real logistics.
+42. [x] "Owner is inspecting; deposit hold release is queued" is great copy — mirror that specificity in requested/confirmed states.
+43. [x] Clarify deposit hold vs charge consistently with Cart.
 
 ### Future-facing
-44. [ ] Reorder-from-history as a first-class flow.
+44. [x] Reorder-from-history as a first-class flow.
 45. [x] "Share tracking" link so a producer can send status to their team.
 46. [x] Calendar export (.ics) for confirmed shoot dates.
 47. [ ] Per-order chat thread with the vendor, not just the owner globally.
