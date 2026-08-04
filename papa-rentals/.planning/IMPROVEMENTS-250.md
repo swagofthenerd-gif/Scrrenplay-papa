@@ -296,7 +296,7 @@ claiming an item, re-verify it in the code.
 33. [x] Every `OrderCard` mounts 5 conditional modals; whole list re-renders on any store change — memoize cards by order id + status.
 34. [x] `getItem`/`getOwner` called repeatedly per line per render.
 35. [x] Timeline + route SVG animate continuously off-screen — pause when not visible.
-36. [ ] No virtualization for long order histories.
+36. [x] No virtualization for long order histories.
 
 ### Accessibility
 37. [x] Timeline steps convey state by color + filled bubble — add `aria-current` and text ("step 3 of 6").

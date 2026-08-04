@@ -8,6 +8,7 @@ import { Badge, ItemArt, Modal, Stars } from '../components/ui'
 import { Icon, type IconName } from '../components/icons'
 import { ReportModal } from './ItemDetail'
 import { TransitMap } from '../components/TransitMap'
+import { Deferred } from '../components/Deferred'
 
 const STEPS: { id: OrderStatus; label: string; icon: IconName }[] = [
   { id: 'confirmed', label: 'Confirmed', icon: 'check' },
@@ -70,6 +71,11 @@ function exportStatement(months: { label: string; orders: Order[] }[], tab: Orde
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+/* Roughly a collapsed order card. Close beats exact: too small and the page
+   jumps as cards mount, too large and the scrollbar promises history that isn't
+   there. Measured at 390px against a typical two-line order. */
+const ORDER_CARD_RESERVE = 340
+
 function monthLabel(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
 }
@@ -110,6 +116,11 @@ export default function OrdersView() {
     }
     return out
   }, [state.orders, tab, query, sort])
+
+  /* Above the fold on the tallest phone this ships to is about four cards; five
+     keeps the first screen instant without deferring anything the person can
+     already see. */
+  let eagerLeft = 5
 
   if (state.orders.length === 0) {
     return (
@@ -173,7 +184,22 @@ export default function OrdersView() {
         months.map((m) => (
           <div key={m.label}>
             <h3 className="muted small" style={{ margin: '14px 0 6px', textTransform: 'uppercase', letterSpacing: '.06em' }}>{m.label}</h3>
-            {m.orders.map((o) => <OrderCard key={o.id} order={o} />)}
+            {m.orders.map((o) => {
+              /* Each card mounts a timeline, up to five modals and — in transit —
+                 a map, and a long history mounted every one of them on first
+                 paint. Deferred already solves this for Home's rails, so this
+                 reuses it rather than adding a second windowing scheme; it also
+                 never unmounts, which matters here because a card that remounted
+                 would close a modal the person had open. The eager head is
+                 counted across months so a history split over many months does
+                 not render five cards per month. */
+              const eager = eagerLeft-- > 0
+              return eager ? <OrderCard key={o.id} order={o} /> : (
+                <Deferred key={o.id} minHeight={ORDER_CARD_RESERVE}>
+                  <OrderCard order={o} />
+                </Deferred>
+              )
+            })}
           </div>
         ))
       )}
