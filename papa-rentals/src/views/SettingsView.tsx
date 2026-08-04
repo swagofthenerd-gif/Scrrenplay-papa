@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNav } from '../nav'
 import { useStore } from '../store'
-import { money } from '../utils'
+import { downloadOrShow, money } from '../utils'
 import { Badge, Modal } from '../components/ui'
 import { ThemeRow } from '../components/ThemeToggle'
 import { Icon } from '../components/icons'
@@ -58,13 +58,7 @@ export default function SettingsView() {
   }
 
   function exportData() {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'papa-rentals-data.json'
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    downloadOrShow('papa-rentals-data.json', JSON.stringify(state, null, 2), 'application/json')
     toast('Your data is downloading')
   }
 
@@ -130,7 +124,7 @@ export default function SettingsView() {
           <span><Icon name="scroll" size={16} /> Download my data</span><span className="muted">JSON <Icon name="chevron-right" size={14} /></span>
         </button>
         <button className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => setResetOpen(true)}>
-          <span style={{ color: 'var(--danger, #b42318)' }}><Icon name="trash" size={16} /> Erase all my data</span>
+          <span style={{ color: 'var(--red)' }}><Icon name="trash" size={16} /> Erase all my data</span>
           <span className="muted">Can't be undone <Icon name="chevron-right" size={14} /></span>
         </button>
       </div>

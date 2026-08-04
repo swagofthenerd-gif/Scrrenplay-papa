@@ -448,6 +448,45 @@ export function highlightMatch(text: string, query: string): { text: string; hit
 
 /* ---------------- receipt ---------------- */
 
+/** Hand the user a file, or show it to them if the device won't take one.
+
+    Blob downloads are silently blocked inside the Android WebView this app ships
+    in — the tap does nothing and the person is left thinking the button is
+    broken. Three call sites need this (receipt, CSV statement, data export) and
+    only the receipt had it, so the other two were dead buttons on the platform
+    that matters most. `text` is what gets rendered if the download route fails;
+    for anything that isn't already HTML it is shown as preformatted text, which
+    is at least selectable and shareable. */
+export function downloadOrShow(filename: string, body: string, mime: string) {
+  const a = document.createElement('a')
+  if (typeof a.download === 'string') {
+    try {
+      const blob = new Blob([body], { type: mime })
+      a.href = URL.createObjectURL(blob)
+      a.download = filename
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000)
+      return
+    } catch {
+      /* fall through to the inline renderer */
+    }
+  }
+  const html = mime === 'text/html'
+    ? body
+    : `<!doctype html><meta charset="utf-8"><title>${filename}</title><pre style="white-space:pre-wrap;font:13px/1.4 ui-monospace,monospace;padding:16px">${
+        body.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre>`
+  const w = window.open('', '_blank')
+  if (w) {
+    w.document.write(html)
+    w.document.close()
+    return
+  }
+  // last resort: replace the current document (WebView with popups disabled)
+  document.open()
+  document.write(html)
+  document.close()
+}
+
 export function downloadReceipt(order: Order) {
   const rows = order.lines.map((b) => {
     const item = getItem(b.itemId)
@@ -470,31 +509,7 @@ ${fee('PapaPoints redeemed', order.pointsUsed, true)}${fee('Wallet credit', orde
 </table>
 <p><small>Papa Rentals (Pvt) Ltd · support@paparentals.pk · This deposit is an authorization hold, not a charge.</small></p>
 </body></html>`
-  // Blob downloads are blocked inside the Android WebView wrapper, so fall back to
-  // rendering the receipt in a new document the user can share or print.
-  const a = document.createElement('a')
-  if (typeof a.download === 'string') {
-    try {
-      const blob = new Blob([html], { type: 'text/html' })
-      a.href = URL.createObjectURL(blob)
-      a.download = `papa-receipt-${order.id}.html`
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(a.href), 5000)
-      return
-    } catch {
-      /* fall through to the inline renderer */
-    }
-  }
-  const w = window.open('', '_blank')
-  if (w) {
-    w.document.write(html)
-    w.document.close()
-    return
-  }
-  // last resort: replace the current document (WebView with popups disabled)
-  document.open()
-  document.write(html)
-  document.close()
+  downloadOrShow(`papa-receipt-${order.id}.html`, html, 'text/html')
 }
 
 /**

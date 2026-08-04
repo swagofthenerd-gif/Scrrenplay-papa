@@ -3,7 +3,7 @@ import { getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
 import { driverThreadId, orderThreadId, useStore } from '../store'
 import type { Order, OrderStatus } from '../types'
-import { buzz, downloadReceipt, fmtCountdown, fmtDate, money, shiftBooking, todayISO, uid } from '../utils'
+import { buzz, downloadOrShow, downloadReceipt, fmtCountdown, fmtDate, money, shiftBooking, todayISO, uid } from '../utils'
 import { Badge, ItemArt, Modal, Stars } from '../components/ui'
 import { Icon, type IconName } from '../components/icons'
 import { ReportModal } from './ItemDetail'
@@ -63,12 +63,7 @@ function exportStatement(months: { label: string; orders: Order[] }[], tab: Orde
       ].join(','))
     }
   }
-  const url = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `papa-rentals-${tab}-statement.csv`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadOrShow(`papa-rentals-${tab}-statement.csv`, rows.join('\n'), 'text/csv')
 }
 
 /* Roughly a collapsed order card. Close beats exact: too small and the page

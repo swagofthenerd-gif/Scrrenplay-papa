@@ -327,15 +327,15 @@ claiming an item, re-verify it in the code.
 2. [x] "ID Verified" badge always shown regardless of any verification — misleading.
 3. [ ] No avatar upload — everyone gets a generated `Avatar`.
 4. [x] No phone/email fields, yet orders imply contactability and COD implies a card on file.
-5. [ ] No logout / account / switch-account concept.
+5. [x] No logout / account / switch-account concept.
 6. [x] No settings screen (notifications, language, currency, theme). *(`SettingsView.tsx`)*
 
 ### Wallet
 7. [x] "+ Top up Rs 10,000" adds free money with no payment step — wire to a real flow or at least a confirm.
 8. [x] Only one fixed top-up amount — add custom amounts.
 9. [x] No wallet transaction history. *(`WalletView.tsx`)*
-10. [ ] `useCountUp` animates balance but there's no breakdown of credit vs cash.
-11. [ ] Refunds land in wallet but there's no way to withdraw to bank.
+10. [x] `useCountUp` animates balance but there's no breakdown of credit vs cash.
+11. [x] Refunds land in wallet but there's no way to withdraw to bank.
 
 ### Loyalty (PapaPoints / tiers)
 12. [x] Tier perks explained in a wall of muted text — make perks a scannable list with checkmarks.
@@ -365,7 +365,7 @@ claiming an item, re-verify it in the code.
 ### Reports & safety
 29. [ ] "Your reports" lists case numbers/status with no way to view details or add evidence.
 30. [x] "Blocked" owners can't be unblocked from this list — display-only.
-31. [ ] No privacy/data controls (download my data, delete account).
+31. [x] No privacy/data controls (download my data, delete account).
 
 ### Empty & first-run states
 32. [x] A new user sees 0/0/0 tiles and lots of "None yet" — design a welcoming empty profile that guides first actions.
@@ -380,7 +380,7 @@ claiming an item, re-verify it in the code.
 ### Accessibility
 38. [x] Click-`div` `list-row`s aren't buttons — no keyboard/focus/role.
 39. [x] Stat tiles convey meaning by icon — ensure number+label association is read correctly.
-40. [ ] Referral toast is the only copy feedback — add an inline "Copied ✓" state for screen readers.
+40. [x] Referral toast is the only copy feedback — add an inline "Copied ✓" state for screen readers.
 41. [x] Progress bar has no `role="progressbar"` / aria values.
 
 ### Feedback & motion
