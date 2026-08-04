@@ -1806,3 +1806,29 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
    other half off screen. Used wherever a name shares a line with something that
    must stay readable. */
 .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }
+
+/* ---------- Tier up + wallet credit ---------- */
+.tier-up { margin-top: 14px; border: 1px solid var(--accent); background: var(--accent-soft); }
+.earn-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.earn-chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; min-height: 36px;
+  border: 1px solid var(--line-strong); border-radius: 999px; background: var(--card);
+  font-size: 12px; font-weight: 700; color: var(--ink); cursor: pointer;
+}
+/* The credited amount rises out of the balance it just joined, rather than
+   appearing in a corner toast with nothing tying it to the number that moved. */
+.balance { position: relative; }
+.balance-delta {
+  position: absolute; left: 0; top: 0; font-size: 15px; font-weight: 800; color: var(--green);
+  animation: creditRise 1.4s ease-out forwards; pointer-events: none;
+}
+@keyframes creditRise {
+  from { opacity: 0; transform: translateY(6px); }
+  25%  { opacity: 1; transform: translateY(-10px); }
+  to   { opacity: 0; transform: translateY(-30px); }
+}
+/* The count-up already bails out under reduced motion; this has to as well, or
+   the number still flies while the balance snaps. */
+@media (prefers-reduced-motion: reduce) {
+  .balance-delta { animation-duration: 0.01s; }
+}

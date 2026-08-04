@@ -34,6 +34,10 @@ export default function ProfileView() {
   const waitingOffers = state.offers.filter((o) => o.status === 'countered').length
   const [editOpen, setEditOpen] = useState(false)
   const [topUpOpen, setTopUpOpen] = useState(false)
+  /* The toast said "+Rs 10,000" in the corner while the balance counted up on
+     its own on the other side of the screen, and nothing connected the two. The
+     amount now rises out of the balance it just joined. */
+  const [credited, setCredited] = useState(0)
   const [showOffers, setShowOffers] = useState(false)
   const referralsEarned = state.referrals.reduce((n, f) => n + f.earned, 0)
   const pendingRequests = state.ownerBookings.filter((b) => b.status === 'pending').length
@@ -57,6 +61,16 @@ export default function ProfileView() {
     { label: 'Rent out your own gear', hint: 'Keep 90% of every booking', icon: 'truck', done: state.myListings.length > 0, run: () => go({ name: 'post' }) },
   ]
   const settingIn = firstRun.filter((t) => t.done).length < 2
+
+  /* Ordered by what is actually left to do: a prompt to write a review is noise
+     if you have never rented, and one to refer is noise once three friends have
+     joined. */
+  const earnFaster: { label: string; icon: IconName; run: () => void }[] = [
+    ...(state.referrals.length < 3 ? [{ label: `Refer a friend · +${REFERRAL_BONUS}`, icon: 'gift' as IconName, run: () => go({ name: 'referrals' }) }] : []),
+    ...(state.profile.idVerified ? [] : [{ label: 'Verify your ID', icon: 'shield' as IconName, run: () => setEditOpen(true) }]),
+    ...(completed.some((o) => !o.myRatingOfOwner) ? [{ label: 'Review a rental', icon: 'star' as IconName, run: () => go({ name: 'orders' }) }] : []),
+    { label: 'Book something', icon: 'cart' as IconName, run: () => go({ name: 'browse' }) },
+  ].slice(0, 3)
 
   const shownBalance = useCountUp(state.walletBalance)
   const shownPoints = useCountUp(state.points)
@@ -121,6 +135,26 @@ export default function ProfileView() {
         )}
       </div>
 
+      {/* Crossing a threshold used to be silent — the badge just read differently
+          the next time you looked. Shown once, then cleared, because a permanent
+          banner is not a celebration. */}
+      {state.tierReached && (
+        <div className="panel tier-up" role="status">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Icon name="trophy" size={22} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b>You reached {state.tierReached}</b>
+              <div className="muted small">
+                {state.tierReached === 'Gold Papa'
+                  ? '5% off every rental, priority support and early access to new gear.'
+                  : 'A free van delivery every month is now yours.'}
+              </div>
+            </div>
+            <button className="btn btn-outline btn-sm" onClick={() => dispatch({ type: 'CLEAR_TIER_UP' })}>Nice</button>
+          </div>
+        </div>
+      )}
+
       {settingIn && (
         <div className="panel" style={{ marginTop: 14 }}>
           <h3 style={{ fontSize: 15 }}><Icon name="sparkles" size={16} /> Get set up</h3>
@@ -158,7 +192,14 @@ export default function ProfileView() {
       <h3 className="profile-group"><Icon name="wallet" size={14} /> Money</h3>
       <div className="wallet-card">
         <div style={{ color: '#d6d3d1', fontSize: 13 }}><Icon name="wallet" size={14} /> Papa Wallet</div>
-        <div className="balance">{money(shownBalance)}</div>
+        <div className="balance">
+          {money(shownBalance)}
+          {credited > 0 && (
+            <span className="balance-delta" aria-hidden="true" onAnimationEnd={() => setCredited(0)}>
+              +{money(credited)}
+            </span>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <button className="btn btn-primary btn-sm" onClick={() => setTopUpOpen(true)}>+ Top up</button>
           <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'wallet' })}>History</button>
@@ -202,6 +243,16 @@ export default function ProfileView() {
           <p className="muted small" style={{ margin: '8px 0 0' }}>
             {nextTier.at - state.points} points to go — earn 1 pt per Rs 100 spent, redeem 1 pt = Rs 1 at checkout.
           </p>
+          {/* "540 points to go" with no way to close the gap is a number, not a
+              goal. These are the three things that actually move it, each a tap
+              rather than a description of one. */}
+          <div className="earn-row">
+            {earnFaster.map((e) => (
+              <button key={e.label} className="earn-chip" onClick={e.run}>
+                <Icon name={e.icon} size={14} /> {e.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -377,7 +428,7 @@ export default function ProfileView() {
 
 
       {editOpen && <EditProfileModal onClose={() => setEditOpen(false)} />}
-      {topUpOpen && <TopUpModal onClose={() => setTopUpOpen(false)} />}
+      {topUpOpen && <TopUpModal onClose={() => setTopUpOpen(false)} onCredited={setCredited} />}
     </div>
   )
 }
@@ -432,7 +483,7 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-function TopUpModal({ onClose }: { onClose: () => void }) {
+function TopUpModal({ onClose, onCredited }: { onClose: () => void; onCredited: (n: number) => void }) {
   const { state, dispatch } = useStore()
   const { toast } = useNav()
   const [amount, setAmount] = useState(10000)
@@ -477,7 +528,8 @@ function TopUpModal({ onClose }: { onClose: () => void }) {
           if (!card) return
           buzz()
           dispatch({ type: 'ADD_WALLET', amount })
-          toast(`${money(amount)} added — charged to ${card.brand} ···${card.last4}`)
+          onCredited(amount)
+          toast(`Charged to ${card.brand} ···${card.last4}`)
           onClose()
         }}
       >

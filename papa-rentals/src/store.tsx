@@ -5,7 +5,7 @@ import type {
   Address, AppNotification, AppState, Booking, ChatMessage, ChatThread,
   CategoryId, Item, LedgerEntry, Offer, Order, OrderStatus, OwnerBooking, Review, SavedCard, SavedSearch, UserReport,
 } from './types'
-import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, money, recommendedRate, todayISO, uid } from './utils'
+import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, money, recommendedRate, todayISO, uid, tierOf } from './utils'
 import type { IconName } from './components/icons'
 import type { TotalsInput } from './utils'
 
@@ -103,6 +103,7 @@ type Action =
   | { type: 'TOGGLE_PRICE_ALERT'; itemId: string }
   | { type: 'REDEEM_REFERRAL'; code: string }
   | { type: 'SHARE_REFERRAL' }
+  | { type: 'CLEAR_TIER_UP' }
   | { type: 'TICK'; now: number }
 
 /* One number, used by the code copy, the tracking list and the payout. It was
@@ -110,6 +111,24 @@ type Action =
 export const REFERRAL_BONUS = 500
 
 const STATUS_FLOW: OrderStatus[] = ['confirmed', 'preparing', 'in_transit', 'in_use', 'returned', 'completed']
+
+/* Crossing into Silver or Gold was completely silent: the badge in the header
+   simply read differently the next time you happened to look at it. The moment
+   it happens is the only moment it means anything. */
+function tierUpState(state: AppState, newPoints: number): AppState {
+  const before = tierOf(state.points)
+  const after = tierOf(newPoints)
+  if (before === after) return state
+  return {
+    ...state,
+    tierReached: after,
+    notifications: notify(state, {
+      icon: 'trophy', title: `You reached ${after}`,
+      body: after === 'Gold Papa' ? '5% off every rental, priority support and early access.' : 'A free van delivery every month is now yours.',
+      link: '#/profile',
+    }),
+  }
+}
 
 function notify(state: AppState, n: Omit<AppNotification, 'id' | 'at' | 'read'>): AppNotification[] {
   return [{ id: uid(), at: Date.now(), read: false, ...n }, ...state.notifications].slice(0, 40)
@@ -345,12 +364,17 @@ function reducer(state: AppState, action: Action): AppState {
         paymentMethod: action.opts.paymentMethod,
         address: action.opts.address,
       }
+      /* tierUpState both records the new tier and queues its notification, so it
+         has to be threaded through as state — using it only for its notifications
+         silently dropped the flag the celebration reads. */
+      const afterPoints = state.points - t.pointsUsed + pointsEarned
+      const tiered = tierUpState(state, afterPoints)
       return {
-        ...state,
+        ...tiered,
         cart: [],
         orders: [order, ...state.orders],
         walletBalance: state.walletBalance - t.walletUsed,
-        points: state.points - t.pointsUsed + pointsEarned,
+        points: afterPoints,
         ledger: record(state, [
           { kind: 'wallet', amount: -t.walletUsed, label: `Paid towards ${order.id}`, orderId: order.id },
           { kind: 'points', amount: -t.pointsUsed, label: `Redeemed on ${order.id}`, orderId: order.id },
@@ -360,7 +384,7 @@ function reducer(state: AppState, action: Action): AppState {
           ? [...state.promoCodesUsed, order.promoCode]
           : state.promoCodesUsed,
         freeVanPerkMonth: t.usedVanPerk ? todayISO().slice(0, 7) : state.freeVanPerkMonth,
-        notifications: notify(state, needsApproval
+        notifications: notify(tiered, needsApproval
           ? { icon: 'hourglass', title: `Booking ${order.id} requested`, body: 'Waiting for owner approval — usually a few minutes.', link: `#/order/${order.id}` }
           : { icon: 'check-circle', title: `Order ${order.id} confirmed`, body: 'Gear is being reserved for your dates.', link: `#/order/${order.id}` }),
       }
@@ -708,6 +732,9 @@ function reducer(state: AppState, action: Action): AppState {
       if (state.availAlerts.some((a) => a.itemId === action.itemId)) return state
       return { ...state, availAlerts: [...state.availAlerts, { id: uid(), itemId: action.itemId, notifyAt: Date.now() + 25000 }] }
     }
+
+    case 'CLEAR_TIER_UP':
+      return state.tierReached ? { ...state, tierReached: undefined } : state
 
     case 'SHARE_REFERRAL': {
       /* Nobody can use a code they have never been sent, so the first share is

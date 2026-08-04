@@ -448,6 +448,9 @@ export interface AppState {
   claims: Claim[]
   availAlerts: AvailAlert[]
   priceAlerts: PriceAlert[]
+  /** Set when points cross into a new tier, cleared once the celebration has
+      been shown. Without it the banner reappears on every visit. */
+  tierReached?: string
   referralRedeemed: boolean
   referrals: ReferralFriend[]
   /** Set the first time the code is shared; nobody joins before you tell them. */

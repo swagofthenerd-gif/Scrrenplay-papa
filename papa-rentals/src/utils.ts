@@ -116,6 +116,13 @@ export function bundleDiscount(count: number): number {
 export const POINTS_PER_100 = 1 // earn 1 PapaPoint per Rs 100; redeem 1 point = Rs 1
 export const GOLD_POINTS = 2000
 export const SILVER_POINTS = 500
+
+/** The tier a points balance buys. Three places worked this out inline with the
+    same two comparisons; crossing a threshold is only detectable if before and
+    after are computed the same way. */
+export function tierOf(points: number): 'Bronze Papa' | 'Silver Papa' | 'Gold Papa' {
+  return points >= GOLD_POINTS ? 'Gold Papa' : points >= SILVER_POINTS ? 'Silver Papa' : 'Bronze Papa'
+}
 export const GOLD_DISCOUNT_RATE = 0.05
 export const HOURS_DIVISOR = 6 // hourly rate = day rate / 6, minimum 3 hours
 

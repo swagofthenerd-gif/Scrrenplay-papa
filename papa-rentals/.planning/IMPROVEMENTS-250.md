@@ -341,7 +341,7 @@ claiming an item, re-verify it in the code.
 12. [x] Tier perks explained in a wall of muted text — make perks a scannable list with checkmarks.
 13. [x] No points history (earned/redeemed).
 14. [x] Gold/Silver thresholds duplicated in two panels (progress + perks) — consolidate.
-15. [ ] No "how to earn faster" prompts (refer, complete profile, first review).
+15. [x] No "how to earn faster" prompts (refer, complete profile, first review).
 
 ### Navigation & information architecture
 16. [x] Profile is a long stack of `list-row`s mixing navigation, data and forms — group into You / Money / Hosting / Activity / Support.
@@ -384,8 +384,8 @@ claiming an item, re-verify it in the code.
 41. [x] Progress bar has no `role="progressbar"` / aria values.
 
 ### Feedback & motion
-42. [ ] Top-up toast and balance count-up feel disconnected — animate the "+10,000" into the balance.
-43. [ ] Tier-up should be celebrated when a purchase crosses a threshold — currently silent.
+42. [x] Top-up toast and balance count-up feel disconnected — animate the "+10,000" into the balance.
+43. [x] Tier-up should be celebrated when a purchase crosses a threshold — currently silent.
 
 ### Copy & clarity
 44. [x] "renter rating" — move the "this is how owners see you" explanation next to the stars.
