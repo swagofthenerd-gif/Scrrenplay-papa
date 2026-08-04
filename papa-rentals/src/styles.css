@@ -11,11 +11,12 @@
   --accent-dark: #e5551a;
   --accent-soft: #fff1e8;
   --ink: #222222;
-  /* Darkened from #6f6a63 when the dot field landed. Muted text sits directly on
-     the page, so its worst case is a glyph over a dot rather than over plain
-     white — that measured 4.41:1 and failed AA. This is 4.82:1 on a dot and
-     5.86:1 off one, so the margin survives a slightly heavier dot later. */
-  --muted: #69645d;
+  /* Darkened from #6f6a63 for the dot field. Muted text sits straight on the
+     page, so its worst case is a glyph over the point where all three lattices
+     coincide — rgb(225,210,192), not white. At #6f6a63 that measured 3.46:1 and
+     failed AA badly; this is 4.83:1. The dot weights below were solved against
+     this value, so the two move together. */
+  --muted: #5c5750;
   --line: #ece7e0;
   --line-strong: #ddd6cc;
   --bg: #ffffff;
@@ -25,8 +26,8 @@
      card from the page — which is why the dot has to be visible enough to read
      as texture and faint enough never to compete with text sitting near it. */
   --dot: rgba(150, 112, 74, 0.16);
-  --dot-gap: 22px;
-  --dot-size: 1.6px;
+  --dot-2: rgba(150, 112, 74, 0.08);
+  --dot-3: rgba(206, 170, 122, 0.24);
   --card-2: #f6f3ee;
   --green: #16a34a;
   --green-soft: #eafcf1;
@@ -96,7 +97,8 @@
     --accent-dark: #ff9563;
     --accent-soft: #3a2417;
     --ink: #f2efec;
-    --muted: #a8a29e;
+    /* Lifted with the dot field, same reasoning as light. */
+    --muted: #b4aea8;
     --line: #37322d;
     --line-strong: #4a443c;
     --bg: #161310;
@@ -105,6 +107,8 @@
        inverts the dot to a dim cream, so the texture reads the same way without
        the page turning into a light surface. */
     --dot: rgba(226, 199, 164, 0.10);
+    --dot-2: rgba(226, 199, 164, 0.06);
+    --dot-3: rgba(196, 158, 110, 0.13);
     --card-2: #2b2620;
     --green: #34d074;
     --green-soft: #12301d;
@@ -140,8 +144,16 @@ body {
      background-attachment: fixed forces a full repaint on every scroll frame and
      is exactly the kind of thing this WebView cannot afford. */
   background-color: var(--bg);
-  background-image: radial-gradient(circle at center, var(--dot) var(--dot-size), transparent var(--dot-size));
-  background-size: var(--dot-gap) var(--dot-gap);
+  /* Three lattices, not one. A single square grid at an even pitch is what the
+     eye locks onto and reads as wallpaper — different pitches at different
+     weights and offsets never line up, so the field reads as texture with no
+     repeat to find. Pitches are coprime-ish (13/9/17) for the same reason. */
+  background-image:
+    radial-gradient(circle at center, var(--dot) 1.7px, transparent 1.7px),
+    radial-gradient(circle at center, var(--dot-2) 1.2px, transparent 1.2px),
+    radial-gradient(circle at center, var(--dot-3) 1.4px, transparent 1.4px);
+  background-size: 13px 13px, 9px 9px, 17px 17px;
+  background-position: 0 0, 4px 6px, 8px 3px;
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
@@ -273,8 +285,16 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
    visibly slide past each other. */
 .dot-field {
   background-color: var(--bg);
-  background-image: radial-gradient(circle at center, var(--dot) var(--dot-size), transparent var(--dot-size));
-  background-size: var(--dot-gap) var(--dot-gap);
+  /* Three lattices, not one. A single square grid at an even pitch is what the
+     eye locks onto and reads as wallpaper — different pitches at different
+     weights and offsets never line up, so the field reads as texture with no
+     repeat to find. Pitches are coprime-ish (13/9/17) for the same reason. */
+  background-image:
+    radial-gradient(circle at center, var(--dot) 1.7px, transparent 1.7px),
+    radial-gradient(circle at center, var(--dot-2) 1.2px, transparent 1.2px),
+    radial-gradient(circle at center, var(--dot-3) 1.4px, transparent 1.4px);
+  background-size: 13px 13px, 9px 9px, 17px 17px;
+  background-position: 0 0, 4px 6px, 8px 3px;
 }
 
 /* ---------- Search overlay ---------- */

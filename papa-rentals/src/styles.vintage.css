@@ -25,7 +25,10 @@
      grade can be taken from "period" to "barely there" without hunting. */
   --grain: 0.28;        /* silver density */
   --smear: 2.6px;       /* how soft the corners go */
-  --wash: 0.5;          /* warmth of the stock */
+  /* 0 on purpose. The ground is pure white and takes its colour from the dot
+     field alone; a multiply wash tints exactly the thing it is meant to leave
+     alone. Grain and the lens effects below are textures and stay. */
+  --wash: 0;            /* warmth of the stock */
 
   --ca: 0.7px;          /* the colour split, at body-heading size */
   --smudge: 2.1px;      /* how far the directional trail runs */
@@ -117,8 +120,9 @@ html::before {
   -webkit-backdrop-filter: blur(var(--smear)) saturate(1.08);
   -webkit-mask-image: radial-gradient(ellipse 112% 88% at 50% 48%, transparent 44%, #000 100%);
   mask-image: radial-gradient(ellipse 112% 88% at 50% 48%, transparent 44%, #000 100%);
-  background:
-    radial-gradient(ellipse 126% 100% at 50% 46%, transparent 50%, rgba(38, 26, 12, 0.26) 84%, rgba(24, 15, 6, 0.5) 100%);
+  /* The corner smear stays — it is a lens fault, not a tint. The vignette that
+     used to ride with it does not: it dropped the corners to rgb(236,231,224)
+     and the page is meant to be white edge to edge. */
 }
 
 /* Anamorphic edge fringe: the colour split that lives at the sides of
