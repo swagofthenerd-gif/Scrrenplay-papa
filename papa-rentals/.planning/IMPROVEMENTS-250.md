@@ -267,7 +267,7 @@ claiming an item, re-verify it in the code.
 14. [x] "Get help" routes to generic Support — pass order context so support opens pre-filled.
 15. [x] "Report" and "File claim" overlap conceptually — clarify when to use which.
 16. [x] Cancel fee threshold (`startsSoon = startDate <= todayISO(2)`) is a rough proxy for "48h" — make it a real hour-level check.
-17. [ ] Extend modal blocks hourly bookings entirely — offer one-tap re-book from there.
+17. [x] Extend modal blocks hourly bookings entirely — offer one-tap re-book from there.
 18. [x] "Book again" silently drops the negotiated rate (`negotiated:false`) — tell the user.
 
 ### Ratings
