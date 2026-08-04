@@ -1472,6 +1472,13 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 
 .group-switch { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
 
+/* Cash against credit, on the dark wallet card. */
+.wallet-split {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px;
+  font-size: 12px; font-weight: 600; color: #d6d3d1;
+}
+.wallet-split span { display: inline-flex; align-items: center; gap: 5px; }
+
 /* The five headings that turned Profile from one flat stack into groups. Quiet
    by design — they are signposts between the rows, not sections competing with
    them. */

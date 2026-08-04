@@ -60,6 +60,15 @@ export default function ProfileView() {
   ]
   const settingIn = firstRun.filter((t) => t.done).length < 2
 
+  /* Not all wallet money is the same money. Refunds are cash and can be
+     withdrawn to a bank; promo and referral credit can only be spent here. One
+     number for both is a promise the withdrawal screen then has to break. */
+  const cashBalance = Math.min(
+    state.walletBalance,
+    Math.max(0, state.ledger.filter((e) => e.kind === 'wallet' && e.cash).reduce((sum, e) => sum + e.amount, 0))
+  )
+  const creditBalance = Math.max(0, state.walletBalance - cashBalance)
+
   const shownBalance = useCountUp(state.walletBalance)
   const shownPoints = useCountUp(state.points)
 
@@ -155,6 +164,12 @@ export default function ProfileView() {
       <div className="wallet-card">
         <div style={{ color: '#d6d3d1', fontSize: 13 }}><Icon name="wallet" size={14} /> Papa Wallet</div>
         <div className="balance">{money(shownBalance)}</div>
+        {creditBalance > 0 && (
+          <div className="wallet-split">
+            <span><Icon name="cash" size={12} /> {money(cashBalance)} withdrawable</span>
+            <span><Icon name="gift" size={12} /> {money(creditBalance)} promo credit</span>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <button className="btn btn-primary btn-sm" onClick={() => setTopUpOpen(true)}>+ Top up</button>
           <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'wallet' })}>History</button>
