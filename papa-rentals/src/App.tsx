@@ -20,6 +20,7 @@ import OrdersView from './views/OrdersView'
 import ProfileView from './views/ProfileView'
 import WalletView from './views/WalletView'
 import SettingsView from './views/SettingsView'
+import ReferralsView from './views/ReferralsView'
 import InboxView from './views/InboxView'
 import OrderDetailView from './views/OrderDetailView'
 
@@ -180,6 +181,7 @@ function Shell() {
           {view.name === 'services' && <Services />}
           {view.name === 'wallet' && <WalletView />}
           {view.name === 'settings' && <SettingsView />}
+          {view.name === 'referrals' && <ReferralsView />}
           {view.name === 'inbox' && <InboxView ownerId={view.ownerId} />}
           {view.name === 'order' && <OrderDetailView id={view.id} />}
         </main>
@@ -200,7 +202,7 @@ function Shell() {
           <span className="nav-ico"><Icon name="box" /></span>Orders
           {activeOrders > 0 && <span className="dot">{activeOrders}</span>}
         </button>
-        <button className={['profile', 'post', 'dashboard', 'support', 'wallet', 'settings', 'inbox'].includes(view.name) ? 'active' : ''} onClick={() => go({ name: 'profile' })}>
+        <button className={['profile', 'post', 'dashboard', 'support', 'wallet', 'settings', 'inbox', 'referrals'].includes(view.name) ? 'active' : ''} onClick={() => go({ name: 'profile' })}>
           <span className="nav-ico"><Icon name="user" /></span>Profile
         </button>
       </nav>

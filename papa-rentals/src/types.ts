@@ -256,6 +256,22 @@ export interface UserReport {
   orderId?: string
 }
 
+/** A friend who used your code. The app cannot know this for real without a
+    backend, so it is simulated on the same heartbeat that already approves
+    bookings and files claims — but the money is real state: each conversion
+    writes a ledger row like any other credit, so "Rs 1,500 earned" is a sum of
+    movements you can go and check rather than a number the screen made up. */
+export interface ReferralFriend {
+  id: string
+  name: string
+  joinedAt: number
+  /** joined = code used, rented = first rental completed and the bonus paid. */
+  status: 'joined' | 'rented'
+  earned: number
+  /** When this friend converts. Absent once they have. */
+  convertsAt?: number
+}
+
 export interface AppNotification {
   id: string
   icon: IconName
@@ -433,6 +449,9 @@ export interface AppState {
   availAlerts: AvailAlert[]
   priceAlerts: PriceAlert[]
   referralRedeemed: boolean
+  referrals: ReferralFriend[]
+  /** Set the first time the code is shared; nobody joins before you tell them. */
+  referralSharedAt?: number
   /** A redeemed referral whose Rs 500 hasn't been paid yet. Real referral
       programs release the bonus on a qualifying action, not on code entry, so
       an invented code can't be turned straight into wallet cash — the credit

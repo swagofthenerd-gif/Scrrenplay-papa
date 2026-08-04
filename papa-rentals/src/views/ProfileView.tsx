@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
-import { useStore } from '../store'
+import { REFERRAL_BONUS, useStore } from '../store'
 import { GOLD_POINTS, SILVER_POINTS, buzz, fmtTimeAgo, money } from '../utils'
 import { Badge, ItemArt, Modal, Stars, useCountUp } from '../components/ui'
 import { Icon, Avatar, type IconName } from '../components/icons'
 
-const REFERRAL_CODE = 'PAPA-FRIEND-500'
 
 /* One source for what each tier buys you, read by both the perk list and the
    progress line. Written out twice, they drifted the moment one changed. */
@@ -33,11 +32,10 @@ export default function ProfileView() {
   /* A countered offer is a question waiting on the renter — the dashboard gives
      that kind of number a pill, and it should mean the same thing here. */
   const waitingOffers = state.offers.filter((o) => o.status === 'countered').length
-  const [refCode, setRefCode] = useState('')
   const [editOpen, setEditOpen] = useState(false)
   const [topUpOpen, setTopUpOpen] = useState(false)
   const [showOffers, setShowOffers] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const referralsEarned = state.referrals.reduce((n, f) => n + f.earned, 0)
   const pendingRequests = state.ownerBookings.filter((b) => b.status === 'pending').length
   /* Hosting had a door to the dashboard and no number beside it, so the one
      question a host opens this screen with — did it make anything — needed a
@@ -223,65 +221,17 @@ export default function ProfileView() {
           })}
         </ul>
       </div>
-      <button
-        className="list-row"
-        style={{ cursor: 'pointer', width: '100%' }}
-        onClick={async () => {
-          const text = `Rent film gear on Papa Rentals — use my code ${REFERRAL_CODE} and we both get Rs 500.`
-          // the WebView blocks the clipboard, so try the share sheet first and always show the code
-          if (navigator.share) {
-            try {
-              await navigator.share({ text })
-              return
-            } catch {
-              /* user dismissed, or share unavailable */
-            }
-          }
-          try {
-            await navigator.clipboard?.writeText(REFERRAL_CODE)
-            setCopied(true)
-            setTimeout(() => setCopied(false), 2000)
-          } catch {
-            toast(`Your code: ${REFERRAL_CODE}`)
-          }
-        }}
-      >
-        <span><Icon name="gift" size={16} /> Refer a filmmaker — <b>{REFERRAL_CODE}</b></span>
-        <span className="muted">{copied ? <>Copied <Icon name="check" size={14} /></> : <>You both get Rs 500 <Icon name="arrow-right" size={14} /></>}</span>
+      {/* Refer and redeem used to be two unrelated strips separated by half the
+          screen, neither of which said whether any of it had worked. One row,
+          one screen, and a count you can act on. */}
+      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'referrals' })}>
+        <span><Icon name="gift" size={16} /> Refer a filmmaker</span>
+        <span className="muted">
+          {referralsEarned > 0
+            ? <><span className="count-pill">{money(referralsEarned)} earned</span> <Icon name="arrow-right" size={14} /></>
+            : <>You both get {money(REFERRAL_BONUS)} <Icon name="arrow-right" size={14} /></>}
+        </span>
       </button>
-      {!state.referralRedeemed && (
-        <div className="panel" style={{ marginTop: 10 }}>
-          <b style={{ fontSize: 14 }}>Got a referral code?</b>
-          <div className="promo-row" style={{ marginTop: 8 }}>
-            <input placeholder="PAPA-XXXX" value={refCode} onChange={(e) => setRefCode(e.target.value)} aria-label="Referral code" />
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={() => {
-                const code = refCode.trim().toUpperCase()
-                if (code === REFERRAL_CODE) {
-                  toast('That\u2019s your own code — share it with a friend instead')
-                  return
-                }
-                if (!/^PAPA-[A-Z0-9]{3,12}(-\d{2,5})?$/.test(code)) {
-                  toast('Codes look like PAPA-XXXX or PAPA-XXXX-500')
-                  return
-                }
-                dispatch({ type: 'REDEEM_REFERRAL', code })
-                toast('Rs 500 pending — credited after your first rental')
-              }}
-            >
-              Redeem
-            </button>
-          </div>
-        </div>
-      )}
-      {state.referralPending && (
-        <div className="list-row" style={{ width: '100%', gap: 10, cursor: 'default' }}>
-          <Icon name="hourglass" size={16} />
-          <span style={{ flex: 1, minWidth: 0 }}>Referral bonus pending</span>
-          <span className="muted small">Rs 500 · unlocks on your first completed rental</span>
-        </div>
-      )}
 
       <h3 className="profile-group"><Icon name="store" size={14} /> Hosting</h3>
       <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'dashboard' })}>

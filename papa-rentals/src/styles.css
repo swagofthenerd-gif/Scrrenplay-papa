@@ -1784,3 +1784,20 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
 /* btn-sm is 40px, and these two are tapped one-handed at a van door — hold them
    to the 44px target even though the rest of the card's buttons are small. */
 .driver-contact > * { flex: 1; justify-content: center; white-space: nowrap; text-decoration: none; min-height: 44px; }
+
+/* ---------- Referrals ---------- */
+/* The code is shown, not just copyable: the clipboard is commonly blocked in the
+   Android WebView, and a referral flow whose only output is a clipboard write is
+   a dead end there. Monospace and wide tracking so it can be read off a screen
+   and typed into another phone without mistaking 0 for O. */
+.ref-code {
+  margin-top: 10px; padding: 12px; text-align: center; user-select: all;
+  font-family: ui-monospace, monospace; font-size: 17px; font-weight: 800; letter-spacing: 2px;
+  background: var(--card-2); border: 1px dashed var(--line-strong); border-radius: var(--r-md); color: var(--ink);
+}
+.ref-stats { display: flex; gap: 8px; margin-top: 10px; }
+.ref-stat {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 6px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
+}
+.ref-stat b { font-size: 17px; }

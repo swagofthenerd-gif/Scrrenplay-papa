@@ -47,6 +47,7 @@ const initialState: AppState = {
   availAlerts: [],
   priceAlerts: [],
   referralRedeemed: false,
+  referrals: [],
   referralPending: false,
 }
 
@@ -101,7 +102,12 @@ type Action =
   | { type: 'ADD_AVAIL_ALERT'; itemId: string }
   | { type: 'TOGGLE_PRICE_ALERT'; itemId: string }
   | { type: 'REDEEM_REFERRAL'; code: string }
+  | { type: 'SHARE_REFERRAL' }
   | { type: 'TICK'; now: number }
+
+/* One number, used by the code copy, the tracking list and the payout. It was
+   written as a literal in three places and a fourth place said Rs 500 in prose. */
+export const REFERRAL_BONUS = 500
 
 const STATUS_FLOW: OrderStatus[] = ['confirmed', 'preparing', 'in_transit', 'in_use', 'returned', 'completed']
 
@@ -703,6 +709,22 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, availAlerts: [...state.availAlerts, { id: uid(), itemId: action.itemId, notifyAt: Date.now() + 25000 }] }
     }
 
+    case 'SHARE_REFERRAL': {
+      /* Nobody can use a code they have never been sent, so the first share is
+         what starts the clock. Sharing again must not reset it or re-queue the
+         same friends. */
+      if (state.referralSharedAt) return state
+      const now = Date.now()
+      return {
+        ...state,
+        referralSharedAt: now,
+        referrals: RENTER_POOL.slice(0, 3).map((r, i) => ({
+          id: uid(), name: r.name, joinedAt: now + (i + 1) * 15000, status: 'joined' as const,
+          earned: 0, convertsAt: now + (i + 1) * 15000 + 30000,
+        })),
+      }
+    }
+
     case 'REDEEM_REFERRAL': {
       if (state.referralRedeemed || !/^PAPA-/i.test(action.code.trim())) return state
       // Hold the bonus rather than pay it out on code entry: it's released when
@@ -824,6 +846,28 @@ function reducer(state: AppState, action: Action): AppState {
           return { ...r, status: 'resolved' as const, nextAt: undefined }
         })
         next = { ...next, reports, notifications }
+      }
+
+      // 3c. referred friends join, then complete a first rental and pay out
+      const dueFriends = next.referrals.filter((f) => f.convertsAt && f.convertsAt <= now && f.status === 'joined')
+      if (dueFriends.length) {
+        changed = true
+        let notifications = next.notifications
+        let ledger = next.ledger
+        let walletBalance = next.walletBalance
+        const referrals = next.referrals.map((f) => {
+          if (!dueFriends.includes(f)) return f
+          walletBalance += REFERRAL_BONUS
+          ledger = record({ ...next, ledger }, [{
+            kind: 'wallet', amount: REFERRAL_BONUS, label: `Referral bonus — ${f.name}`, cash: false,
+          }])
+          notifications = notify({ ...next, notifications }, {
+            icon: 'gift', title: `${f.name} completed their first rental`,
+            body: `Rs ${REFERRAL_BONUS} referral credit added to your wallet.`, link: '#/referrals',
+          })
+          return { ...f, status: 'rented' as const, earned: REFERRAL_BONUS, convertsAt: undefined }
+        })
+        next = { ...next, referrals, ledger, walletBalance, notifications }
       }
 
       // 4. user listing lifecycle: verification, then a first renter inquiry

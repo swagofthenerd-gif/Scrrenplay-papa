@@ -353,8 +353,8 @@ claiming an item, re-verify it in the code.
 ### Referral
 21. [x] Referral copies to clipboard, but `navigator.clipboard` often fails in Android WebView — add visible code + share-sheet fallback.
 22. [x] Redeem box accepts any `PAPA-` code and instantly credits Rs 500 — no single-use enforcement beyond `referralRedeemed`. Exploitable.
-23. [ ] No referral tracking ("3 friends joined, Rs 1,500 earned").
-24. [ ] Refer and redeem are separate — unify into one "Referrals" screen.
+23. [x] No referral tracking ("3 friends joined, Rs 1,500 earned").
+24. [x] Refer and redeem are separate — unify into one "Referrals" screen.
 
 ### Listings / hosting
 25. [x] "Your listings" shows status badges but no inline quick actions (pause/edit/boost).
