@@ -62,10 +62,10 @@ export default function ReferralsView() {
         </button>
       </div>
 
-      <div className="ref-stats">
-        <div className="ref-stat"><b>{joined}</b><span className="muted small">joined</span></div>
-        <div className="ref-stat"><b>{rented}</b><span className="muted small">rented</span></div>
-        <div className="ref-stat"><b>{money(earned)}</b><span className="muted small">earned</span></div>
+      <div className="stat-row">
+        <div className="stat-tile"><b>{joined}</b><span className="muted small">joined</span></div>
+        <div className="stat-tile"><b>{rented}</b><span className="muted small">rented</span></div>
+        <div className="stat-tile"><b>{money(earned)}</b><span className="muted small">earned</span></div>
       </div>
 
       <div className="panel" style={{ marginTop: 14 }}>

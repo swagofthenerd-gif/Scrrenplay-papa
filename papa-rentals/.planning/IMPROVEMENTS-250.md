@@ -373,7 +373,7 @@ claiming an item, re-verify it in the code.
 
 ### Visual & layout
 34. [x] Many `list-row`s look identical whether tappable or not — give tappable rows a consistent chevron.
-35. [ ] Wallet card, stat tiles and panels use different visual languages — align to one card system.
+35. [x] Wallet card, stat tiles and panels use different visual languages — align to one card system.
 36. [x] Perks paragraph mixes bold inline — convert to a definition list.
 37. [x] Long city names / titles — verify truncation in the owner row.
 
@@ -394,7 +394,7 @@ claiming an item, re-verify it in the code.
 
 ### Future-facing
 47. [x] Verification center (ID, phone, payment) that actually unlocks the promised "instant-book on premium gear".
-48. [ ] Saved crew/collaborators so producers can share a wallet or approve on someone's behalf.
+48. [x] Saved crew/collaborators so producers can share a wallet or approve on someone's behalf.
 49. [x] Notification preferences tied to the existing notification center.
 50. [x] Public profile / renter reputation page owners can view — the two-way rating system is begging for it.
 

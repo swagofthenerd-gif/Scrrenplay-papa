@@ -275,6 +275,20 @@ export interface ReferralFriend {
   convertsAt?: number
 }
 
+/** Someone who can act on your account. A producer books gear their AD picks
+    and their accountant pays for — three people, one booking, and until now one
+    login passed around on a phone. */
+export interface CrewMember {
+  id: string
+  name: string
+  role: string
+  /** browse = can build a cart but not commit money; book = can place orders
+      against the shared wallet. Deliberately only two: any more and nobody can
+      say from memory what a given person is allowed to do. */
+  access: 'browse' | 'book'
+  addedAt: number
+}
+
 export interface AppNotification {
   id: string
   icon: IconName
@@ -475,6 +489,7 @@ export interface AppState {
   /** Set when points cross into a new tier, cleared once the celebration has
       been shown. Without it the banner reappears on every visit. */
   tierReached?: string
+  crew: CrewMember[]
   notifyPrefs: NotifyPrefs
   referralRedeemed: boolean
   referrals: ReferralFriend[]

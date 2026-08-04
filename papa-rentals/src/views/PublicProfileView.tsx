@@ -77,13 +77,13 @@ export default function PublicProfileView() {
         </div>
       </div>
 
-      <div className="ref-stats">
-        <div className="ref-stat">
+      <div className="stat-row">
+        <div className="stat-tile">
           <b>{rating ? rating.toFixed(1) : '—'}</b>
           <span className="muted small">{rated.length ? `from ${rated.length}` : 'no ratings'}</span>
         </div>
-        <div className="ref-stat"><b>{completed.length}</b><span className="muted small">completed</span></div>
-        <div className="ref-stat">
+        <div className="stat-tile"><b>{completed.length}</b><span className="muted small">completed</span></div>
+        <div className="stat-tile">
           <b>{reliability == null ? '—' : `${reliability}%`}</b>
           <span className="muted small">completed of booked</span>
         </div>

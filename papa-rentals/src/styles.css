@@ -929,7 +929,13 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .wallet-card .balance { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
 .stat-tile { background: var(--card); border-radius: var(--r-md); padding: 14px; text-align: center; box-shadow: var(--shadow-xs); }
-.stat-tile .stat-num { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat-tile .stat-num, .stat-tile > b { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; display: block; }
+/* Referrals and the public profile grew their own stat tile — same idea, but
+   drawn with a border where every other surface in the app uses a shadow, so
+   three panels on one screen had three different edges. One tile, one card
+   system: card background, rounded corner, shadow, never a border. The wallet
+   card is the deliberate exception, because it is the hero of its screen. */
+.stat-tile > .muted { display: block; }
 /* border:0 is load-bearing. Half of these rows are buttons, and a button with
    no border declared takes the UA's `2px outset ButtonBorder` — which drew a
    heavy outline around every tappable row and none around the rest. */
@@ -1795,12 +1801,6 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
   font-family: ui-monospace, monospace; font-size: 17px; font-weight: 800; letter-spacing: 2px;
   background: var(--card-2); border: 1px dashed var(--line-strong); border-radius: var(--r-md); color: var(--ink);
 }
-.ref-stats { display: flex; gap: 8px; margin-top: 10px; }
-.ref-stat {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 10px 6px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
-}
-.ref-stat b { font-size: 17px; }
 
 /* City and vendor names are free text and both run long enough to push a row's
    other half off screen. Used wherever a name shares a line with something that
@@ -1863,3 +1863,8 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
 
 /* ---------- Public profile preview ---------- */
 .pub-note { display: flex; align-items: center; gap: 10px; font-size: 13px; background: var(--accent-soft); border: 1px solid var(--accent); }
+
+/* ---------- Crew ---------- */
+.crew-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; flex-wrap: wrap; }
+.crew-actions { display: flex; align-items: center; gap: 6px; }
+.crew-actions select { font-size: 12px; padding: 7px 8px; min-height: 36px; }

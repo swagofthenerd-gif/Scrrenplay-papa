@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { DRIVER_POOL, PROMO_CODES, RENTER_POOL, getItem, getOwner, syncUserListings } from './data/catalog'
 import type {
   Address, AppNotification, AppState, Booking, ChatMessage, ChatThread,
-  CategoryId, Item, LedgerEntry, NotifyChannel, Offer, Order, OrderStatus, OwnerBooking, Review, SavedCard, SavedSearch, UserReport,
+  CategoryId, CrewMember, Item, LedgerEntry, NotifyChannel, Offer, Order, OrderStatus, OwnerBooking, Review, SavedCard, SavedSearch, UserReport,
 } from './types'
 import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, money, recommendedRate, todayISO, uid, tierOf, verifiedCount, VERIFY_STEPS } from './utils'
 import type { IconName } from './components/icons'
@@ -46,6 +46,7 @@ const initialState: AppState = {
   claims: [],
   availAlerts: [],
   priceAlerts: [],
+  crew: [],
   notifyPrefs: { orders: true, offers: true, chat: true, deals: false },
   referralRedeemed: false,
   referrals: [],
@@ -108,6 +109,9 @@ type Action =
   | { type: 'CLEAR_TIER_UP' }
   | { type: 'ADD_EVIDENCE'; reportId: string; text: string }
   | { type: 'SET_NOTIFY_PREF'; channel: NotifyChannel; on: boolean }
+  | { type: 'ADD_CREW'; member: CrewMember }
+  | { type: 'SET_CREW_ACCESS'; id: string; access: CrewMember['access'] }
+  | { type: 'REMOVE_CREW'; id: string }
   | { type: 'TICK'; now: number }
 
 /* One number, used by the code copy, the tracking list and the payout. It was
@@ -760,6 +764,19 @@ function reducer(state: AppState, action: Action): AppState {
       if (state.availAlerts.some((a) => a.itemId === action.itemId)) return state
       return { ...state, availAlerts: [...state.availAlerts, { id: uid(), itemId: action.itemId, notifyAt: Date.now() + 25000 }] }
     }
+
+    case 'ADD_CREW':
+      /* Matched on name rather than id: the id is generated here, so a duplicate
+         would always be a fresh one and the guard would never fire. */
+      return state.crew.some((c) => c.name.toLowerCase() === action.member.name.toLowerCase())
+        ? state
+        : { ...state, crew: [...state.crew, action.member] }
+
+    case 'SET_CREW_ACCESS':
+      return { ...state, crew: state.crew.map((c) => (c.id === action.id ? { ...c, access: action.access } : c)) }
+
+    case 'REMOVE_CREW':
+      return { ...state, crew: state.crew.filter((c) => c.id !== action.id) }
 
     case 'SET_NOTIFY_PREF':
       return { ...state, notifyPrefs: { ...state.notifyPrefs, [action.channel]: action.on } }

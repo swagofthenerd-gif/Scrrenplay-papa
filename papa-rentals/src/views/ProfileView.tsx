@@ -186,6 +186,12 @@ export default function ProfileView() {
       <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'browse', wishlistOnly: true })}>
         <span><Icon name="heart-filled" size={16} /> Your wishlist</span><span className="muted">{state.wishlist.length} items <Icon name="arrow-right" size={14} /></span>
       </button>
+      <button className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => go({ name: 'crew' })}>
+        <span><Icon name="users" size={16} /> Your crew</span>
+        <span className="muted">
+          {state.crew.length ? `${state.crew.length} ${state.crew.length === 1 ? 'person' : 'people'}` : 'Share bookings'} <Icon name="chevron-right" size={14} />
+        </span>
+      </button>
       <button className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => go({ name: 'settings' })}>
         <span><Icon name="sliders" size={16} /> Settings</span>
         <span className="muted">Notifications, payouts, privacy <Icon name="chevron-right" size={14} /></span>
