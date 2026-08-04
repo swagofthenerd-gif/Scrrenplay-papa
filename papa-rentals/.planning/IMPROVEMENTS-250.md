@@ -253,7 +253,7 @@ claiming an item, re-verify it in the code.
 
 ### The "Skip ahead" debug control
 6. [x] "Skip ahead" manually advances order status — a demo shortcut in production UI. Gate behind a dev flag.
-7. [ ] Same for auto-advance (`autoAdvanceAt`) — make simulated progression invisible to end users.
+7. [x] Same for auto-advance (`autoAdvanceAt`) — make simulated progression invisible to end users.
 
 ### Live tracking
 8. [x] In-transit map is a decorative SVG path, not a real route — even a static map thumbnail with two pins feels more real.
@@ -278,13 +278,13 @@ claiming an item, re-verify it in the code.
 
 ### Status clarity
 23. [x] "requested" orders show only a banner and no timeline — show a greyed-out timeline.
-24. [ ] Cancelled orders show fee/refund inline but no receipt/breakdown link.
+24. [x] Cancelled orders show fee/refund inline but no receipt/breakdown link.
 25. [x] No notification tie-in on the card ("we'll notify you when it ships").
 
 ### Receipts & records
-26. [ ] `downloadReceipt` — verify it works in Android WebView (blob download from `appassets` can fail silently). Offer share/email fallback.
+26. [x] `downloadReceipt` — verify it works in Android WebView (blob download from `appassets` can fail silently). Offer share/email fallback.
 27. [x] No consolidated invoices or export-all for accounting. *(statement export)*
-28. [ ] Receipt is per-order; no monthly statement.
+28. [x] Receipt is per-order; no monthly statement.
 
 ### Claims
 29. [x] Claim amount defaults to `min(10000, maxAmount)` with no guidance on typical payouts.
@@ -300,7 +300,7 @@ claiming an item, re-verify it in the code.
 
 ### Accessibility
 37. [x] Timeline steps convey state by color + filled bubble — add `aria-current` and text ("step 3 of 6").
-38. [ ] Action buttons wrap with no logical grouping for screen readers.
+38. [x] Action buttons wrap with no logical grouping for screen readers.
 39. [x] Animated transit dot has no reduced-motion guard.
 40. [x] PIN is visually prominent but not labeled for screen readers ("handover PIN 4821").
 
@@ -314,7 +314,7 @@ claiming an item, re-verify it in the code.
 45. [x] "Share tracking" link so a producer can send status to their team.
 46. [x] Calendar export (.ics) for confirmed shoot dates.
 47. [ ] Per-order chat thread with the vendor, not just the owner globally.
-48. [ ] Post-shoot "return checklist" to reduce claims.
+48. [x] Post-shoot "return checklist" to reduce claims.
 49. [ ] Dispute/mediation state distinct from "reported".
 50. [ ] Log status-transition timestamps to later show real SLAs ("avg approval: 4 min").
 
