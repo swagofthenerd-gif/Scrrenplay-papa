@@ -338,16 +338,16 @@ claiming an item, re-verify it in the code.
 11. [ ] Refunds land in wallet but there's no way to withdraw to bank.
 
 ### Loyalty (PapaPoints / tiers)
-12. [ ] Tier perks explained in a wall of muted text — make perks a scannable list with checkmarks.
+12. [x] Tier perks explained in a wall of muted text — make perks a scannable list with checkmarks.
 13. [ ] No points history (earned/redeemed).
-14. [ ] Gold/Silver thresholds duplicated in two panels (progress + perks) — consolidate.
+14. [x] Gold/Silver thresholds duplicated in two panels (progress + perks) — consolidate.
 15. [ ] No "how to earn faster" prompts (refer, complete profile, first review).
 
 ### Navigation & information architecture
 16. [ ] Profile is a long stack of `list-row`s mixing navigation, data and forms — group into You / Money / Hosting / Activity / Support.
 17. [x] "Offers you've made" and "Chats" show a count but tapping does nothing — dead ends.
 18. [x] Chats have `unreadTotal` but no inbox screen. *(`InboxView.tsx`)*
-19. [ ] Apply the Dashboard's "actionable count" treatment to Chats/Offers.
+19. [x] Apply the Dashboard's "actionable count" treatment to Chats/Offers.
 20. [ ] Wishlist appears here and in Browse — ensure one canonical place.
 
 ### Referral
@@ -357,14 +357,14 @@ claiming an item, re-verify it in the code.
 24. [ ] Refer and redeem are separate — unify into one "Referrals" screen.
 
 ### Listings / hosting
-25. [ ] "Your listings" shows status badges but no inline quick actions (pause/edit/boost).
+25. [x] "Your listings" shows status badges but no inline quick actions (pause/edit/boost).
 26. [ ] No earnings snapshot in Profile — surface "Rs X earned this month".
 27. [ ] Verifying state has no ETA or "what's next".
-28. [ ] No way to un-pause a listing from here.
+28. [x] No way to un-pause a listing from here.
 
 ### Reports & safety
 29. [ ] "Your reports" lists case numbers/status with no way to view details or add evidence.
-30. [ ] "Blocked" owners can't be unblocked from this list — display-only.
+30. [x] "Blocked" owners can't be unblocked from this list — display-only.
 31. [ ] No privacy/data controls (download my data, delete account).
 
 ### Empty & first-run states
@@ -374,11 +374,11 @@ claiming an item, re-verify it in the code.
 ### Visual & layout
 34. [ ] Many `list-row`s look identical whether tappable or not — give tappable rows a consistent chevron.
 35. [ ] Wallet card, stat tiles and panels use different visual languages — align to one card system.
-36. [ ] Perks paragraph mixes bold inline — convert to a definition list.
+36. [x] Perks paragraph mixes bold inline — convert to a definition list.
 37. [ ] Long city names / titles — verify truncation in the owner row.
 
 ### Accessibility
-38. [ ] Click-`div` `list-row`s aren't buttons — no keyboard/focus/role.
+38. [x] Click-`div` `list-row`s aren't buttons — no keyboard/focus/role.
 39. [ ] Stat tiles convey meaning by icon — ensure number+label association is read correctly.
 40. [ ] Referral toast is the only copy feedback — add an inline "Copied ✓" state for screen readers.
 41. [x] Progress bar has no `role="progressbar"` / aria values.
