@@ -1,12 +1,14 @@
 import { memo, useEffect, useMemo, useState } from 'react'
 import { getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
-import { useStore } from '../store'
+import { driverThreadId, orderThreadId, useStore } from '../store'
 import type { Order, OrderStatus } from '../types'
-import { buzz, downloadReceipt, fmtCountdown, fmtDate, money, shiftBooking, todayISO, uid } from '../utils'
+import { buzz, downloadOrShow, downloadReceipt, fmtCountdown, fmtDate, money, shiftBooking, todayISO, uid } from '../utils'
 import { Badge, ItemArt, Modal, Stars } from '../components/ui'
 import { Icon, type IconName } from '../components/icons'
 import { ReportModal } from './ItemDetail'
+import { TransitMap } from '../components/TransitMap'
+import { Deferred } from '../components/Deferred'
 
 const STEPS: { id: OrderStatus; label: string; icon: IconName }[] = [
   { id: 'confirmed', label: 'Confirmed', icon: 'check' },
@@ -61,13 +63,13 @@ function exportStatement(months: { label: string; orders: Order[] }[], tab: Orde
       ].join(','))
     }
   }
-  const url = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `papa-rentals-${tab}-statement.csv`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadOrShow(`papa-rentals-${tab}-statement.csv`, rows.join('\n'), 'text/csv')
 }
+
+/* Roughly a collapsed order card. Close beats exact: too small and the page
+   jumps as cards mount, too large and the scrollbar promises history that isn't
+   there. Measured at 390px against a typical two-line order. */
+const ORDER_CARD_RESERVE = 340
 
 function monthLabel(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
@@ -109,6 +111,11 @@ export default function OrdersView() {
     }
     return out
   }, [state.orders, tab, query, sort])
+
+  /* Above the fold on the tallest phone this ships to is about four cards; five
+     keeps the first screen instant without deferring anything the person can
+     already see. */
+  let eagerLeft = 5
 
   if (state.orders.length === 0) {
     return (
@@ -172,7 +179,22 @@ export default function OrdersView() {
         months.map((m) => (
           <div key={m.label}>
             <h3 className="muted small" style={{ margin: '14px 0 6px', textTransform: 'uppercase', letterSpacing: '.06em' }}>{m.label}</h3>
-            {m.orders.map((o) => <OrderCard key={o.id} order={o} />)}
+            {m.orders.map((o) => {
+              /* Each card mounts a timeline, up to five modals and — in transit —
+                 a map, and a long history mounted every one of them on first
+                 paint. Deferred already solves this for Home's rails, so this
+                 reuses it rather than adding a second windowing scheme; it also
+                 never unmounts, which matters here because a card that remounted
+                 would close a modal the person had open. The eager head is
+                 counted across months so a history split over many months does
+                 not render five cards per month. */
+              const eager = eagerLeft-- > 0
+              return eager ? <OrderCard key={o.id} order={o} /> : (
+                <Deferred key={o.id} minHeight={ORDER_CARD_RESERVE}>
+                  <OrderCard order={o} />
+                </Deferred>
+              )
+            })}
           </div>
         ))
       )}
@@ -199,6 +221,17 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
     () => [...new Map(lines.map(({ item }) => { const o = getOwner(item.ownerId); return [o.id, o] as const })).values()],
     [lines]
   )
+  const driverUnread = state.chats[driverThreadId(order.id)]?.unread ?? 0
+  /* Only a request-to-book has an approval to measure — an instant-book order was
+     confirmed at checkout, and reporting "approved in 0 min" for it would be
+     dressing up a step that never happened. */
+  const approvalMins = useMemo(() => {
+    const log = order.statusLog
+    if (!log || log[0]?.status !== 'requested') return null
+    const confirmed = log.find((e) => e.status === 'confirmed')
+    return confirmed ? Math.round((confirmed.at - log[0].at) / 60000) : null
+  }, [order.statusLog])
+  const orderDispute = state.reports.find((r) => r.orderId === order.id)
   const done = order.status === 'completed'
   const orderClaims = state.claims.filter((c) => c.orderId === order.id)
   const hasClaim = orderClaims.length > 0
@@ -238,7 +271,7 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
   /* One row per vendor: a cart can span several, and a single "message the vendor"
      silently picked whoever owned the first line. */
   for (const o of vendors) {
-    actions.push({ label: `Message ${o.name}`, icon: 'chat', run: () => go({ name: 'inbox', ownerId: o.id }) })
+    actions.push({ label: `Message ${o.name} about ${order.id}`, icon: 'chat', run: () => go({ name: 'inbox', ownerId: orderThreadId(order.id, o.id) }) })
   }
   if ((done || order.status === 'returned' || order.status === 'in_use') && claimableLeft > 0) {
     actions.push({
@@ -271,7 +304,14 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
             {order.id} <Icon name="chevron-right" size={13} />
           </button>{' '}
           <span className="muted small">{new Date(order.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · {order.paymentMethod}</span>
-          {order.reported && <Badge tone="red"><Icon name="flag" size={14} /> Reported</Badge>}
+          {/* Reported and in-dispute are different situations and used to look
+              identical: one is us reading a form, the other is an active
+              arbitration with the vendor's side on the table. */}
+          {order.reported && (orderDispute?.status === 'mediation'
+            ? <Badge tone="purple"><Icon name="scale" size={14} /> In mediation</Badge>
+            : orderDispute?.status === 'resolved'
+              ? <Badge tone="green"><Icon name="check" size={14} /> Dispute resolved</Badge>
+              : <Badge tone="red"><Icon name="flag" size={14} /> Reported</Badge>)}
           {order.extendedDays ? <Badge tone="purple">+{order.extendedDays}d extended</Badge> : null}
         </div>
         <b>{money(order.total)}</b>
@@ -303,6 +343,15 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
               </div>
             ))}
           </div>
+          {/* Every duration the app showed was derived from statusAt, which only
+              remembers the current stage — so "approved in 4 min" was unanswerable
+              the moment the order moved past approval. With the transitions logged
+              it is a measurement rather than a claim. */}
+          {approvalMins != null && (
+            <p className="small" style={{ margin: '4px 0 0', fontWeight: 700 }}>
+              <Icon name="handshake" size={13} /> Owner approved this in {approvalMins < 1 ? 'under a minute' : `${approvalMins} min`}
+            </p>
+          )}
           <p className="muted small" style={{ margin: '4px 0 10px' }}>
             {STATUS_HINT[order.status]}
             {/* A stage with a start time reads as somebody working on it; the same
@@ -322,21 +371,49 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
         </>
       )}
 
+      {/* An outstanding balance is the one thing on this card that can cost you
+          the booking if you miss it, so it sits above the timeline rather than
+          in the totals where it would read as a line item already dealt with. */}
+      {order.split && !order.split.settledAt && order.status !== 'cancelled' && (
+        <div className="balance-due">
+          <Icon name="wallet" size={18} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <b style={{ fontSize: 13 }}>{money(order.split.balance)} still to pay</b>
+            <div className="muted small">
+              Due {fmtDate(order.split.dueDate)} · {money(order.split.paidNow)} paid at booking
+            </div>
+          </div>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => { buzz(); dispatch({ type: 'PAY_BALANCE', orderId: order.id }); toast('Balance settled — nothing else owed') }}
+          >
+            Pay now
+          </button>
+        </div>
+      )}
+      {order.split?.settledAt && (
+        <p className="muted small" style={{ margin: '0 0 8px' }}>
+          <Icon name="check" size={13} /> Paid in full — {money(order.split.paidNow)} at booking, {money(order.split.balance)} on the balance.
+        </p>
+      )}
+
       {order.status === 'in_transit' && order.driver && (
         <>
-          <div className="route" aria-hidden="true">
-            <Icon name="store" size={14} className="route-ico route-start" />
-            <Icon name="clapperboard" size={14} className="route-ico route-end" />
-            <svg viewBox="0 0 300 40" preserveAspectRatio="none">
-              <path d="M8 32 C 80 32, 90 8, 150 8 S 220 32, 292 32" fill="none" stroke="var(--line)" strokeWidth="3" strokeDasharray="6 5" strokeLinecap="round" />
-              <circle r="6" fill="var(--accent)" style={{ offsetPath: "path('M8 32 C 80 32, 90 8, 150 8 S 220 32, 292 32')" }} className="dot-anim" />
-            </svg>
-          </div>
+          {/* A multi-vendor order is one van doing a round, so naming only the
+              first pickup would be wrong. The distance is the longest leg — the
+              run isn't done until the furthest vendor has been collected. */}
+          <TransitMap
+            from={vendors.length > 1 ? `${vendors.length} pickups · ${vendors.map((v) => v.area).join(', ')}` : owner.area}
+            to={order.address}
+            distanceKm={Math.max(...vendors.map((v) => v.distanceKm))}
+            startedAt={order.statusAt}
+            arrivesAt={order.autoAdvanceAt}
+          />
           <div className="driver-card">
             <Icon name="driver" size={26} />
             <div style={{ minWidth: 0 }}>
               <b style={{ fontSize: 14 }}>{order.driver.name}</b>
-              <div className="muted small">{order.driver.vehicle} · <a href={`tel:${order.driver.phone.replace(/\s/g, '')}`} style={{ color: 'var(--accent)', fontWeight: 700 }}><Icon name="phone" size={14} /> Call</a></div>
+              <div className="muted small">{order.driver.vehicle}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div className="muted small">Handover PIN</div>
@@ -359,6 +436,19 @@ export const OrderCard = memo(function OrderCard({ order }: { order: Order }) {
               >
                 {order.driver.pin}
               </button>
+            </div>
+            {/* Calling was the only way to reach the driver, which is the wrong
+                default on a shoot: you are often somewhere too loud to talk, and
+                "gate code is 4417, come to the back" is a thing you want written
+                down rather than shouted once. Call stays for when it's urgent. */}
+            <div className="driver-contact">
+              <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'inbox', ownerId: driverThreadId(order.id) })}>
+                <Icon name="chat" size={14} /> Message {order.driver.name.split(' ')[0]}
+                {driverUnread > 0 && <Badge tone="orange">{driverUnread}</Badge>}
+              </button>
+              <a className="btn btn-outline btn-sm" href={`tel:${order.driver.phone.replace(/\s/g, '')}`}>
+                <Icon name="phone" size={14} /> Call
+              </a>
             </div>
           </div>
           {order.autoAdvanceAt && <Eta at={order.autoAdvanceAt} />}
@@ -668,31 +758,45 @@ function ClaimModal({ order, onClose }: { order: Order; onClose: () => void }) {
 function RateModal({ order, ownerName, onClose, onDone }: { order: Order; ownerName: string; onClose: () => void; onDone: () => void }) {
   const { dispatch } = useStore()
   const [ratings, setRatings] = useState<number[]>(order.lines.map((_, i) => order.lineRatings?.[i] ?? 5))
-  const [text, setText] = useState('')
+  const [texts, setTexts] = useState<string[]>(order.lines.map((_, i) => order.lineReviews?.[i] ?? ''))
+  const multi = order.lines.length > 1
 
   return (
     <Modal title={`Rate ${ownerName}`} onClose={onClose}>
       <p className="muted" style={{ fontSize: 14, marginTop: 0 }}>
         Ratings are two-way and blind: the owner has already rated you, and both publish the moment you submit — nobody can retaliate.
       </p>
+      {/* The note used to be one field labelled "applies to each item", and it did
+          — the same sentence was published as a review of the camera and of the
+          tripod. A note belongs to the thing it was written about, so each line
+          gets its own and blank lines publish nothing. */}
       {order.lines.map((l, i) => {
         const item = getItem(l.itemId)
         return (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: i > 0 ? '1px solid var(--line)' : 'none' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}><ItemArt item={item} size="thumb" /> <b>{item.name}</b></span>
-            <Stars value={ratings[i]} size={13} onChange={(v) => setRatings(ratings.map((r, j) => (j === i ? v : r)))} />
+          <div key={i} style={{ padding: '10px 0', borderTop: i > 0 ? '1px solid var(--line)' : 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, minWidth: 0 }}>
+                <ItemArt item={item} size="thumb" /> <b style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</b>
+              </span>
+              <Stars value={ratings[i]} size={13} onChange={(v) => setRatings(ratings.map((r, j) => (j === i ? v : r)))} />
+            </div>
+            <label className="field" style={{ marginTop: 6 }}>
+              <span className="sr-only">Review of {item.name} (optional)</span>
+              <input
+                value={texts[i]}
+                placeholder={multi ? `How was the ${item.name}?` : 'How was the gear and the handover?'}
+                enterKeyHint="done"
+                onChange={(e) => setTexts(texts.map((t, j) => (j === i ? e.target.value : t)))}
+              />
+            </label>
           </div>
         )
       })}
-      <label className="field" style={{ marginTop: 6 }}>
-        Review (optional, applies to each item)
-        <input value={text} placeholder="How was the gear and the handover?" enterKeyHint="done" onChange={(e) => setText(e.target.value)} />
-      </label>
       <button
         className="btn btn-primary btn-block" style={{ marginTop: 14 }}
         onClick={() => {
           buzz()
-          dispatch({ type: 'RATE_ORDER', orderId: order.id, ratings, text })
+          dispatch({ type: 'RATE_ORDER', orderId: order.id, ratings, texts })
           onDone()
           onClose()
         }}

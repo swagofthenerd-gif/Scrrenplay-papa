@@ -39,6 +39,10 @@ export type View =
   | { name: 'order'; id: string }
   | { name: 'wallet' }
   | { name: 'settings' }
+  | { name: 'referrals' }
+  | { name: 'verify' }
+  | { name: 'publicProfile' }
+  | { name: 'crew' }
   | { name: 'inbox'; ownerId?: string }
 
 export function viewToHash(v: View): string {
@@ -59,6 +63,10 @@ export function viewToHash(v: View): string {
     case 'order': return `#/order/${v.id}`
     case 'wallet': return '#/wallet'
     case 'settings': return '#/settings'
+    case 'referrals': return '#/referrals'
+    case 'verify': return '#/verify'
+    case 'publicProfile': return '#/me'
+    case 'crew': return '#/crew'
     case 'inbox': return v.ownerId ? `#/inbox/${v.ownerId}` : '#/inbox'
     case 'browse': {
       const p = new URLSearchParams()
@@ -104,6 +112,10 @@ export function parseHash(hash: string): View {
   if (seg[0] === 'order' && seg[1]) return { name: 'order', id: seg[1] }
   if (seg[0] === 'wallet') return { name: 'wallet' }
   if (seg[0] === 'settings') return { name: 'settings' }
+  if (seg[0] === 'referrals') return { name: 'referrals' }
+  if (seg[0] === 'verify') return { name: 'verify' }
+  if (seg[0] === 'me') return { name: 'publicProfile' }
+  if (seg[0] === 'crew') return { name: 'crew' }
   if (seg[0] === 'inbox') return { name: 'inbox', ownerId: seg[1] }
   if (seg[0] === 'browse') {
     const p = new URLSearchParams(qs)

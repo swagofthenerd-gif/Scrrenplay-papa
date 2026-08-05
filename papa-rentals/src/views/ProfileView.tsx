@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
-import { useStore } from '../store'
-import { GOLD_POINTS, SILVER_POINTS, buzz, fmtTimeAgo, money } from '../utils'
+import { REFERRAL_BONUS, useStore } from '../store'
+import { GOLD_POINTS, SILVER_POINTS, NAME_FALLBACK, VERIFY_STEPS, verifiedCount, buzz, fmtTimeAgo, money, displayName, toAvatarDataUrl } from '../utils'
 import { Badge, ItemArt, Modal, Stars, useCountUp } from '../components/ui'
 import { Icon, Avatar, type IconName } from '../components/icons'
+import type { UserReport } from '../types'
 
-const REFERRAL_CODE = 'PAPA-FRIEND-500'
 
 /* One source for what each tier buys you, read by both the perk list and the
    progress line. Written out twice, they drifted the moment one changed. */
@@ -33,11 +33,15 @@ export default function ProfileView() {
   /* A countered offer is a question waiting on the renter — the dashboard gives
      that kind of number a pill, and it should mean the same thing here. */
   const waitingOffers = state.offers.filter((o) => o.status === 'countered').length
-  const [refCode, setRefCode] = useState('')
   const [editOpen, setEditOpen] = useState(false)
   const [topUpOpen, setTopUpOpen] = useState(false)
+  const [openCase, setOpenCase] = useState<string | null>(null)
+  /* The toast said "+Rs 10,000" in the corner while the balance counted up on
+     its own on the other side of the screen, and nothing connected the two. The
+     amount now rises out of the balance it just joined. */
+  const [credited, setCredited] = useState(0)
   const [showOffers, setShowOffers] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const referralsEarned = state.referrals.reduce((n, f) => n + f.earned, 0)
   const pendingRequests = state.ownerBookings.filter((b) => b.status === 'pending').length
   /* Hosting had a door to the dashboard and no number beside it, so the one
      question a host opens this screen with — did it make anything — needed a
@@ -53,12 +57,22 @@ export default function ProfileView() {
      "None yet" — a profile that describes an absence. The same screen can hand
      them the four things worth doing instead, ticking off as they do them. */
   const firstRun: { label: string; hint: string; icon: IconName; done: boolean; run: () => void }[] = [
-    { label: 'Verify your ID', hint: 'Faster approvals, instant-book access', icon: 'shield', done: Boolean(state.profile.idVerified), run: () => setEditOpen(true) },
+    { label: 'Verify your account', hint: 'Instant-book on premium gear', icon: 'shield', done: verifiedCount(state.profile) === VERIFY_STEPS.length, run: () => go({ name: 'verify' }) },
     { label: 'Save something you like', hint: 'Tap the heart on any listing', icon: 'heart', done: state.wishlist.length > 0, run: () => go({ name: 'browse' }) },
     { label: 'Book your first rental', hint: 'Or offer your own price for it', icon: 'cart', done: state.orders.length > 0, run: () => go({ name: 'browse' }) },
     { label: 'Rent out your own gear', hint: 'Keep 90% of every booking', icon: 'truck', done: state.myListings.length > 0, run: () => go({ name: 'post' }) },
   ]
   const settingIn = firstRun.filter((t) => t.done).length < 2
+
+  /* Ordered by what is actually left to do: a prompt to write a review is noise
+     if you have never rented, and one to refer is noise once three friends have
+     joined. */
+  const earnFaster: { label: string; icon: IconName; run: () => void }[] = [
+    ...(state.referrals.length < 3 ? [{ label: `Refer a friend · +${REFERRAL_BONUS}`, icon: 'gift' as IconName, run: () => go({ name: 'referrals' }) }] : []),
+    ...(verifiedCount(state.profile) === VERIFY_STEPS.length ? [] : [{ label: 'Verify your account', icon: 'shield' as IconName, run: () => go({ name: 'verify' }) }]),
+    ...(completed.some((o) => !o.myRatingOfOwner) ? [{ label: 'Review a rental', icon: 'star' as IconName, run: () => go({ name: 'orders' }) }] : []),
+    { label: 'Book something', icon: 'cart' as IconName, run: () => go({ name: 'browse' }) },
+  ].slice(0, 3)
 
   const shownBalance = useCountUp(state.walletBalance)
   const shownPoints = useCountUp(state.points)
@@ -69,19 +83,25 @@ export default function ProfileView() {
 
       <div className="panel">
         <div className="owner-row">
-          <Avatar name={state.profile.name || 'You'} id="me" size={46} />
+          <Avatar name={displayName(state.profile.name)} id="me" size={46} src={state.profile.avatar} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <b>{state.profile.name || 'Filmmaker'}{' '}
-              {state.profile.idVerified
-                ? <Badge tone="green"><Icon name="check" size={14} /> ID Verified</Badge>
-                : <Badge tone="default"><Icon name="shield" size={14} /> Unverified</Badge>}{' '}
+            <b>{displayName(state.profile.name)}{' '}
+              {verifiedCount(state.profile) === VERIFY_STEPS.length
+                ? <Badge tone="green"><Icon name="check" size={14} /> Verified</Badge>
+                : <Badge tone="default"><Icon name="shield" size={14} /> {verifiedCount(state.profile)}/{VERIFY_STEPS.length} verified</Badge>}{' '}
               <Badge tone="purple">{tier}</Badge></b>
             <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <Icon name="pin" size={14} /> {state.profile.city} ·{' '}
+              <span className="ellipsis" style={{ maxWidth: '40%' }}><Icon name="pin" size={14} /> {state.profile.city}</span> ·{' '}
               {completed.length === 0 ? (
                 <>New renter — your first completed rental starts your score</>
               ) : (
-                <>renter rating <Stars value={myRating} size={12} /> {myRating.toFixed(1)} · {completed.length} completed</>
+                /* The explanation used to be a paragraph below the whole panel, with
+                   the phone and email rows between it and the stars it referred to —
+                   so the score read as a mark you were being given rather than the
+                   one owners are shown when you ask to book. */
+                <>
+                  what owners see: <Stars value={myRating} size={12} /> {myRating.toFixed(1)} · {completed.length} completed
+                </>
               )}
             </div>
             {(state.profile.phone || state.profile.email) && (
@@ -93,29 +113,50 @@ export default function ProfileView() {
           </div>
           <button className="btn btn-outline btn-sm" onClick={() => setEditOpen(true)}>Edit</button>
         </div>
-        <p className="muted small" style={{ marginBottom: state.profile.idVerified ? 0 : 10 }}>
-          Owners see your rating when you request bookings — a strong renter score unlocks instant-book on premium gear.
+        <p className="muted small" style={{ marginBottom: 8 }}>
+          A strong renter score unlocks instant-book on premium gear.
         </p>
-        {!state.profile.idVerified && (
-          <div className="list-row" style={{ alignItems: 'center', gap: 10, margin: 0 }}>
+        {/* The rating has always been two-way, and the renter's half went nowhere
+            anyone could look — including the renter. */}
+        <button className="list-row" style={{ width: '100%', cursor: 'pointer', margin: 0 }} onClick={() => go({ name: 'publicProfile' })}>
+          <span><Icon name="user" size={16} /> See your public profile</span>
+          <span className="muted">What owners see <Icon name="chevron-right" size={14} /></span>
+        </button>
+        {/* Verifying was a single button that set one flag nothing read. It is a
+            three-step centre now, and the row reports real progress against it. */}
+        {verifiedCount(state.profile) < VERIFY_STEPS.length && (
+          <button className="list-row" style={{ alignItems: 'center', gap: 10, margin: 0, width: '100%', cursor: 'pointer' }} onClick={() => go({ name: 'verify' })}>
             <Icon name="shield" size={18} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <b style={{ fontSize: 13 }}>Verify your ID</b>
-              <div className="muted small" style={{ margin: 0 }}>Verified renters get faster owner approvals and instant-book access.</div>
-            </div>
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => {
-                buzz()
-                dispatch({ type: 'VERIFY_ID' })
-                toast('ID verified')
-              }}
-            >
-              Verify
-            </button>
-          </div>
+            <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+              <b style={{ fontSize: 13 }}>Verify your account</b>
+              <span className="muted small" style={{ display: 'block', margin: 0 }}>
+                {verifiedCount(state.profile)} of {VERIFY_STEPS.length} done — unlocks instant-book on premium gear.
+              </span>
+            </span>
+            <Icon name="chevron-right" size={16} />
+          </button>
         )}
       </div>
+
+      {/* Crossing a threshold used to be silent — the badge just read differently
+          the next time you looked. Shown once, then cleared, because a permanent
+          banner is not a celebration. */}
+      {state.tierReached && (
+        <div className="panel tier-up" role="status">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Icon name="trophy" size={22} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b>You reached {state.tierReached}</b>
+              <div className="muted small">
+                {state.tierReached === 'Gold Papa'
+                  ? '5% off every rental, priority support and early access to new gear.'
+                  : 'A free van delivery every month is now yours.'}
+              </div>
+            </div>
+            <button className="btn btn-outline btn-sm" onClick={() => dispatch({ type: 'CLEAR_TIER_UP' })}>Nice</button>
+          </div>
+        </div>
+      )}
 
       {settingIn && (
         <div className="panel" style={{ marginTop: 14 }}>
@@ -145,6 +186,12 @@ export default function ProfileView() {
       <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'browse', wishlistOnly: true })}>
         <span><Icon name="heart-filled" size={16} /> Your wishlist</span><span className="muted">{state.wishlist.length} items <Icon name="arrow-right" size={14} /></span>
       </button>
+      <button className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => go({ name: 'crew' })}>
+        <span><Icon name="users" size={16} /> Your crew</span>
+        <span className="muted">
+          {state.crew.length ? `${state.crew.length} ${state.crew.length === 1 ? 'person' : 'people'}` : 'Share bookings'} <Icon name="chevron-right" size={14} />
+        </span>
+      </button>
       <button className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => go({ name: 'settings' })}>
         <span><Icon name="sliders" size={16} /> Settings</span>
         <span className="muted">Notifications, payouts, privacy <Icon name="chevron-right" size={14} /></span>
@@ -154,7 +201,14 @@ export default function ProfileView() {
       <h3 className="profile-group"><Icon name="wallet" size={14} /> Money</h3>
       <div className="wallet-card">
         <div style={{ color: '#d6d3d1', fontSize: 13 }}><Icon name="wallet" size={14} /> Papa Wallet</div>
-        <div className="balance">{money(shownBalance)}</div>
+        <div className="balance">
+          {money(shownBalance)}
+          {credited > 0 && (
+            <span className="balance-delta" aria-hidden="true" onAnimationEnd={() => setCredited(0)}>
+              +{money(credited)}
+            </span>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <button className="btn btn-primary btn-sm" onClick={() => setTopUpOpen(true)}>+ Top up</button>
           <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'wallet' })}>History</button>
@@ -198,6 +252,16 @@ export default function ProfileView() {
           <p className="muted small" style={{ margin: '8px 0 0' }}>
             {nextTier.at - state.points} points to go — earn 1 pt per Rs 100 spent, redeem 1 pt = Rs 1 at checkout.
           </p>
+          {/* "540 points to go" with no way to close the gap is a number, not a
+              goal. These are the three things that actually move it, each a tap
+              rather than a description of one. */}
+          <div className="earn-row">
+            {earnFaster.map((e) => (
+              <button key={e.label} className="earn-chip" onClick={e.run}>
+                <Icon name={e.icon} size={14} /> {e.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -223,65 +287,17 @@ export default function ProfileView() {
           })}
         </ul>
       </div>
-      <button
-        className="list-row"
-        style={{ cursor: 'pointer', width: '100%' }}
-        onClick={async () => {
-          const text = `Rent film gear on Papa Rentals — use my code ${REFERRAL_CODE} and we both get Rs 500.`
-          // the WebView blocks the clipboard, so try the share sheet first and always show the code
-          if (navigator.share) {
-            try {
-              await navigator.share({ text })
-              return
-            } catch {
-              /* user dismissed, or share unavailable */
-            }
-          }
-          try {
-            await navigator.clipboard?.writeText(REFERRAL_CODE)
-            setCopied(true)
-            setTimeout(() => setCopied(false), 2000)
-          } catch {
-            toast(`Your code: ${REFERRAL_CODE}`)
-          }
-        }}
-      >
-        <span><Icon name="gift" size={16} /> Refer a filmmaker — <b>{REFERRAL_CODE}</b></span>
-        <span className="muted">{copied ? <>Copied <Icon name="check" size={14} /></> : <>You both get Rs 500 <Icon name="arrow-right" size={14} /></>}</span>
+      {/* Refer and redeem used to be two unrelated strips separated by half the
+          screen, neither of which said whether any of it had worked. One row,
+          one screen, and a count you can act on. */}
+      <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'referrals' })}>
+        <span><Icon name="gift" size={16} /> Refer a filmmaker</span>
+        <span className="muted">
+          {referralsEarned > 0
+            ? <><span className="count-pill">{money(referralsEarned)} earned</span> <Icon name="arrow-right" size={14} /></>
+            : <>You both get {money(REFERRAL_BONUS)} <Icon name="arrow-right" size={14} /></>}
+        </span>
       </button>
-      {!state.referralRedeemed && (
-        <div className="panel" style={{ marginTop: 10 }}>
-          <b style={{ fontSize: 14 }}>Got a referral code?</b>
-          <div className="promo-row" style={{ marginTop: 8 }}>
-            <input placeholder="PAPA-XXXX" value={refCode} onChange={(e) => setRefCode(e.target.value)} aria-label="Referral code" />
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={() => {
-                const code = refCode.trim().toUpperCase()
-                if (code === REFERRAL_CODE) {
-                  toast('That\u2019s your own code — share it with a friend instead')
-                  return
-                }
-                if (!/^PAPA-[A-Z0-9]{3,12}(-\d{2,5})?$/.test(code)) {
-                  toast('Codes look like PAPA-XXXX or PAPA-XXXX-500')
-                  return
-                }
-                dispatch({ type: 'REDEEM_REFERRAL', code })
-                toast('Rs 500 pending — credited after your first rental')
-              }}
-            >
-              Redeem
-            </button>
-          </div>
-        </div>
-      )}
-      {state.referralPending && (
-        <div className="list-row" style={{ width: '100%', gap: 10, cursor: 'default' }}>
-          <Icon name="hourglass" size={16} />
-          <span style={{ flex: 1, minWidth: 0 }}>Referral bonus pending</span>
-          <span className="muted small">Rs 500 · unlocks on your first completed rental</span>
-        </div>
-      )}
 
       <h3 className="profile-group"><Icon name="store" size={14} /> Hosting</h3>
       <button className="list-row" style={{ cursor: 'pointer', width: '100%' }} onClick={() => go({ name: 'dashboard' })}>
@@ -374,14 +390,32 @@ export default function ProfileView() {
       {state.reports.length > 0 && (
         <div className="panel" style={{ marginTop: 14 }}>
           <h3 style={{ fontSize: 15 }}><Icon name="flag" size={16} /> Your reports</h3>
+          {/* The case was a read-only row: a number, a colour and a date. Mediation
+              explicitly asks for your side of it, so there had to be somewhere to
+              put it — and somewhere to see what you had already said. */}
           {state.reports.map((r) => (
-            <div key={r.id} className="review">
+            <button
+              key={r.id}
+              className="review"
+              style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'none', border: 0, borderTop: '1px solid var(--line)' }}
+              onClick={() => setOpenCase(r.id)}
+            >
               <div className="review-head">
                 <b>{r.caseNo} · {r.targetName}</b>
-                <Badge tone={r.status === 'under_review' ? 'orange' : 'green'}>{r.status === 'under_review' ? 'Under review' : 'Resolved'}</Badge>
+                <Badge tone={r.status === 'resolved' ? 'green' : r.status === 'mediation' ? 'purple' : 'orange'}>
+                  {r.status === 'under_review' ? 'Under review' : r.status === 'mediation' ? 'In mediation' : 'Resolved'}
+                </Badge>
               </div>
               <div className="muted small">{r.reason} · filed {r.date}</div>
-            </div>
+              <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ flex: 1 }}>
+                  {r.evidence?.length
+                    ? `${r.evidence.length} ${r.evidence.length === 1 ? 'note' : 'notes'} added`
+                    : r.status === 'resolved' ? 'View the decision' : 'View case and add evidence'}
+                </span>
+                <Icon name="chevron-right" size={14} />
+              </div>
+            </button>
           ))}
         </div>
       )}
@@ -409,7 +443,10 @@ export default function ProfileView() {
 
 
       {editOpen && <EditProfileModal onClose={() => setEditOpen(false)} />}
-      {topUpOpen && <TopUpModal onClose={() => setTopUpOpen(false)} />}
+      {openCase && (
+        <CaseModal report={state.reports.find((r) => r.id === openCase)!} onClose={() => setOpenCase(null)} />
+      )}
+      {topUpOpen && <TopUpModal onClose={() => setTopUpOpen(false)} onCredited={setCredited} />}
     </div>
   )
 }
@@ -421,13 +458,43 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
   const [city, setCity] = useState(state.profile.city)
   const [phone, setPhone] = useState(state.profile.phone ?? '')
   const [email, setEmail] = useState(state.profile.email ?? '')
+  const [avatar, setAvatar] = useState<string | null>(state.profile.avatar ?? null)
   const emailValid = !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 
   return (
     <Modal title="Edit your profile" onClose={onClose}>
-      <label className="field">
+      {/* Everyone got a generated monogram and no way past it. There is no file
+          host here, so the picture is downscaled and stored with the rest of the
+          state — see toAvatarDataUrl for why it cannot be kept as picked. */}
+      <div className="avatar-edit">
+        <Avatar name={displayName(name)} id="me" size={64} src={avatar ?? undefined} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}>
+            <Icon name="camera" size={14} /> {avatar ? 'Change photo' : 'Add a photo'}
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                e.target.value = '' // so picking the same file twice still fires
+                if (!file) return
+                try {
+                  setAvatar(await toAvatarDataUrl(file))
+                } catch (err) {
+                  toast(err instanceof Error ? err.message : 'Could not use that image.')
+                }
+              }}
+            />
+          </label>
+          {avatar && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setAvatar(null)}>Remove</button>
+          )}
+        </div>
+      </div>
+      <label className="field" style={{ marginTop: 10 }}>
         Name
-        <input value={name} placeholder="Your name" onChange={(e) => setName(e.target.value)} />
+        <input value={name} placeholder={NAME_FALLBACK} onChange={(e) => setName(e.target.value)} />
       </label>
       <label className="field" style={{ marginTop: 10 }}>
         City
@@ -453,6 +520,7 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
             city: city.trim(),
             phone: phone.trim(),
             email: email.trim(),
+            avatar,
           })
           toast('Profile updated')
           onClose()
@@ -464,7 +532,87 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-function TopUpModal({ onClose }: { onClose: () => void }) {
+/* A case you can only watch is a case you cannot influence, and mediation
+   explicitly asks for your account of what happened. This is where it goes —
+   plus the history, so what you already said is visible rather than something
+   you have to remember having sent. */
+function CaseModal({ report, onClose }: { report: UserReport; onClose: () => void }) {
+  const { dispatch } = useStore()
+  const { toast } = useNav()
+  const [note, setNote] = useState('')
+  const closed = report.status === 'resolved'
+
+  const stages: { key: UserReport['status']; label: string; hint: string }[] = [
+    { key: 'under_review', label: 'Filed and read', hint: 'Trust & Safety have your report.' },
+    { key: 'mediation', label: 'Both sides heard', hint: `We asked ${report.targetName} for their account.` },
+    { key: 'resolved', label: 'Decided', hint: 'The case is closed.' },
+  ]
+  const at = stages.findIndex((x) => x.key === report.status)
+
+  return (
+    <Modal title={`Case ${report.caseNo}`} onClose={onClose}>
+      <p className="muted small" style={{ marginTop: 0 }}>
+        {report.targetName} · {report.reason} · filed {report.date}
+      </p>
+
+      <ol className="case-steps">
+        {stages.map((st, i) => (
+          <li key={st.key} className={i < at ? 'done' : i === at ? 'now' : ''}>
+            <b>{st.label}</b>
+            <span className="muted small">{st.hint}</span>
+          </li>
+        ))}
+      </ol>
+
+      {report.note && (
+        <div className="panel" style={{ marginTop: 12 }}>
+          <b style={{ fontSize: 13 }}>What you reported</b>
+          <p className="muted small" style={{ margin: '4px 0 0' }}>{report.note}</p>
+        </div>
+      )}
+
+      <h3 style={{ fontSize: 14, marginBottom: 4 }}>Evidence you've added</h3>
+      {report.evidence?.length ? (
+        report.evidence.map((e) => (
+          <div key={e.id} className="review" style={{ borderTop: '1px solid var(--line)' }}>
+            <div className="muted small">{new Date(e.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+            <div style={{ fontSize: 14 }}>{e.text}</div>
+          </div>
+        ))
+      ) : (
+        <p className="muted small" style={{ marginTop: 0 }}>Nothing yet.</p>
+      )}
+
+      {closed ? (
+        <p className="muted small">This case is closed, so nothing more can be added to it.</p>
+      ) : (
+        <div className="promo-row" style={{ marginTop: 10 }}>
+          <input
+            value={note}
+            placeholder="Serial numbers, what was said, what's missing…"
+            aria-label="Add evidence"
+            enterKeyHint="done"
+            onChange={(e) => setNote(e.target.value)}
+          />
+          <button
+            className="btn btn-outline btn-sm"
+            disabled={!note.trim()}
+            onClick={() => {
+              buzz()
+              dispatch({ type: 'ADD_EVIDENCE', reportId: report.id, text: note })
+              setNote('')
+              toast('Added to the case')
+            }}
+          >
+            Add
+          </button>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+function TopUpModal({ onClose, onCredited }: { onClose: () => void; onCredited: (n: number) => void }) {
   const { state, dispatch } = useStore()
   const { toast } = useNav()
   const [amount, setAmount] = useState(10000)
@@ -509,7 +657,8 @@ function TopUpModal({ onClose }: { onClose: () => void }) {
           if (!card) return
           buzz()
           dispatch({ type: 'ADD_WALLET', amount })
-          toast(`${money(amount)} added — charged to ${card.brand} ···${card.last4}`)
+          onCredited(amount)
+          toast(`Charged to ${card.brand} ···${card.last4}`)
           onClose()
         }}
       >

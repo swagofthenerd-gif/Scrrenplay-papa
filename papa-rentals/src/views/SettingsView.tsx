@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNav } from '../nav'
 import { useStore } from '../store'
-import { money } from '../utils'
+import { downloadOrShow, money } from '../utils'
 import { Badge, Modal } from '../components/ui'
 import { ThemeRow } from '../components/ThemeToggle'
 import { Icon } from '../components/icons'
@@ -9,10 +9,6 @@ import { Icon } from '../components/icons'
 const PREFS_KEY = 'papa-settings-v1'
 
 interface Prefs {
-  notifyOrders: boolean
-  notifyOffers: boolean
-  notifyChat: boolean
-  notifyDeals: boolean
   notifyEmail: boolean
   reduceMotion: boolean
   payoutBank: string
@@ -20,10 +16,6 @@ interface Prefs {
 }
 
 const DEFAULTS: Prefs = {
-  notifyOrders: true,
-  notifyOffers: true,
-  notifyChat: true,
-  notifyDeals: false,
   notifyEmail: false,
   reduceMotion: false,
   payoutBank: '',
@@ -58,13 +50,7 @@ export default function SettingsView() {
   }
 
   function exportData() {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'papa-rentals-data.json'
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    downloadOrShow('papa-rentals-data.json', JSON.stringify(state, null, 2), 'application/json')
     toast('Your data is downloading')
   }
 
@@ -98,11 +84,17 @@ export default function SettingsView() {
 
       <div className="panel" style={{ marginTop: 14 }}>
         <h3 style={{ fontSize: 15 }}><Icon name="bell" size={16} /> Notifications</h3>
-        <p className="muted small" style={{ marginTop: 0 }}>Order and safety alerts can't be turned off — they're how you find your driver.</p>
-        <Toggle label="Order updates" hint="Confirmations, driver on the way, returns due" checked={prefs.notifyOrders} onChange={(v) => set('notifyOrders', v)} />
-        <Toggle label="Offers &amp; counters" hint="When a vendor accepts, counters or declines" checked={prefs.notifyOffers} onChange={(v) => set('notifyOffers', v)} />
-        <Toggle label="Messages" hint="Vendor and support replies" checked={prefs.notifyChat} onChange={(v) => set('notifyChat', v)} />
-        <Toggle label="Deals &amp; price drops" hint="Flash deals on gear you've viewed or wishlisted" checked={prefs.notifyDeals} onChange={(v) => set('notifyDeals', v)} />
+        {/* This used to promise that order alerts "can't be turned off" while
+            offering a switch that turned them off — and none of these switches
+            did anything at all, because they were read nowhere outside this
+            screen. They are real now, so the copy has to be too. */}
+        <p className="muted small" style={{ marginTop: 0 }}>
+          These take effect straight away. Turning off order updates means nothing will tell you your driver is outside.
+        </p>
+        <Toggle label="Order updates" hint="Confirmations, driver on the way, returns due" checked={state.notifyPrefs.orders} onChange={(v) => dispatch({ type: 'SET_NOTIFY_PREF', channel: 'orders', on: v })} />
+        <Toggle label="Offers &amp; counters" hint="When a vendor accepts, counters or declines" checked={state.notifyPrefs.offers} onChange={(v) => dispatch({ type: 'SET_NOTIFY_PREF', channel: 'offers', on: v })} />
+        <Toggle label="Messages" hint="Vendor and support replies" checked={state.notifyPrefs.chat} onChange={(v) => dispatch({ type: 'SET_NOTIFY_PREF', channel: 'chat', on: v })} />
+        <Toggle label="Deals &amp; price drops" hint="Flash deals on gear you've viewed or wishlisted" checked={state.notifyPrefs.deals} onChange={(v) => dispatch({ type: 'SET_NOTIFY_PREF', channel: 'deals', on: v })} />
         <Toggle label="Email receipts" hint="A copy of every invoice by email" checked={prefs.notifyEmail} onChange={(v) => set('notifyEmail', v)} />
       </div>
 
@@ -130,7 +122,7 @@ export default function SettingsView() {
           <span><Icon name="scroll" size={16} /> Download my data</span><span className="muted">JSON <Icon name="chevron-right" size={14} /></span>
         </button>
         <button className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => setResetOpen(true)}>
-          <span style={{ color: 'var(--danger, #b42318)' }}><Icon name="trash" size={16} /> Erase all my data</span>
+          <span style={{ color: 'var(--red)' }}><Icon name="trash" size={16} /> Erase all my data</span>
           <span className="muted">Can't be undone <Icon name="chevron-right" size={14} /></span>
         </button>
       </div>

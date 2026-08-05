@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { getOwner } from '../data/catalog'
 import { useNav } from '../nav'
-import { useStore } from '../store'
+import { DRIVER_THREAD, threadPeer, useStore } from '../store'
 import { buzz, fmtTimeAgo, uid } from '../utils'
 import { Badge } from '../components/ui'
 import { Avatar, Icon } from '../components/icons'
@@ -43,13 +42,13 @@ export default function InboxView({ ownerId }: { ownerId?: string }) {
       ) : (
         threads.map(([ownerId, thread]) => {
           const last = thread.messages[thread.messages.length - 1]
-          const name = ownerId === 'support' ? 'Papa Support' : getOwner(ownerId).name
+          const { name, subtitle, kind } = threadPeer(state, ownerId)
           return (
             <button key={ownerId} className="list-row" style={{ width: '100%', cursor: 'pointer' }} onClick={() => setOpen(ownerId)}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                 <Avatar name={name} id={ownerId} size={38} />
                 <span style={{ minWidth: 0 }}>
-                  <b>{name}</b>
+                  <b>{name}</b>{kind === 'driver' && <> <Badge tone="purple">Driver</Badge></>}{kind === 'order' && <> <Badge tone="purple">{subtitle.replace('About order ', '')}</Badge></>}
                   <span className="muted small" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '52vw' }}>
                     {last?.from === 'me' ? 'You: ' : ''}{last?.text}
                   </span>
@@ -84,8 +83,14 @@ function Thread({ ownerId, onBack }: { ownerId: string; onBack: () => void }) {
   const thread = state.chats[ownerId]
   const msgs = thread?.messages ?? []
   const typing = Boolean(thread?.typingUntil && thread.typingUntil > Date.now())
-  const isSupport = ownerId === 'support'
-  const name = isSupport ? 'Papa Support' : getOwner(ownerId).name
+  const peer = threadPeer(state, ownerId)
+  const name = peer.name
+  /* Chat replaces the tel: link on the order card, so the phone has to still be
+     reachable from here — a driver outside your gate is the one case where a call
+     genuinely beats a message. */
+  const driverPhone = peer.kind === 'driver'
+    ? state.orders.find((o) => o.id === ownerId.slice(DRIVER_THREAD.length))?.driver?.phone
+    : undefined
 
   useEffect(() => {
     dispatch({ type: 'READ_CHAT', ownerId })
@@ -116,12 +121,15 @@ function Thread({ ownerId, onBack }: { ownerId: string; onBack: () => void }) {
         <Avatar name={name} id={ownerId} size={40} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <b>{name}</b>
-          <div className="muted small">
-            {isSupport ? 'Replies 24/7' : `Usually replies in ${getOwner(ownerId).responseMins} min`}
-          </div>
+          <div className="muted small">{peer.subtitle}</div>
         </div>
-        {!isSupport && (
-          <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'vendor', id: ownerId })}>View vendor</button>
+        {peer.ownerId && (
+          <button className="btn btn-outline btn-sm" onClick={() => go({ name: 'vendor', id: peer.ownerId! })}>View vendor</button>
+        )}
+        {peer.kind === 'driver' && driverPhone && (
+          <a className="btn btn-outline btn-sm" href={`tel:${driverPhone.replace(/\s/g, '')}`}>
+            <Icon name="phone" size={14} /> Call
+          </a>
         )}
       </div>
 
@@ -159,7 +167,9 @@ function Thread({ ownerId, onBack }: { ownerId: string; onBack: () => void }) {
         <button className="btn btn-primary btn-sm" onClick={send}>Send</button>
       </div>
       <p className="muted small">
-        Keep payments on Papa Rentals. Anyone asking you to pay outside the app is a scam — report them from the vendor page.
+        {peer.kind === 'driver'
+          ? 'Never share your handover PIN over chat before the driver is with you — it is what proves the gear reached you.'
+          : 'Keep payments on Papa Rentals. Anyone asking you to pay outside the app is a scam — report them from the vendor page.'}
       </p>
     </div>
   )

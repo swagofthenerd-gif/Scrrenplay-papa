@@ -73,7 +73,7 @@ export default function SearchOverlay({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="search-overlay" role="dialog" aria-label="Search">
+    <div className="search-overlay dot-field" role="dialog" aria-label="Search">
       <div className="search-overlay-head">
         <div className="searchbox">
           <Icon name="search" size={16} />

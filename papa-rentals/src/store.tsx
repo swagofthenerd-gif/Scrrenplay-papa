@@ -3,11 +3,11 @@ import type { ReactNode } from 'react'
 import { DRIVER_POOL, PROMO_CODES, RENTER_POOL, getItem, getOwner, syncUserListings } from './data/catalog'
 import type {
   Address, AppNotification, AppState, Booking, ChatMessage, ChatThread,
-  CategoryId, Item, LedgerEntry, Offer, Order, OrderStatus, OwnerBooking, Review, SavedCard, SavedSearch, UserReport,
+  CategoryId, CrewMember, Item, LedgerEntry, NotifyChannel, Offer, Order, OrderStatus, OwnerBooking, Review, SavedCard, SavedSearch, UserReport,
 } from './types'
-import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, money, recommendedRate, todayISO, uid } from './utils'
+import { OFFER_TTL_MS, cartTotals, dealActive, evaluateOffer, money, recommendedRate, todayISO, uid, tierOf, verifiedCount, VERIFY_STEPS, splitPayment, balanceDueDate } from './utils'
 import type { IconName } from './components/icons'
-import type { TotalsInput } from './utils'
+import type { TotalsInput, VerifyStep } from './utils'
 
 const STORAGE_KEY = 'papa-rentals-v2'
 
@@ -46,18 +46,24 @@ const initialState: AppState = {
   claims: [],
   availAlerts: [],
   priceAlerts: [],
+  crew: [],
+  notifyPrefs: { orders: true, offers: true, chat: true, deals: false },
   referralRedeemed: false,
+  referrals: [],
   referralPending: false,
 }
 
 export interface PlaceOrderOpts extends TotalsInput {
   paymentMethod: string
   address: string
+  /** Take a third now and the rest the day before pickup. */
+  split?: boolean
 }
 
 type Action =
-  | { type: 'SET_PROFILE'; name: string; city: string; onboarded?: boolean; phone?: string; email?: string }
+  | { type: 'SET_PROFILE'; name: string; city: string; onboarded?: boolean; phone?: string; email?: string; avatar?: string | null }
   | { type: 'VERIFY_ID' }
+  | { type: 'VERIFY_STEP'; step: VerifyStep }
   | { type: 'ADD_TO_CART'; booking: Booking }
   | { type: 'UPDATE_CART_LINE'; lineId: string; patch: Partial<Booking> }
   | { type: 'REMOVE_FROM_CART'; lineId: string }
@@ -68,7 +74,7 @@ type Action =
   | { type: 'ADVANCE_ORDER'; orderId: string }
   | { type: 'CANCEL_ORDER'; orderId: string }
   | { type: 'EXTEND_ORDER'; orderId: string; days: number }
-  | { type: 'RATE_ORDER'; orderId: string; ratings: number[]; text?: string }
+  | { type: 'RATE_ORDER'; orderId: string; ratings: number[]; texts: string[] }
   | { type: 'ADD_OFFER'; offer: Offer }
   | { type: 'ACCEPT_COUNTER'; offerId: string }
   | { type: 'ADD_CHAT'; ownerId: string; message: ChatMessage }
@@ -101,11 +107,45 @@ type Action =
   | { type: 'ADD_AVAIL_ALERT'; itemId: string }
   | { type: 'TOGGLE_PRICE_ALERT'; itemId: string }
   | { type: 'REDEEM_REFERRAL'; code: string }
+  | { type: 'SHARE_REFERRAL' }
+  | { type: 'CLEAR_TIER_UP' }
+  | { type: 'ADD_EVIDENCE'; reportId: string; text: string }
+  | { type: 'SET_NOTIFY_PREF'; channel: NotifyChannel; on: boolean }
+  | { type: 'ADD_CREW'; member: CrewMember }
+  | { type: 'SET_CREW_ACCESS'; id: string; access: CrewMember['access'] }
+  | { type: 'REMOVE_CREW'; id: string }
+  | { type: 'PAY_BALANCE'; orderId: string }
   | { type: 'TICK'; now: number }
+
+/* One number, used by the code copy, the tracking list and the payout. It was
+   written as a literal in three places and a fourth place said Rs 500 in prose. */
+export const REFERRAL_BONUS = 500
 
 const STATUS_FLOW: OrderStatus[] = ['confirmed', 'preparing', 'in_transit', 'in_use', 'returned', 'completed']
 
+/* Crossing into Silver or Gold was completely silent: the badge in the header
+   simply read differently the next time you happened to look at it. The moment
+   it happens is the only moment it means anything. */
+function tierUpState(state: AppState, newPoints: number): AppState {
+  const before = tierOf(state.points)
+  const after = tierOf(newPoints)
+  if (before === after) return state
+  return {
+    ...state,
+    tierReached: after,
+    notifications: notify(state, {
+      icon: 'trophy', title: `You reached ${after}`,
+      body: after === 'Gold Papa' ? '5% off every rental, priority support and early access.' : 'A free van delivery every month is now yours.',
+      link: '#/profile',
+    }),
+  }
+}
+
 function notify(state: AppState, n: Omit<AppNotification, 'id' | 'at' | 'read'>): AppNotification[] {
+  /* A channel the person switched off is dropped here rather than filtered at
+     render time, so a muted channel does not sit in state inflating the unread
+     badge for alerts they asked not to receive. */
+  if (n.channel && !state.notifyPrefs[n.channel]) return state.notifications
   return [{ id: uid(), at: Date.now(), read: false, ...n }, ...state.notifications].slice(0, 40)
 }
 
@@ -119,6 +159,12 @@ function record(state: AppState, entries: Omit<LedgerEntry, 'id' | 'at'>[]): Led
   return rows.length ? [...rows, ...state.ledger].slice(0, 200) : state.ledger
 }
 
+/** Append a transition. The log is how any real SLA gets computed later; without
+    it every duration in the app is a guess made from the one timestamp we kept. */
+function logStatus(o: Order, status: OrderStatus, at: number): { status: OrderStatus; at: number }[] {
+  return [...(o.statusLog ?? []), { status, at }]
+}
+
 /** One step forward on the order timeline — used by the manual button AND the auto-advance heartbeat.
     Notifications here name a specific order, so they link straight to it: the Orders
     list splits across Active/Completed tabs, and a "complete" alert landed on the
@@ -126,21 +172,23 @@ function record(state: AppState, entries: Omit<LedgerEntry, 'id' | 'at'>[]): Led
 function stepOrderForward(o: Order): { order: Order; notifs: NotifSpec[] } {
   const notifs: NotifSpec[] = []
   if (o.status === 'requested') {
-    notifs.push({ icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
-    return { order: { ...o, status: 'confirmed', approveAt: undefined, statusAt: Date.now(), autoAdvanceAt: Date.now() + 30000 }, notifs }
+    notifs.push({ channel: 'orders' as const, icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
+    const at = Date.now()
+    return { order: { ...o, status: 'confirmed', approveAt: undefined, statusAt: at, autoAdvanceAt: at + 30000, statusLog: logStatus(o, 'confirmed', at) }, notifs }
   }
   const idx = STATUS_FLOW.indexOf(o.status)
   if (idx < 0 || idx >= STATUS_FLOW.length - 1) return { order: o, notifs }
   const next = STATUS_FLOW[idx + 1]
-  let patch: Partial<Order> = { status: next, statusAt: Date.now(), autoAdvanceAt: next === 'completed' ? undefined : Date.now() + 35000 }
+  const now = Date.now()
+  let patch: Partial<Order> = { status: next, statusAt: now, autoAdvanceAt: next === 'completed' ? undefined : now + 35000, statusLog: logStatus(o, next, now) }
   if (next === 'in_transit' && !o.driver) {
     const d = DRIVER_POOL[Math.floor(Math.random() * DRIVER_POOL.length)]
     patch = { ...patch, driver: { ...d, pin: String(1000 + Math.floor(Math.random() * 9000)) } }
-    notifs.push({ icon: 'van', title: `${o.id} is on the way`, body: `${d.name} is driving your gear over. Handover PIN inside.`, link: `#/order/${o.id}` })
+    notifs.push({ channel: 'orders' as const, icon: 'van', title: `${o.id} is on the way`, body: `${d.name} is driving your gear over. Handover PIN inside.`, link: `#/order/${o.id}` })
   }
   if (next === 'completed') {
     patch = { ...patch, depositReleased: true }
-    notifs.push({ icon: 'flag-checkered', title: `${o.id} complete — deposit hold released`, body: 'Rate your experience while it’s fresh!', link: `#/order/${o.id}` })
+    notifs.push({ channel: 'orders' as const, icon: 'flag-checkered', title: `${o.id} complete — deposit hold released`, body: 'Rate your experience while it’s fresh!', link: `#/order/${o.id}` })
   }
   return { order: { ...o, ...patch }, notifs }
 }
@@ -155,6 +203,56 @@ const SUPPORT_RULES: [RegExp, string][] = [
 ]
 const SUPPORT_FALLBACK = 'I’ve opened a ticket for a human specialist — they’ll follow up shortly. Meanwhile the Help Center FAQ might have your answer.'
 
+/* Chat threads are keyed by who you are talking to, and that is not always a
+   vendor: 'support' was already a special case, and a driver is a third. Prefixing
+   the order id keeps one driver conversation per delivery — the driver on
+   Thursday's shoot is not the driver on Friday's, and merging them would put two
+   deliveries' handover instructions in one thread. */
+export const DRIVER_THREAD = 'driver:'
+export const driverThreadId = (orderId: string) => `${DRIVER_THREAD}${orderId}`
+
+/* A vendor thread reached from an order is about that order. Globally there is
+   still one conversation per vendor — that is the right home for "do you have
+   this in stock" — but "the lens you sent has a loose mount" belongs to the
+   booking it is about, and dropping it into a thread that also holds three
+   months of availability questions is how it gets lost. */
+export const ORDER_THREAD = 'order:'
+export const orderThreadId = (orderId: string, ownerId: string) => `${ORDER_THREAD}${orderId}|${ownerId}`
+
+/** Who a thread id refers to. Three call sites derived this independently and the
+    one in the reducer named support after a random vendor, because getOwner falls
+    back to the first vendor for an id it doesn't recognise. */
+export function threadPeer(state: AppState, id: string): { name: string; subtitle: string; kind: 'support' | 'driver' | 'order' | 'owner'; ownerId?: string } {
+  if (id === 'support') return { name: 'Papa Support', subtitle: 'Replies 24/7', kind: 'support' }
+  if (id.startsWith(ORDER_THREAD)) {
+    const [orderId, ownerId] = id.slice(ORDER_THREAD.length).split('|')
+    return { name: getOwner(ownerId).name, subtitle: `About order ${orderId}`, kind: 'order', ownerId }
+  }
+  if (id.startsWith(DRIVER_THREAD)) {
+    const order = state.orders.find((o) => o.id === id.slice(DRIVER_THREAD.length))
+    const d = order?.driver
+    return {
+      name: d?.name ?? 'Your driver',
+      subtitle: d ? `${d.vehicle} · delivering ${order!.id}` : 'Delivery driver',
+      kind: 'driver',
+    }
+  }
+  const o = getOwner(id)
+  return { name: o.name, subtitle: `Usually replies in ${o.responseMins} min`, kind: 'owner', ownerId: id }
+}
+
+/* A driver is mid-delivery with a phone in a van, so the replies are short and
+   about the next ten minutes. Vendor replies talk about rates and availability,
+   which is the wrong register entirely for someone already on the road. */
+const DRIVER_REPLIES = [
+  'On my way — I’ll ring the bell when I’m outside.',
+  'Traffic on the canal, but still on schedule.',
+  'Noted. I’ll call when I’m 5 minutes out.',
+  'Please keep the handover PIN ready, I can’t release the gear without it.',
+  'I’m at the gate — which floor should I bring it to?',
+  'Understood, I’ll wait. Take your time.',
+]
+
 function pickReply(ownerId: string, t: ChatThread): string {
   if (ownerId === 'support') {
     const lastMe = [...t.messages].reverse().find((m) => m.from === 'me')
@@ -163,8 +261,22 @@ function pickReply(ownerId: string, t: ChatThread): string {
     }
     return SUPPORT_FALLBACK
   }
+  if (ownerId.startsWith(DRIVER_THREAD)) return DRIVER_REPLIES[t.messages.length % DRIVER_REPLIES.length]
+  /* A thread attached to an order is about gear the person already has. Answering
+     it with "book today and I'll throw in a battery" reads as a vendor who has not
+     noticed they are mid-rental with you. */
+  if (ownerId.startsWith(ORDER_THREAD)) return ORDER_REPLIES[t.messages.length % ORDER_REPLIES.length]
   return OWNER_REPLIES[t.messages.length % OWNER_REPLIES.length]
 }
+
+const ORDER_REPLIES = [
+  'Thanks for flagging it — let me check what went out with this booking.',
+  'Sorry about that. Send a photo and I’ll sort it before your next shoot day.',
+  'Noted against this order. I can swap the unit tomorrow morning if that helps.',
+  'That accessory should have been in the case — I’ll get a replacement to you.',
+  'No problem extending, I’ll confirm the new return time on this booking.',
+  'All good on my side — the deposit hold releases as soon as I finish the check.',
+]
 
 const OWNER_REPLIES = [
   'Salaam! Yes, it’s available for those dates.',
@@ -186,6 +298,9 @@ function reducer(state: AppState, action: Action): AppState {
         profile: {
           ...state.profile,
           name: action.name,
+          /* null means "remove it" and undefined means "leave it alone" — an
+             edit that doesn't touch the picture must not wipe one. */
+          avatar: action.avatar === null ? undefined : action.avatar ?? state.profile.avatar,
           city: action.city,
           onboarded: action.onboarded ?? true,
           phone: action.phone ?? state.profile.phone,
@@ -195,6 +310,23 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'VERIFY_ID':
       return { ...state, profile: { ...state.profile, idVerified: true } }
+
+    case 'VERIFY_STEP': {
+      const key = action.step === 'id' ? 'idVerified' : action.step === 'phone' ? 'phoneVerified' : 'paymentVerified'
+      const profile = { ...state.profile, [key]: true }
+      const done = verifiedCount(profile) === VERIFY_STEPS.length
+      return {
+        ...state,
+        profile,
+        notifications: done && verifiedCount(state.profile) < VERIFY_STEPS.length
+          ? notify(state, {
+              icon: 'shield', title: 'You’re fully verified',
+              body: 'Premium gear now books instantly — no waiting on owner approval.',
+              link: '#/verify',
+            })
+          : state.notifications,
+      }
+    }
 
     case 'ADD_TO_CART':
       return {
@@ -222,7 +354,7 @@ function reducer(state: AppState, action: Action): AppState {
       const item = getItem(action.itemId)
       let notifications = state.notifications
       if (adding && dealActive(action.itemId)) {
-        notifications = notify(state, {
+        notifications = notify(state, { channel: 'deals',
           icon: 'coins', title: `Price drop on ${item.name}`,
           body: `${item.flashDeal!.percentOff}% off right now — the deal is ticking.`,
           link: `#/item/${item.id}`,
@@ -248,6 +380,7 @@ function reducer(state: AppState, action: Action): AppState {
         status: needsApproval ? 'requested' : 'confirmed',
         approveAt: needsApproval ? Date.now() + 12000 : undefined,
         statusAt: Date.now(),
+        statusLog: [{ status: needsApproval ? 'requested' : 'confirmed', at: Date.now() }],
         autoAdvanceAt: needsApproval ? undefined : Date.now() + 25000,
         subtotal: t.subtotal,
         transportFee: t.transportFee,
@@ -265,13 +398,21 @@ function reducer(state: AppState, action: Action): AppState {
         pointsEarned,
         paymentMethod: action.opts.paymentMethod,
         address: action.opts.address,
+        split: action.opts.split
+          ? { ...splitPayment(t.total), dueDate: balanceDueDate(state.cart.map((b) => b.startDate)) }
+          : undefined,
       }
+      /* tierUpState both records the new tier and queues its notification, so it
+         has to be threaded through as state — using it only for its notifications
+         silently dropped the flag the celebration reads. */
+      const afterPoints = state.points - t.pointsUsed + pointsEarned
+      const tiered = tierUpState(state, afterPoints)
       return {
-        ...state,
+        ...tiered,
         cart: [],
         orders: [order, ...state.orders],
         walletBalance: state.walletBalance - t.walletUsed,
-        points: state.points - t.pointsUsed + pointsEarned,
+        points: afterPoints,
         ledger: record(state, [
           { kind: 'wallet', amount: -t.walletUsed, label: `Paid towards ${order.id}`, orderId: order.id },
           { kind: 'points', amount: -t.pointsUsed, label: `Redeemed on ${order.id}`, orderId: order.id },
@@ -281,9 +422,9 @@ function reducer(state: AppState, action: Action): AppState {
           ? [...state.promoCodesUsed, order.promoCode]
           : state.promoCodesUsed,
         freeVanPerkMonth: t.usedVanPerk ? todayISO().slice(0, 7) : state.freeVanPerkMonth,
-        notifications: notify(state, needsApproval
-          ? { icon: 'hourglass', title: `Booking ${order.id} requested`, body: 'Waiting for owner approval — usually a few minutes.', link: `#/order/${order.id}` }
-          : { icon: 'check-circle', title: `Order ${order.id} confirmed`, body: 'Gear is being reserved for your dates.', link: `#/order/${order.id}` }),
+        notifications: notify(tiered, needsApproval
+          ? { channel: 'orders' as const, icon: 'hourglass', title: `Booking ${order.id} requested`, body: 'Waiting for owner approval — usually a few minutes.', link: `#/order/${order.id}` }
+          : { channel: 'orders' as const, icon: 'check-circle', title: `Order ${order.id} confirmed`, body: 'Gear is being reserved for your dates.', link: `#/order/${order.id}` }),
       }
     }
 
@@ -318,11 +459,12 @@ function reducer(state: AppState, action: Action): AppState {
       const startsSoon = o.lines.some((l) => l.startDate <= todayISO(2))
       const fee = o.status === 'requested' || !startsSoon ? 0 : Math.round(o.total * 0.1)
       const refund = o.total - fee + o.walletUsed
+      const cancelledAt = Date.now()
       return {
         ...state,
         orders: state.orders.map((x) =>
           x.id === o.id
-            ? { ...x, status: 'cancelled', cancelledAt: new Date().toISOString(), cancellationFee: fee, refundedToWallet: refund, depositReleased: true }
+            ? { ...x, status: 'cancelled', cancelledAt: new Date(cancelledAt).toISOString(), cancellationFee: fee, refundedToWallet: refund, depositReleased: true, statusLog: logStatus(x, 'cancelled', cancelledAt) }
             : x
         ),
         walletBalance: state.walletBalance + refund,
@@ -331,7 +473,7 @@ function reducer(state: AppState, action: Action): AppState {
           { kind: 'wallet', amount: refund, label: fee > 0 ? `Refund for ${o.id} (less ${fee.toLocaleString()} fee)` : `Refund for ${o.id}`, cash: true, orderId: o.id },
           { kind: 'points', amount: o.pointsUsed - o.pointsEarned, label: `Points reversed on ${o.id}`, orderId: o.id },
         ]),
-        notifications: notify(state, {
+        notifications: notify(state, { channel: 'orders',
           icon: 'undo', title: `${o.id} cancelled`,
           body: fee > 0 ? `Refunded ${refund.toLocaleString()} to wallet (10% late-cancel fee applied).` : `Fully refunded to your wallet. Deposit hold released.`,
           link: `#/order/${o.id}`,
@@ -364,7 +506,7 @@ function reducer(state: AppState, action: Action): AppState {
         orders: state.orders.map((x) =>
           x.id === o.id ? { ...x, lines, total: x.total + cost, extendedDays: (x.extendedDays ?? 0) + action.days } : x
         ),
-        notifications: notify(state, {
+        notifications: notify(state, { channel: 'orders',
           icon: 'calendar', title: `${o.id} extended by ${action.days} day${action.days > 1 ? 's' : ''}`,
           body: fromWallet >= cost ? `Rs ${cost.toLocaleString()} paid from wallet.` : `Rs ${cost.toLocaleString()} charged (Rs ${fromWallet.toLocaleString()} from wallet).`,
           link: `#/order/${o.id}`,
@@ -378,13 +520,20 @@ function reducer(state: AppState, action: Action): AppState {
       const avg = action.ratings.reduce((a, b) => a + b, 0) / Math.max(1, action.ratings.length)
       // blind two-way rating: the owner's rating of you publishes at the same moment yours does
       const ownerRating = 4 + (o.id.charCodeAt(o.id.length - 1) % 2)
+      /* The note used to be a single field stamped onto every line, so renting a
+         camera and a tripod together published the same sentence as a review of
+         both. A note now belongs to the item it was written about, and lines left
+         blank publish nothing rather than inheriting someone else's words. */
       let myReviews = state.myReviews
-      if (action.text?.trim()) {
+      const texts = action.texts ?? []
+      if (texts.some((t) => t?.trim())) {
         myReviews = { ...myReviews }
         o.lines.forEach((l, i) => {
+          const text = texts[i]?.trim()
+          if (!text) return
           const review: Review = {
             id: uid(), author: state.profile.name || 'You', rating: action.ratings[i] ?? Math.round(avg),
-            text: action.text!.trim(), date: todayISO(), role: 'renter',
+            text, date: todayISO(), role: 'renter',
           }
           myReviews[l.itemId] = [review, ...(myReviews[l.itemId] ?? [])]
         })
@@ -393,7 +542,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         myReviews,
         orders: state.orders.map((x) =>
-          x.id === o.id ? { ...x, lineRatings: action.ratings, myRatingOfOwner: avg, ownerRatingOfMe: ownerRating } : x
+          x.id === o.id ? { ...x, lineRatings: action.ratings, lineReviews: texts, myRatingOfOwner: avg, ownerRatingOfMe: ownerRating } : x
         ),
       }
     }
@@ -440,7 +589,7 @@ function reducer(state: AppState, action: Action): AppState {
     case 'REPORT':
       return {
         ...state,
-        reports: [...state.reports, action.report],
+        reports: [...state.reports, { ...action.report, orderId: action.orderId, nextAt: Date.now() + 20000 }],
         blockedOwners: action.block && !state.blockedOwners.includes(action.block)
           ? [...state.blockedOwners, action.block]
           : state.blockedOwners,
@@ -532,6 +681,11 @@ function reducer(state: AppState, action: Action): AppState {
          the state change land together; an effect runs after render, which shows
          one frame of the old palette on a slow phone. */
       document.documentElement.setAttribute('data-theme', action.theme)
+      /* And the browser chrome with it, or the status bar keeps the old palette
+         until the next launch. Same two colours the boot script uses. */
+      document
+        .querySelector('meta[name="theme-color"]')
+        ?.setAttribute('content', action.theme === 'dark' ? '#16130f' : '#fdfbf8')
       return { ...state, theme: action.theme }
 
     case 'SAVE_BOOKING_DRAFT': {
@@ -622,6 +776,76 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, availAlerts: [...state.availAlerts, { id: uid(), itemId: action.itemId, notifyAt: Date.now() + 25000 }] }
     }
 
+    case 'PAY_BALANCE': {
+      const o = state.orders.find((x) => x.id === action.orderId)
+      if (!o?.split || o.split.settledAt) return state
+      const { balance } = o.split
+      /* Wallet first, same as checkout — otherwise someone with credit sitting
+         there gets charged the card for money they have already given us. */
+      const fromWallet = Math.min(state.walletBalance, balance)
+      return {
+        ...state,
+        walletBalance: state.walletBalance - fromWallet,
+        orders: state.orders.map((x) =>
+          x.id === o.id ? { ...x, split: { ...o.split!, settledAt: Date.now() } } : x
+        ),
+        ledger: record(state, [{ kind: 'wallet', amount: -fromWallet, label: `Balance on ${o.id}`, orderId: o.id }]),
+        notifications: notify(state, {
+          channel: 'orders', icon: 'check-circle', title: `Balance settled on ${o.id}`,
+          body: `${money(balance)} paid in full. Nothing else is owed on this booking.`,
+          link: `#/order/${o.id}`,
+        }),
+      }
+    }
+
+    case 'ADD_CREW':
+      /* Matched on name rather than id: the id is generated here, so a duplicate
+         would always be a fresh one and the guard would never fire. */
+      return state.crew.some((c) => c.name.toLowerCase() === action.member.name.toLowerCase())
+        ? state
+        : { ...state, crew: [...state.crew, action.member] }
+
+    case 'SET_CREW_ACCESS':
+      return { ...state, crew: state.crew.map((c) => (c.id === action.id ? { ...c, access: action.access } : c)) }
+
+    case 'REMOVE_CREW':
+      return { ...state, crew: state.crew.filter((c) => c.id !== action.id) }
+
+    case 'SET_NOTIFY_PREF':
+      return { ...state, notifyPrefs: { ...state.notifyPrefs, [action.channel]: action.on } }
+
+    case 'ADD_EVIDENCE': {
+      const text = action.text.trim()
+      if (!text) return state
+      return {
+        ...state,
+        reports: state.reports.map((r) =>
+          r.id === action.reportId
+            ? { ...r, evidence: [...(r.evidence ?? []), { id: uid(), text, at: Date.now() }] }
+            : r
+        ),
+      }
+    }
+
+    case 'CLEAR_TIER_UP':
+      return state.tierReached ? { ...state, tierReached: undefined } : state
+
+    case 'SHARE_REFERRAL': {
+      /* Nobody can use a code they have never been sent, so the first share is
+         what starts the clock. Sharing again must not reset it or re-queue the
+         same friends. */
+      if (state.referralSharedAt) return state
+      const now = Date.now()
+      return {
+        ...state,
+        referralSharedAt: now,
+        referrals: RENTER_POOL.slice(0, 3).map((r, i) => ({
+          id: uid(), name: r.name, joinedAt: now + (i + 1) * 15000, status: 'joined' as const,
+          earned: 0, convertsAt: now + (i + 1) * 15000 + 30000,
+        })),
+      }
+    }
+
     case 'REDEEM_REFERRAL': {
       if (state.referralRedeemed || !/^PAPA-/i.test(action.code.trim())) return state
       // Hold the bonus rather than pay it out on code entry: it's released when
@@ -662,10 +886,10 @@ function reducer(state: AppState, action: Action): AppState {
             const item = getItem(of.itemId)
             const resolved: Offer = { ...of, status: verdict.status, counterRate: verdict.counter, resolveAt: undefined }
             const msg: Omit<AppNotification, 'id' | 'at' | 'read'> = verdict.status === 'accepted'
-              ? { icon: 'check-circle', title: `Offer accepted on ${item.name}`, body: `Locked at Rs ${of.offeredRate.toLocaleString()}/${of.unit} for 24h.`, link: `#/item/${of.itemId}` }
+              ? { channel: 'offers' as const, icon: 'check-circle', title: `Offer accepted on ${item.name}`, body: `Locked at Rs ${of.offeredRate.toLocaleString()}/${of.unit} for 24h.`, link: `#/item/${of.itemId}` }
               : verdict.status === 'countered'
-                ? { icon: 'undo', title: `Counter-offer on ${item.name}`, body: `Owner suggests Rs ${verdict.counter!.toLocaleString()}/${of.unit}.`, link: `#/item/${of.itemId}` }
-                : { icon: 'x-circle', title: `Offer declined on ${item.name}`, body: 'Try something closer to the recommended fare.', link: `#/item/${of.itemId}` }
+                ? { channel: 'offers' as const, icon: 'undo', title: `Counter-offer on ${item.name}`, body: `Owner suggests Rs ${verdict.counter!.toLocaleString()}/${of.unit}.`, link: `#/item/${of.itemId}` }
+                : { channel: 'offers' as const, icon: 'x-circle', title: `Offer declined on ${item.name}`, body: 'Try something closer to the recommended fare.', link: `#/item/${of.itemId}` }
             notifications = notify({ ...next, notifications }, msg)
             return resolved
           }
@@ -690,13 +914,13 @@ function reducer(state: AppState, action: Action): AppState {
           }
           chats[ownerId] = { messages: [...t.messages, reply], unread: t.unread + 1, typingUntil: undefined, pendingReplyAt: undefined }
           /* Linking to Profile dropped you a screen short of the reply you just
-             tapped. Inbox is where the thread actually is. getOwner falls back to
-             the first vendor for unknown ids, which named support after a stranger. */
+             tapped. Deep-link to the thread itself, not the list. */
           notifications = notify({ ...next, notifications }, {
+            channel: 'chat',
             icon: 'chat',
-            title: `${ownerId === 'support' ? 'Papa Support' : getOwner(ownerId).name} replied`,
+            title: `${threadPeer(next, ownerId).name} replied`,
             body: reply.text,
-            link: '#/inbox',
+            link: `#/inbox/${ownerId}`,
           })
         }
         next = { ...next, chats, notifications }
@@ -709,10 +933,63 @@ function reducer(state: AppState, action: Action): AppState {
         let notifications = next.notifications
         const orders = next.orders.map((o) => {
           if (!dueOrders.includes(o)) return o
-          notifications = notify({ ...next, notifications }, { icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
-          return { ...o, status: 'confirmed' as OrderStatus, approveAt: undefined, autoAdvanceAt: now + 25000 }
+          notifications = notify({ ...next, notifications }, { channel: 'orders', icon: 'handshake', title: `Owner approved ${o.id}`, body: 'Your booking is confirmed.', link: `#/order/${o.id}` })
+          /* This is the second route from requested to confirmed and it used to
+             set neither statusAt nor a log entry, so an order the owner approved
+             on the heartbeat showed no "Confirmed since" time while an identical
+             one advanced by hand did. */
+          return {
+            ...o, status: 'confirmed' as OrderStatus, approveAt: undefined,
+            statusAt: now, autoAdvanceAt: now + 25000, statusLog: logStatus(o, 'confirmed', now),
+          }
         })
         next = { ...next, orders, notifications }
+      }
+
+      // 3b. reports move from "we've read it" to "both sides are being heard"
+      const dueReports = next.reports.filter((r) => r.nextAt && r.nextAt <= now && r.status !== 'resolved')
+      if (dueReports.length) {
+        changed = true
+        let notifications = next.notifications
+        const reports = next.reports.map((r) => {
+          if (!dueReports.includes(r)) return r
+          if (r.status === 'under_review') {
+            notifications = notify({ ...next, notifications }, {
+              icon: 'scale', title: `Case ${r.caseNo} is now in mediation`,
+              body: `We've asked ${r.targetName} for their account. You'll get the outcome here.`,
+              link: '#/profile',
+            })
+            return { ...r, status: 'mediation' as const, nextAt: now + 45000 }
+          }
+          notifications = notify({ ...next, notifications }, {
+            icon: 'check-circle', title: `Case ${r.caseNo} resolved`,
+            body: 'Mediation closed. Full decision is on the case.', link: '#/profile',
+          })
+          return { ...r, status: 'resolved' as const, nextAt: undefined }
+        })
+        next = { ...next, reports, notifications }
+      }
+
+      // 3c. referred friends join, then complete a first rental and pay out
+      const dueFriends = next.referrals.filter((f) => f.convertsAt && f.convertsAt <= now && f.status === 'joined')
+      if (dueFriends.length) {
+        changed = true
+        let notifications = next.notifications
+        let ledger = next.ledger
+        let walletBalance = next.walletBalance
+        const referrals = next.referrals.map((f) => {
+          if (!dueFriends.includes(f)) return f
+          walletBalance += REFERRAL_BONUS
+          ledger = record({ ...next, ledger }, [{
+            kind: 'wallet', amount: REFERRAL_BONUS, label: `Referral bonus — ${f.name}`, cash: false,
+          }])
+          notifications = notify({ ...next, notifications }, {
+            icon: 'gift', title: `${f.name} completed their first rental`,
+            body: `Rs ${REFERRAL_BONUS} referral credit added to your wallet.`, link: '#/referrals',
+          })
+          return { ...f, status: 'rented' as const, earned: REFERRAL_BONUS, convertsAt: undefined }
+        })
+        next = { ...next, referrals, ledger, walletBalance, notifications }
       }
 
       // 4. user listing lifecycle: verification, then a first renter inquiry
@@ -862,7 +1139,7 @@ function reducer(state: AppState, action: Action): AppState {
         let notifications = next.notifications
         for (const a of dropped) {
           const item = getItem(a.itemId)
-          notifications = notify({ ...next, notifications }, {
+          notifications = notify({ ...next, notifications }, { channel: 'deals',
             icon: 'coins', title: `Price drop on ${item.name}`,
             body: `Now ${money(recommendedRate(a.itemId, 1))}/day, down from ${money(a.price)}.`,
             link: `#/item/${a.itemId}`,
@@ -928,6 +1205,19 @@ const LEGACY_SPACE: Record<string, IconName> = {
 }
 
 function migrate(s: any): any {
+  /* Notification switches used to live only in the settings screen's own storage
+     key. Carry a returning user's choices across rather than silently switching
+     everything back on the first time they open the app after this change. */
+  if (!s.notifyPrefs) {
+    let old: any = {}
+    try { old = JSON.parse(localStorage.getItem('papa-settings-v1') || '{}') } catch { /* unreadable */ }
+    s.notifyPrefs = {
+      orders: old.notifyOrders ?? true,
+      offers: old.notifyOffers ?? true,
+      chat: old.notifyChat ?? true,
+      deals: old.notifyDeals ?? false,
+    }
+  }
   // cart lines gained stable ids; backfill so older saved carts stay editable
   const withLineId = (b: any) => (b?.id ? b : { ...b, id: uid() })
   if (Array.isArray(s.cart)) s.cart = s.cart.map(withLineId)

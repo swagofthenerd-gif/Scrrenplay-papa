@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { getItem, getOwner } from '../data/catalog'
 import { useNav } from '../nav'
-import { useStore } from '../store'
+import { orderThreadId, useStore } from '../store'
 import { downloadReceipt, fmtDate, lineDuration, money } from '../utils'
 import { Badge, ItemArt } from '../components/ui'
 import { Avatar, Icon } from '../components/icons'
@@ -185,7 +185,7 @@ export default function OrderDetailView({ id }: { id: string }) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => go({ name: 'inbox', ownerId: owner.id })}>
+              <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => go({ name: 'inbox', ownerId: orderThreadId(order.id, owner.id) })}>
                 <Icon name="chat" size={14} /> Message
               </button>
               <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => go({ name: 'vendor', id: owner.id })}>

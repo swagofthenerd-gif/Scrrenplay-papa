@@ -754,7 +754,7 @@ export function Icon({
 }
 
 /* ---------------- monogram avatar (replaces emoji owner avatars) ---------------- */
-export function Avatar({ name, id, size = 46 }: { name: string; id: string; size?: number }) {
+export function Avatar({ name, id, size = 46, src }: { name: string; id: string; size?: number; src?: string }) {
   /* The rolling hash alone put every vendor in the same colour: ids run o1, o2,
      o3, so the hash landed one degree apart and a rail of avatars came out as
      six identical greens. Spreading the result by a step co-prime with 360
@@ -773,7 +773,9 @@ export function Avatar({ name, id, size = 46 }: { name: string; id: string; size
       style={{ width: size, height: size, fontSize: size * 0.34, ['--av-h' as string]: hue }}
       aria-hidden="true"
     >
-      {id === 'support' ? <Icon name="headset" size={size * 0.48} /> : initials}
+      {src
+        ? <img className="avatar-img" src={src} alt="" width={size} height={size} />
+        : id === 'support' ? <Icon name="headset" size={size * 0.48} /> : initials}
     </span>
   )
 }

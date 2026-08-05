@@ -116,6 +116,13 @@ export function bundleDiscount(count: number): number {
 export const POINTS_PER_100 = 1 // earn 1 PapaPoint per Rs 100; redeem 1 point = Rs 1
 export const GOLD_POINTS = 2000
 export const SILVER_POINTS = 500
+
+/** The tier a points balance buys. Three places worked this out inline with the
+    same two comparisons; crossing a threshold is only detectable if before and
+    after are computed the same way. */
+export function tierOf(points: number): 'Bronze Papa' | 'Silver Papa' | 'Gold Papa' {
+  return points >= GOLD_POINTS ? 'Gold Papa' : points >= SILVER_POINTS ? 'Silver Papa' : 'Bronze Papa'
+}
 export const GOLD_DISCOUNT_RATE = 0.05
 export const HOURS_DIVISOR = 6 // hourly rate = day rate / 6, minimum 3 hours
 
@@ -448,6 +455,150 @@ export function highlightMatch(text: string, query: string): { text: string; hit
 
 /* ---------------- receipt ---------------- */
 
+/** Hand the user a file, or show it to them if the device won't take one.
+
+    Blob downloads are silently blocked inside the Android WebView this app ships
+    in — the tap does nothing and the person is left thinking the button is
+    broken. Three call sites need this (receipt, CSV statement, data export) and
+    only the receipt had it, so the other two were dead buttons on the platform
+    that matters most. `text` is what gets rendered if the download route fails;
+    for anything that isn't already HTML it is shown as preformatted text, which
+    is at least selectable and shareable. */
+/* Three places invented their own fallback for a person who never typed a name:
+   the header said "Filmmaker", the avatar said "You", and onboarding offered
+   "Your name" as the placeholder — so the word you were shown while signing up
+   was not the word you were then called. One default, used everywhere. */
+export const NAME_FALLBACK = 'Filmmaker'
+
+/** Longest edge of a stored avatar. A modern phone camera JPEG is 3-8 MB and
+    localStorage is a few MB for the WHOLE app — orders, chats, ledger included —
+    so storing the file as picked would blow the quota and take the rest of the
+    app's state down with it. At 256px a 46px avatar is still crisp on a 3x
+    screen. */
+export const AVATAR_PX = 256
+
+/** Above this deposit, an instant-book listing is "premium" and wants a fully
+    verified renter. The number is the deposit, not the rate: what the owner is
+    exposed to if the gear does not come back is the thing verification is
+    actually about. */
+export const PREMIUM_DEPOSIT = 100000
+
+/** Share of the total taken at checkout on a split payment. A third is enough to
+    be a real commitment — it is the number a vendor would accept as one — while
+    leaving the bulk of the cost until the shoot is actually happening. */
+export const SPLIT_UPFRONT = 1 / 3
+
+/** Split a total into what is taken now and what is owed later.
+    Rounded so the two halves add back to the total exactly: computing each side
+    independently left a rupee unaccounted for on roughly half of all totals. */
+export function splitPayment(total: number): { paidNow: number; balance: number } {
+  const paidNow = Math.round(total * SPLIT_UPFRONT)
+  return { paidNow, balance: total - paidNow }
+}
+
+/** The balance falls due the day before the earliest pickup — late enough to be
+    worth deferring, early enough that a failed payment is still fixable before
+    anyone is standing at a gate waiting for gear. */
+export function balanceDueDate(startDates: string[]): string {
+  const earliest = [...startDates].sort()[0] ?? todayISO()
+  const d = new Date(`${earliest}T00:00:00`)
+  d.setDate(d.getDate() - 1)
+  const iso = toISO(d)
+  /* Booking for tomorrow (or today) would put the due date in the past, which
+     would show as already overdue the moment the order was placed. */
+  return iso < todayISO() ? todayISO() : iso
+}
+
+export function isPremium(item: { deposit: number }): boolean {
+  return item.deposit >= PREMIUM_DEPOSIT
+}
+
+/** Whether this renter can skip owner approval on this listing.
+
+    The profile has promised since day one that verifying "unlocks instant-book
+    on premium gear", and nothing anywhere read the flag — every instant-book
+    listing instant-booked for everyone, verified or not, so the promise was
+    describing a gate that did not exist. */
+export function canInstantBook(
+  item: { instantBook: boolean; deposit: number },
+  profile: { idVerified?: boolean; phoneVerified?: boolean; paymentVerified?: boolean }
+): boolean {
+  if (!item.instantBook) return false
+  if (!isPremium(item)) return true
+  return Boolean(profile.idVerified && profile.phoneVerified && profile.paymentVerified)
+}
+
+export const VERIFY_STEPS = ['id', 'phone', 'payment'] as const
+export type VerifyStep = (typeof VERIFY_STEPS)[number]
+
+export function verifiedCount(p: { idVerified?: boolean; phoneVerified?: boolean; paymentVerified?: boolean }): number {
+  return [p.idVerified, p.phoneVerified, p.paymentVerified].filter(Boolean).length
+}
+
+/** Downscale a picked image to a data: URL small enough to persist.
+    Rejects rather than resolving to something unusable, so the caller can say
+    what went wrong instead of silently storing nothing. */
+export function toAvatarDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) return reject(new Error('That file is not an image.'))
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, AVATAR_PX / Math.max(img.width, img.height))
+      const w = Math.max(1, Math.round(img.width * scale))
+      const h = Math.max(1, Math.round(img.height * scale))
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return reject(new Error('Could not process that image.'))
+      ctx.drawImage(img, 0, 0, w, h)
+      try {
+        /* JPEG, not PNG: a PNG of a photo is several times larger for no visible
+           gain at this size, and the difference is the difference between fitting
+           in the quota and not. */
+        resolve(canvas.toDataURL('image/jpeg', 0.82))
+      } catch {
+        reject(new Error('Could not process that image.'))
+      }
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That image could not be opened.')) }
+    img.src = url
+  })
+}
+export const displayName = (name?: string) => (name?.trim() ? name.trim() : NAME_FALLBACK)
+
+export function downloadOrShow(filename: string, body: string, mime: string) {
+  const a = document.createElement('a')
+  if (typeof a.download === 'string') {
+    try {
+      const blob = new Blob([body], { type: mime })
+      a.href = URL.createObjectURL(blob)
+      a.download = filename
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000)
+      return
+    } catch {
+      /* fall through to the inline renderer */
+    }
+  }
+  const html = mime === 'text/html'
+    ? body
+    : `<!doctype html><meta charset="utf-8"><title>${filename}</title><pre style="white-space:pre-wrap;font:13px/1.4 ui-monospace,monospace;padding:16px">${
+        body.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre>`
+  const w = window.open('', '_blank')
+  if (w) {
+    w.document.write(html)
+    w.document.close()
+    return
+  }
+  // last resort: replace the current document (WebView with popups disabled)
+  document.open()
+  document.write(html)
+  document.close()
+}
+
 export function downloadReceipt(order: Order) {
   const rows = order.lines.map((b) => {
     const item = getItem(b.itemId)
@@ -470,31 +621,7 @@ ${fee('PapaPoints redeemed', order.pointsUsed, true)}${fee('Wallet credit', orde
 </table>
 <p><small>Papa Rentals (Pvt) Ltd · support@paparentals.pk · This deposit is an authorization hold, not a charge.</small></p>
 </body></html>`
-  // Blob downloads are blocked inside the Android WebView wrapper, so fall back to
-  // rendering the receipt in a new document the user can share or print.
-  const a = document.createElement('a')
-  if (typeof a.download === 'string') {
-    try {
-      const blob = new Blob([html], { type: 'text/html' })
-      a.href = URL.createObjectURL(blob)
-      a.download = `papa-receipt-${order.id}.html`
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(a.href), 5000)
-      return
-    } catch {
-      /* fall through to the inline renderer */
-    }
-  }
-  const w = window.open('', '_blank')
-  if (w) {
-    w.document.write(html)
-    w.document.close()
-    return
-  }
-  // last resort: replace the current document (WebView with popups disabled)
-  document.open()
-  document.write(html)
-  document.close()
+  downloadOrShow(`papa-receipt-${order.id}.html`, html, 'text/html')
 }
 
 /**

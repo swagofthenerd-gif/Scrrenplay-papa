@@ -186,7 +186,19 @@ export interface Order {
       difference between a progress bar and knowing somebody is on it. */
   statusAt?: number
   driver?: Driver
+  /** Every status this order has entered, with when. statusAt only remembers the
+      current one, so "how long did approval actually take" was unanswerable the
+      moment the order moved on. Append-only. */
+  /** Set when the order was taken on a split: what was charged at checkout,
+      what is still owed, and when it falls due. The deposit hold is separate and
+      unaffected — it was never a charge in the first place. */
+  split?: { paidNow: number; balance: number; dueDate: string; settledAt?: number }
+  statusLog?: { status: OrderStatus; at: number }[]
   lineRatings?: number[]
+  /** The note left against each line, parallel to lineRatings. Kept on the order
+      because "Edit your rating" reopened the form with the stars restored and the
+      words gone, so editing a typo meant retyping the review. */
+  lineReviews?: string[]
   myRatingOfOwner?: number
   ownerRatingOfMe?: number
   reported?: boolean
@@ -235,7 +247,50 @@ export interface UserReport {
   reason: string
   note: string
   date: string
-  status: 'under_review' | 'resolved'
+  /* "Reported" and "in dispute" are not the same thing and were the same value.
+     A report is one side telling us something happened; mediation is both sides
+     having been asked and the case being actively arbitrated. People chase the
+     second and wait out the first, so collapsing them made every open case feel
+     like it had been filed into a void. */
+  status: 'under_review' | 'mediation' | 'resolved'
+  /** When the case next changes hands. Drives the same heartbeat everything
+      else in this app runs on. */
+  nextAt?: number
+  /** Set once mediation opens, so the order can say what is being arbitrated. */
+  orderId?: string
+  /** What you have added to the case since filing. A case you can only watch is
+      a case you cannot influence, and mediation explicitly asks for your side. */
+  evidence?: { id: string; text: string; at: number }[]
+}
+
+/** A friend who used your code. The app cannot know this for real without a
+    backend, so it is simulated on the same heartbeat that already approves
+    bookings and files claims — but the money is real state: each conversion
+    writes a ledger row like any other credit, so "Rs 1,500 earned" is a sum of
+    movements you can go and check rather than a number the screen made up. */
+export interface ReferralFriend {
+  id: string
+  name: string
+  joinedAt: number
+  /** joined = code used, rented = first rental completed and the bonus paid. */
+  status: 'joined' | 'rented'
+  earned: number
+  /** When this friend converts. Absent once they have. */
+  convertsAt?: number
+}
+
+/** Someone who can act on your account. A producer books gear their AD picks
+    and their accountant pays for — three people, one booking, and until now one
+    login passed around on a phone. */
+export interface CrewMember {
+  id: string
+  name: string
+  role: string
+  /** browse = can build a cart but not commit money; book = can place orders
+      against the shared wallet. Deliberately only two: any more and nobody can
+      say from memory what a given person is allowed to do. */
+  access: 'browse' | 'book'
+  addedAt: number
 }
 
 export interface AppNotification {
@@ -246,7 +301,18 @@ export interface AppNotification {
   at: number
   read: boolean
   link?: string // hash route to open
+  /** Which Settings toggle governs this. Absent means "always deliver" — used
+      for the handful that are not really optional, like a tier being reached. */
+  channel?: NotifyChannel
 }
+
+export type NotifyChannel = 'orders' | 'offers' | 'chat' | 'deals'
+
+/** Mirrors the Notifications toggles in Settings. Held in app state rather than
+    only in the settings screen's own storage, because the reducer is what has to
+    honour them — while they lived solely in Settings the switches changed a
+    stored boolean and nothing else, and every notification arrived regardless. */
+export type NotifyPrefs = Record<NotifyChannel, boolean>
 
 export type OwnerBookingStatus = 'pending' | 'accepted' | 'declined' | 'completed' | 'paid_out'
 
@@ -356,6 +422,16 @@ export interface Profile {
   phone?: string
   email?: string
   onboarded: boolean
+  /** A data: URL, downscaled before it is stored. There is no file host in a
+      client-only app, so the picture has to live in localStorage alongside
+      everything else — which is a hard few-megabyte budget shared with orders
+      and chat history, hence the downscale rather than keeping the original. */
+  avatar?: string
+  /** Phone and payment verification, alongside idVerified. Kept as separate
+      steps because they unlock different things and people complete them at
+      different times. */
+  phoneVerified?: boolean
+  paymentVerified?: boolean
   /** Whether the renter has completed ID verification. There is no real KYC in
       a client-only app, so this is a simulated one-tap step — but the badge that
       reads it must tell the truth rather than claim everyone is verified. */
@@ -414,7 +490,15 @@ export interface AppState {
   claims: Claim[]
   availAlerts: AvailAlert[]
   priceAlerts: PriceAlert[]
+  /** Set when points cross into a new tier, cleared once the celebration has
+      been shown. Without it the banner reappears on every visit. */
+  tierReached?: string
+  crew: CrewMember[]
+  notifyPrefs: NotifyPrefs
   referralRedeemed: boolean
+  referrals: ReferralFriend[]
+  /** Set the first time the code is shared; nobody joins before you tell them. */
+  referralSharedAt?: number
   /** A redeemed referral whose Rs 500 hasn't been paid yet. Real referral
       programs release the bonus on a qualifying action, not on code entry, so
       an invented code can't be turned straight into wallet cash — the credit

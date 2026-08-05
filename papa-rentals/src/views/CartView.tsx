@@ -16,6 +16,9 @@ import {
   shiftBooking,
   todayISO,
   uid,
+  canInstantBook,
+  splitPayment,
+  balanceDueDate,
 } from '../utils'
 import { Badge, ItemArt, ItemCard, Modal } from '../components/ui'
 import { Icon } from '../components/icons'
@@ -120,11 +123,20 @@ export default function CartView() {
   const address = state.addresses.find((a) => a.id === state.selectedAddressId) ?? state.addresses[0]
   const card = state.cards.find((c) => c.id === state.selectedCardId) ?? state.cards[0]
   const needsDelivery = state.cart.some((b) => b.transport !== 'pickup')
-  const needsApproval = state.cart.some((b) => !getItem(b.itemId).instantBook)
+  /* Was `!item.instantBook`, which ignored the renter entirely — so "verify to
+     unlock instant-book on premium gear" unlocked nothing, because premium gear
+     already instant-booked for everybody. */
+  const needsApproval = state.cart.some((b) => !canInstantBook(getItem(b.itemId), state.profile))
   /* "Card" in an order record is useless a month later when you're reconciling
      against a bank statement — name the card that was actually used. */
   const payName = PAY_BY_ID.get(payMethod)?.name ?? 'Card'
   const payLabel = payMethod === 'card' && card ? `${card.brand} ••${card.last4}` : payName
+  /* Gear for a big shoot is often booked weeks ahead, and the whole cost landing
+     the moment you press confirm is the reason a cart gets abandoned and put
+     back together closer to the day. */
+  const [splitPay, setSplitPay] = useState(false)
+  const parts = splitPayment(t.total)
+  const dueOn = balanceDueDate(state.cart.map((b) => b.startDate))
   /* Card and COD both settle against a card — one is the payment, the other is
      the deposit hold. Letting the order through with no card just fails later. */
   const needsCard = (payMethod === 'card' || payMethod === 'cod') && !card
@@ -317,6 +329,7 @@ export default function CartView() {
       opts: {
         ...opts,
         paymentMethod: payLabel,
+        split: splitPay,
         address: needsDelivery && address
           ? `${address.label} — ${address.detail}${addrNote.trim() ? ` (${addrNote.trim()})` : ''}${address.geo ? ` [pin ${address.geo.lat},${address.geo.lng}]` : ''}`
           : 'Self pickup',
@@ -339,7 +352,12 @@ export default function CartView() {
         <div className="cart-line-info">
           <b style={{ fontSize: 14, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.name}>{item.name}</b>
           {b.negotiated && <Badge tone="purple"><Icon name="handshake" size={14} /> Negotiated</Badge>}
-          {!item.instantBook && <Badge tone="orange"><Icon name="hourglass" size={14} /> Needs approval</Badge>}
+          {!canInstantBook(item, state.profile) && (
+            <Badge tone="orange">
+              <Icon name="hourglass" size={14} />{' '}
+              {item.instantBook ? 'Needs approval — verify to skip' : 'Needs approval'}
+            </Badge>
+          )}
           <div className="muted small">
             {b.unit === 'hour'
               ? `${fmtDate(b.startDate)} · ${b.hours}h from ${b.pickupTime}`
@@ -687,8 +705,26 @@ export default function CartView() {
                 <div className="price-line"><span className="muted small" style={{ fontWeight: 800 }}>Discounts</span><span /></div>
               )}
               {t.promoDiscount > 0 && <div className={`price-line${flashPromo}`}><span>Promo discount</span><b className="credit">−{money(t.promoDiscount)}</b></div>}
-              {t.tierDiscount > 0 && <div className="price-line"><span><Icon name="medal" size={14} /> Gold perk (5% off)</span><b className="credit">−{money(t.tierDiscount)}</b></div>}
-              {t.vanPerk > 0 && <div className="price-line"><span><Icon name="medal" size={14} /> Free van delivery perk</span><b className="credit">−{money(t.vanPerk)}</b></div>}
+              {/* The perks panel on Profile says these apply "automatically", and
+                  here they duly appear with nothing tying them back to the tier
+                  that earned them — so the one place the loop pays off never
+                  points at the place that explains it. */}
+              {t.tierDiscount > 0 && (
+                <div className="price-line">
+                  <button className="perk-link" onClick={() => go({ name: 'profile' })}>
+                    <Icon name="medal" size={14} /> Gold perk (5% off)
+                  </button>
+                  <b className="credit">−{money(t.tierDiscount)}</b>
+                </div>
+              )}
+              {t.vanPerk > 0 && (
+                <div className="price-line">
+                  <button className="perk-link" onClick={() => go({ name: 'profile' })}>
+                    <Icon name="medal" size={14} /> Free van delivery perk
+                  </button>
+                  <b className="credit">−{money(t.vanPerk)}</b>
+                </div>
+              )}
               {t.pointsUsed > 0 && <div className={`price-line${flashPoints}`}><span>PapaPoints</span><b className="credit">−{money(t.pointsUsed)}</b></div>}
               {t.walletUsed > 0 && <div className={`price-line${flashWallet}`}><span>Wallet credit</span><b className="credit">−{money(t.walletUsed)}</b></div>}
               <div className={`price-line total${flashTotal}`} aria-live="polite"><span>Charged now</span><span>{money(t.total)}</span></div>
@@ -820,11 +856,36 @@ export default function CartView() {
             {needsDelivery && address ? `Delivering to ${address.label} — ${address.detail}. ` : 'Self pickup from the vendor. '}
             Paying by {payLabel}.
           </p>
+          <div className="split-pick">
+            <button
+              className={`split-opt ${!splitPay ? 'active' : ''}`}
+              aria-pressed={!splitPay}
+              onClick={() => setSplitPay(false)}
+            >
+              <b>Pay in full</b>
+              <span className="muted small">{money(t.total)} now</span>
+            </button>
+            <button
+              className={`split-opt ${splitPay ? 'active' : ''}`}
+              aria-pressed={splitPay}
+              onClick={() => setSplitPay(true)}
+            >
+              <b>Pay {money(parts.paidNow)} now</b>
+              <span className="muted small">{money(parts.balance)} on {fmtDate(dueOn)}</span>
+            </button>
+          </div>
+          {splitPay && (
+            <p className="muted small" style={{ marginTop: 8 }}>
+              The rest is due the day before pickup. The security deposit is a hold either way — it is never a charge.
+            </p>
+          )}
           <p className="muted small">
             By continuing you accept the cancellation policy: free until 48h before your start date, 10% fee inside 48h.
           </p>
           <button className="btn btn-primary btn-block" onClick={placeOrder}>
-            {needsApproval ? `Request booking · ${money(t.total)}` : `Confirm & pay ${money(t.total)}`}
+            {needsApproval
+              ? `Request booking · ${money(splitPay ? parts.paidNow : t.total)}`
+              : `Confirm & pay ${money(splitPay ? parts.paidNow : t.total)}`}
           </button>
         </Modal>
       )}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavContext, browseTabView, useHashRouter, useNav } from './nav'
 import { StoreProvider, useStore } from './store'
-import { buzz, fmtTimeAgo } from './utils'
+import { buzz, fmtTimeAgo, NAME_FALLBACK } from './utils'
 import { getItem } from './data/catalog'
 import { ItemArt, Modal } from './components/ui'
 import { Icon, IconSketchFilter, LogoMark } from './components/icons'
@@ -20,6 +20,10 @@ import OrdersView from './views/OrdersView'
 import ProfileView from './views/ProfileView'
 import WalletView from './views/WalletView'
 import SettingsView from './views/SettingsView'
+import ReferralsView from './views/ReferralsView'
+import VerifyView from './views/VerifyView'
+import PublicProfileView from './views/PublicProfileView'
+import CrewView from './views/CrewView'
 import InboxView from './views/InboxView'
 import OrderDetailView from './views/OrderDetailView'
 
@@ -102,7 +106,7 @@ function Onboarding() {
       </p>
       <label className="field">
         What should we call you?
-        <input value={name} placeholder="Your name" enterKeyHint="done" onChange={(e) => setName(e.target.value)} />
+        <input value={name} placeholder={NAME_FALLBACK} enterKeyHint="done" onChange={(e) => setName(e.target.value)} />
       </label>
       <div className="field" style={{ marginTop: 12 }}>
         Your city
@@ -180,6 +184,10 @@ function Shell() {
           {view.name === 'services' && <Services />}
           {view.name === 'wallet' && <WalletView />}
           {view.name === 'settings' && <SettingsView />}
+          {view.name === 'referrals' && <ReferralsView />}
+          {view.name === 'verify' && <VerifyView />}
+          {view.name === 'publicProfile' && <PublicProfileView />}
+          {view.name === 'crew' && <CrewView />}
           {view.name === 'inbox' && <InboxView ownerId={view.ownerId} />}
           {view.name === 'order' && <OrderDetailView id={view.id} />}
         </main>
@@ -200,7 +208,7 @@ function Shell() {
           <span className="nav-ico"><Icon name="box" /></span>Orders
           {activeOrders > 0 && <span className="dot">{activeOrders}</span>}
         </button>
-        <button className={['profile', 'post', 'dashboard', 'support', 'wallet', 'settings', 'inbox'].includes(view.name) ? 'active' : ''} onClick={() => go({ name: 'profile' })}>
+        <button className={['profile', 'post', 'dashboard', 'support', 'wallet', 'settings', 'inbox', 'referrals', 'verify', 'publicProfile', 'crew'].includes(view.name) ? 'active' : ''} onClick={() => go({ name: 'profile' })}>
           <span className="nav-ico"><Icon name="user" /></span>Profile
         </button>
       </nav>
