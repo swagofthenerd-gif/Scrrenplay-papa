@@ -1393,11 +1393,11 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   border-bottom-right-radius: 2px; pointer-events: none; z-index: 1;
 }
 .home-view .kit-tile { position: relative; }
-/* The page itself is the sheet everything is pinned to. */
-/* Tight enough to read as a texture rather than as a grid of dots you can
-   count. Spread out it stopped being paper and started being a pattern; the
-   ink comes down a little to pay for the extra density. */
-.home-view { background-image: radial-gradient(color-mix(in srgb, var(--ink-draw-soft) 11%, transparent) 1px, transparent 1px); background-size: 5px 5px; }
+/* No background here on purpose. Home used to paint its own 5px dot texture on
+   top of the body's 14px staggered field, which made it the one tab on a
+   different material — a denser, finer grain you could see the moment you
+   switched to Browse. The sheet everything is pinned to is owned by body and
+   nowhere else (see the note there), so Home now shows through to it. */
 
 /* ---------- Services band ---------- */
 .svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; }

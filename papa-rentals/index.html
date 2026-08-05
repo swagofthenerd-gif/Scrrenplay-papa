@@ -3,18 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#fdfbf8" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#16130f" media="(prefers-color-scheme: dark)" />
+    <!-- One tag, no media query: the status bar has to match the theme the app
+         chose, and the app no longer follows the system. The boot script below
+         and SET_THEME both keep this in step. -->
+    <meta name="theme-color" content="#fdfbf8" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- Runs before the bundle and before first paint. Setting the theme from
-         React instead would mean the app renders light and then flips — a white
-         flash into a dark room, on every single launch. -->
+         React instead would mean the app renders light and then flips, on every
+         single launch.
+
+         Light is the default, not the system preference: this app is a paper
+         sheet with ink on it, and light is the look it was drawn for. Someone
+         arriving on a dark-mode phone should still see it that way the first
+         time. Dark stays one tap away in Settings > Appearance, and once picked
+         it is remembered here and wins on every later launch. -->
     <script>
       (function () {
         try {
           var saved = JSON.parse(localStorage.getItem('papa-rentals-v2') || '{}').theme
-          var dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+          var dark = saved === 'dark'
           document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+          if (dark) {
+            var m = document.querySelector('meta[name="theme-color"]')
+            if (m) m.setAttribute('content', '#16130f')
+          }
         } catch (e) {
           /* Private mode can throw on localStorage. Light is the safe default. */
           document.documentElement.setAttribute('data-theme', 'light')

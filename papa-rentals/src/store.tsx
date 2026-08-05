@@ -681,6 +681,11 @@ function reducer(state: AppState, action: Action): AppState {
          the state change land together; an effect runs after render, which shows
          one frame of the old palette on a slow phone. */
       document.documentElement.setAttribute('data-theme', action.theme)
+      /* And the browser chrome with it, or the status bar keeps the old palette
+         until the next launch. Same two colours the boot script uses. */
+      document
+        .querySelector('meta[name="theme-color"]')
+        ?.setAttribute('content', action.theme === 'dark' ? '#16130f' : '#fdfbf8')
       return { ...state, theme: action.theme }
 
     case 'SAVE_BOOKING_DRAFT': {
