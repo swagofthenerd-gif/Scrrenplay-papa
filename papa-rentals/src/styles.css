@@ -791,7 +791,16 @@ select.filter-chip {
 .avail-day:active { transform: scale(0.9); }
 .avail-day .d { font-size: 14px; }
 .avail-day.busy { background: var(--red-soft); color: var(--red); opacity: 0.75; cursor: not-allowed; }
-.avail-day.sel { outline: 2px solid var(--accent); transform: scale(1.05); }
+.avail-day:disabled { cursor: not-allowed; }
+/* Every selected day was outlined identically, so a five-day range read as five
+   separate picks. The ends carry the accent fill and the days between are a
+   tint, which is what makes it look like one booking. */
+.avail-day.sel { background: var(--accent-soft); color: var(--accent-dark); }
+.avail-day.range-start, .avail-day.range-end { background: var(--accent); color: #fff; transform: scale(1.05); }
+/* A day that would make the range span someone else's booking. Muted rather than
+   red: nothing is wrong with the day itself, it just cannot be a return date. */
+.avail-day:disabled:not(.busy) { background: var(--card-2); color: var(--muted); opacity: 0.6; }
+.avail-hint { margin: 8px 0 0; }
 
 /* ---------- Booking form ---------- */
 .form-row { display: flex; gap: 10px; margin-top: 10px; }
@@ -1962,3 +1971,45 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
   display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 11px 13px;
   border-radius: var(--r-md); background: var(--accent-soft); border: 1px solid var(--accent);
 }
+
+
+/* ---------- Full-screen photo viewer ---------- */
+.gallery-shot { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; position: relative; }
+.gallery-zoom {
+  position: absolute; right: 12px; bottom: 12px; z-index: 2;
+  display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+  border-radius: 50%; background: rgba(20, 14, 8, 0.55); color: #fff; backdrop-filter: blur(6px);
+}
+.lightbox { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; }
+/* Its own layer rather than a background on .lightbox, so a tap on the photo is
+   not a tap on the scrim — closing while someone is inspecting a lens mount is
+   the one thing this viewer must not do. */
+.lightbox-scrim { position: absolute; inset: 0; border: 0; padding: 0; background: rgba(12, 8, 4, 0.94); cursor: zoom-out; }
+.lightbox-track {
+  position: relative; z-index: 1; display: flex; width: 100%; height: 100dvh;
+  overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior: contain;
+}
+.lightbox-track::-webkit-scrollbar { display: none; }
+.lightbox-slide { flex: none; width: 100%; height: 100%; scroll-snap-align: center; display: flex; align-items: center; justify-content: center; padding: 16px; }
+/* Contain, never cover: a cropped photo is the opposite of what a full-screen
+   view is for. */
+.lightbox-slide img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--r-sm); }
+.lightbox-bar {
+  position: absolute; z-index: 3; top: calc(10px + env(safe-area-inset-top)); left: 12px; right: 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; pointer-events: none;
+}
+.lightbox-bar > * { pointer-events: auto; }
+.lightbox-count { font-size: 13px; font-weight: 700; color: #fff; background: rgba(20, 14, 8, 0.6); padding: 6px 12px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.lightbox-close, .lightbox-nav {
+  display: flex; align-items: center; justify-content: center; width: 44px; height: 44px;
+  border: 0; border-radius: 50%; background: rgba(20, 14, 8, 0.6); color: #fff; cursor: pointer;
+}
+.lightbox-close { margin-left: auto; }
+.lightbox-nav { position: absolute; z-index: 3; top: 50%; transform: translateY(-50%); }
+.lightbox-nav.prev { left: 10px; }
+.lightbox-nav.next { right: 10px; }
+.lightbox-nav:disabled { opacity: 0; pointer-events: none; }
+.lightbox :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+/* Arrows are a pointer affordance; on a touch screen the swipe is the gesture
+   and two floating buttons just cover the photo. */
+@media (hover: none) { .lightbox-nav { display: none; } }

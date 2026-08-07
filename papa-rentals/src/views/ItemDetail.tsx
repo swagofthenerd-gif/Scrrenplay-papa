@@ -77,6 +77,11 @@ export default function ItemDetail({ id, from, to }: { id: string; from?: string
 
   const conflict = findConflict(id, { start: startDate, end: effEnd }, state.orders, state.cart)
   const nextFree = conflict ? nextAvailable(id, effEnd, duration === 0 ? 1 : days, state.orders, state.cart) : null
+  /* Which half of the two-tap range the strip is waiting for. Lives here rather
+     than in the strip because typing into the date fields, or switching to
+     hourly, has to cancel a half-finished pick — otherwise the next tap on the
+     strip completes a range against a start the person already replaced. */
+  const [awaitingEnd, setAwaitingEnd] = useState(false)
   const invalidRange = unit === 'day' && endDate < startDate
   const shownReviews = starFilter == null ? item.reviews : item.reviews.filter((rv) => Math.round(rv.rating) === starFilter)
 
@@ -316,27 +321,31 @@ export default function ItemDetail({ id, from, to }: { id: string; from?: string
 
             {item.hourly && (
               <div className="unit-toggle" role="tablist">
-                <button className={unit === 'day' ? 'active' : ''} onClick={() => setUnit('day')}>By day</button>
-                <button className={unit === 'hour' ? 'active' : ''} onClick={() => { setUnit('hour'); setEndDate(startDate) }}>
+                <button className={unit === 'day' ? 'active' : ''} onClick={() => { setUnit('day'); setAwaitingEnd(false) }}>By day</button>
+                <button className={unit === 'hour' ? 'active' : ''} onClick={() => { setUnit('hour'); setEndDate(startDate); setAwaitingEnd(false) }}>
                   By hour · {money(hourlyRate(id))}/hr
                 </button>
               </div>
             )}
 
-            <AvailabilityStrip itemId={id} selectedStart={startDate} selectedEnd={effEnd} onPick={(d) => {
-              setStartDate(d)
-              if (unit === 'day' && endDate < d) setEndDate(d)
-            }} />
+            <AvailabilityStrip
+              itemId={id}
+              unit={unit}
+              selectedStart={startDate}
+              selectedEnd={effEnd}
+              awaitingEnd={awaitingEnd}
+              onRange={(s, e, awaiting) => { setStartDate(s); setEndDate(e); setAwaitingEnd(awaiting) }}
+            />
 
             <div className="form-row">
               <label className="field">
                 Start date
-                <input type="date" value={startDate} min={todayISO()} onChange={(e) => { setStartDate(e.target.value); if (unit === 'day' && endDate < e.target.value) setEndDate(e.target.value) }} />
+                <input type="date" value={startDate} min={todayISO()} onChange={(e) => { setStartDate(e.target.value); setAwaitingEnd(false); if (unit === 'day' && endDate < e.target.value) setEndDate(e.target.value) }} />
               </label>
               {unit === 'day' ? (
                 <label className="field">
                   Return date
-                  <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
+                  <input type="date" value={endDate} min={startDate} onChange={(e) => { setEndDate(e.target.value); setAwaitingEnd(false) }} />
                 </label>
               ) : (
                 <label className="field">
@@ -641,11 +650,22 @@ function FragmentRow({ stars, count, pct }: { stars: number; count: number; pct:
 }
 
 /* ---------------- availability strip: next 14 days at a glance ---------------- */
-function AvailabilityStrip({ itemId, selectedStart, selectedEnd, onPick }: {
+/* The strip used to be start-only: every tap called back with one date and set
+   the start, while the highlight between start and end told you it was a range
+   picker. So a tap meant as "return this day" threw away the range you had and
+   restarted from there — which is what made picking dates feel broken.
+
+   It is a two-tap range now, the way every date picker people already use works:
+   tap the start, tap the return. A tap before the current start restarts rather
+   than making a backwards range, so there is no way to end up in an invalid
+   state by tapping. */
+function AvailabilityStrip({ itemId, unit, selectedStart, selectedEnd, awaitingEnd, onRange }: {
   itemId: string
+  unit: RentalUnit
   selectedStart: string
   selectedEnd: string
-  onPick: (date: string) => void
+  awaitingEnd: boolean
+  onRange: (start: string, end: string, awaiting: boolean) => void
 }) {
   const { state } = useStore()
   const ranges = unavailableRanges(itemId, state.orders, state.cart)
@@ -654,26 +674,62 @@ function AvailabilityStrip({ itemId, selectedStart, selectedEnd, onPick }: {
     d.setDate(d.getDate() + i)
     return d
   })
+
+  const busyOn = (iso: string) => ranges.some((r) => rangesOverlap({ start: iso, end: iso }, r))
+
+  function pick(iso: string) {
+    /* An hourly booking is one day by definition, so there is no second tap to
+       wait for — offering one would be a mode that never ends. */
+    if (unit === 'hour') return onRange(iso, iso, false)
+    if (awaitingEnd && iso >= selectedStart) return onRange(selectedStart, iso, false)
+    onRange(iso, iso, true)
+  }
+
   return (
-    <div className="avail-strip" aria-label="Next two weeks availability">
-      {days.map((d) => {
-        const iso = toISO(d)
-        const busy = ranges.some((r) => rangesOverlap({ start: iso, end: iso }, r))
-        const sel = iso >= selectedStart && iso <= selectedEnd
-        return (
-          <button
-            key={iso}
-            className={`avail-day ${busy ? 'busy' : ''} ${sel ? 'sel' : ''}`}
-            disabled={busy}
-            onClick={() => onPick(iso)}
-            aria-label={`${iso} ${busy ? 'booked' : 'available'}`}
-          >
-            {d.toLocaleDateString('en-GB', { weekday: 'short' }).slice(0, 2)}
-            <div className="d">{d.getDate()}</div>
-          </button>
-        )
-      })}
-    </div>
+    <>
+      <div className="avail-strip" aria-label="Next two weeks availability">
+        {days.map((d) => {
+          const iso = toISO(d)
+          const busy = busyOn(iso)
+          /* While waiting for a return date, a day you could not actually rent
+             through to is not a choice. Blocking it here beats letting someone
+             build a range and only then telling them it collides. */
+          const spansBusy =
+            awaitingEnd && unit === 'day' && iso > selectedStart &&
+            ranges.some((r) => rangesOverlap({ start: selectedStart, end: iso }, r))
+          const sel = iso >= selectedStart && iso <= selectedEnd
+          const isStart = iso === selectedStart
+          const isEnd = iso === selectedEnd
+          return (
+            <button
+              key={iso}
+              className={`avail-day ${busy ? 'busy' : ''} ${sel ? 'sel' : ''} ${isStart ? 'range-start' : ''} ${isEnd ? 'range-end' : ''}`}
+              disabled={busy || spansBusy}
+              onClick={() => pick(iso)}
+              aria-pressed={sel}
+              aria-label={
+                busy ? `${iso}, already booked`
+                  : spansBusy ? `${iso}, cannot return this day — something is booked in between`
+                  : awaitingEnd ? `Return on ${iso}`
+                  : `Start on ${iso}`
+              }
+            >
+              {d.toLocaleDateString('en-GB', { weekday: 'short' }).slice(0, 2)}
+              <div className="d">{d.getDate()}</div>
+            </button>
+          )
+        })}
+      </div>
+      {/* A two-tap picker has to say which tap it is on, or the second tap is a
+          guess. This is the only thing on screen that knows. */}
+      {unit === 'day' && (
+        <p className="muted small avail-hint" aria-live="polite">
+          {awaitingEnd
+            ? <><Icon name="calendar" size={13} /> Now tap the day you'll return it — or tap the same day for a one-day rental.</>
+            : <><Icon name="check" size={13} /> {fmtDate(selectedStart)} to {fmtDate(selectedEnd)} · tap a day to start again.</>}
+        </p>
+      )}
+    </>
   )
 }
 

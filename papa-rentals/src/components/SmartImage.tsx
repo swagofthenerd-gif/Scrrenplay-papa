@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { Lightbox } from './Lightbox'
+import { Icon } from './icons'
 
 // URLs that already failed once this session — render the fallback immediately
 // on remount instead of re-flashing a skeleton and re-requesting a dead image.
@@ -55,6 +57,7 @@ export function SmartImage({
 /** Swipeable photo gallery: CSS scroll-snap does the physics, dots follow scroll. */
 export function PhotoGallery({ images, alt, fallback, overlay }: { images: string[]; alt: string; fallback: ReactNode; overlay?: ReactNode }) {
   const [page, setPage] = useState(0)
+  const [zoomed, setZoomed] = useState(false)
   const trackRef = useRef<HTMLDivElement>(null)
   const live = images.filter((src) => !failed.has(src))
 
@@ -77,10 +80,21 @@ export function PhotoGallery({ images, alt, fallback, overlay }: { images: strin
           if (el) setPage(Math.round(el.scrollLeft / el.clientWidth))
         }}
       >
+        {/* A real button, so the photo is reachable by keyboard and announces
+            what tapping it does. The gallery still swipes: a scroll never fires
+            a click, so the two gestures do not fight. */}
         {live.map((src, i) => (
-          <div key={src} className="item-art art-hero" style={{ borderRadius: 0 }}>
+          <button
+            key={src}
+            type="button"
+            className="item-art art-hero gallery-shot"
+            style={{ borderRadius: 0 }}
+            onClick={() => setZoomed(true)}
+            aria-label={`Open photo ${i + 1} of ${live.length} full screen`}
+          >
             <SmartImage src={src} alt={i === 0 ? alt : `${alt} — photo ${i + 1}`} fallback={fallback} eager={i === 0} box="hero" />
-          </div>
+            <span className="gallery-zoom" aria-hidden="true"><Icon name="search" size={15} /></span>
+          </button>
         ))}
       </div>
       {live.length > 1 && (
@@ -91,6 +105,7 @@ export function PhotoGallery({ images, alt, fallback, overlay }: { images: strin
         </div>
       )}
       {overlay}
+      {zoomed && <Lightbox images={live} alt={alt} startAt={page} onClose={() => setZoomed(false)} />}
     </div>
   )
 }

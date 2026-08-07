@@ -1158,7 +1158,10 @@ function reducer(state: AppState, action: Action): AppState {
         const orders = next.orders.map((o) => {
           if (!remindDue.includes(o)) return o
           notifications = notify({ ...next, notifications }, {
-            icon: 'clapperboard', title: `Shoot day soon — ${o.id}`,
+            /* An order reminder is an order update. Untagged it bypassed the
+               Notifications switch entirely, which is the exact failure that
+               switch was built to stop. */
+            channel: 'orders', icon: 'clapperboard', title: `Shoot day soon — ${o.id}`,
             body: 'Gear arrives at your slot time. Charge your batteries and sleep well!', link: `#/order/${o.id}`,
           })
           return { ...o, reminded: true }
