@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- One tag, no media query: the status bar has to match the theme the app
+         chose, and the app no longer follows the system. The boot script below
+         and SET_THEME both keep this in step. -->
+    <meta name="theme-color" content="#fdfbf8" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <!-- Runs before the bundle and before first paint. Setting the theme from
+         React instead would mean the app renders light and then flips, on every
+         single launch.
+
+         Light is the default, not the system preference: this app is a paper
+         sheet with ink on it, and light is the look it was drawn for. Someone
+         arriving on a dark-mode phone should still see it that way the first
+         time. Dark stays one tap away in Settings > Appearance, and once picked
+         it is remembered here and wins on every later launch. -->
+    <script>
+      (function () {
+        try {
+          var saved = JSON.parse(localStorage.getItem('papa-rentals-v2') || '{}').theme
+          var dark = saved === 'dark'
+          document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+          if (dark) {
+            var m = document.querySelector('meta[name="theme-color"]')
+            if (m) m.setAttribute('content', '#16130f')
+          }
+        } catch (e) {
+          /* Private mode can throw on localStorage. Light is the safe default. */
+          document.documentElement.setAttribute('data-theme', 'light')
+        }
+      })()
+    </script>
+    <link rel="preload" href="./fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <style>
+      @font-face {
+        font-family: 'Plus Jakarta Sans';
+        font-style: normal;
+        font-weight: 200 800;
+        font-display: swap;
+        src: url('./fonts/plus-jakarta-sans-latin.woff2') format('woff2');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: 'Plus Jakarta Sans';
+        font-style: normal;
+        font-weight: 200 800;
+        font-display: swap;
+        src: url('./fonts/plus-jakarta-sans-latin-ext.woff2') format('woff2');
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+    </style>
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Papa Rentals" />
+    <title>Papa Rentals — Rent Everything for Your Shoot</title>
+    <meta name="description" content="Papa Rentals: the filmmaker's rental marketplace. Cameras, lenses, lighting, grip, transport & crew — book by day and hour, at your price." />
+    <script type="module" crossorigin src="./assets/index-qeml8cKM.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DO6MtyCk.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
