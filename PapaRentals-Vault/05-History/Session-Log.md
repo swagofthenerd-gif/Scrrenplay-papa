@@ -78,6 +78,19 @@ Condensed from commit history.
 earnings on the hosting row, grouped sections, scannable perks, hourly bookings
 given a way forward.
 
+**UI/UX audit, top five fixed** (`86018d0`) — Used the app end to end and wrote
+down 100 findings (50 UI, 50 UX). Implemented the five that decided whether a
+task could be completed at all: 164 of 419 touch targets under 44px (fixed with
+centred `::after` hit expanders, 23 remain and are deliberate), scroll position
+lost on back (restore now holds across layout frames and ignores its own
+scrolls — 792→150 became 900→900), the sticky CTA overlapping the bottom nav by
+7px (`--nav-h` was guessed at 62 against a measured 69), toasts with no
+`role`/`aria-live`, and nothing telling you what happens after you pay. The
+other 95 findings are recorded but not built.
+
+**Date picker + lightbox** (`17f5118`) — "Book your dates" became a two-tap
+range instead of a start-only picker, and product photos open full screen.
+
 **Browse + Home redesign** (`2815bb3`, PR #13) — Home cut from nine screens to
 under four, explanatory copy stripped so the drawings talk, the filmic grade and
 paper texture shipped, cart and orders backlogs worked, Browse closed out with
