@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { CategoryId } from './types'
 
 export type BrowseSort = 'relevance' | 'popular' | 'price_asc' | 'price_desc' | 'rating' | 'nearest'
@@ -169,23 +169,76 @@ export function useHashRouter(): { view: View; go: (v: View, opts?: { replace?: 
     return v
   })
 
+  /* True while we are putting the page back where it was. Scroll positions are
+     recorded on every scroll event, and a restore *is* a scroll — so without
+     this the restore's own intermediate positions overwrite the very value it
+     is trying to reach. That was the real bug: coming back from an item wrote
+     the clamped mid-layout position over the remembered one, so the value was
+     already destroyed by the time anything could have used it. */
+  const restoring = useRef(false)
+
   useEffect(() => {
     if (!location.hash) history.replaceState(null, '', '#/')
+
+    /* Restoring in a single frame does not work: the incoming view has not laid
+       out yet, so the document is still short and the browser clamps the scroll
+       to whatever fits. Keep asking across frames until the page is actually
+       tall enough to honour the position, bounded so a route that never gets
+       there cannot spin. */
+    const restore = () => {
+      const hash = location.hash
+      const want = scrollMemory.get(hash) ?? 0
+      /* Instant, never smooth. html sets scroll-behavior: smooth, which turns a
+         restore into a visible half-second of the page scrolling itself while you
+         watch — and makes every intermediate frame a position the loop below then
+         reads back. Coming back should look like you never left. */
+      restoring.current = true
+      let frames = 0
+      const tick = () => {
+        if (!restoring.current) return // a real scroll took over — see below
+        const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+        const target = Math.min(want, max)
+        window.scrollTo({ top: target, behavior: 'instant' })
+        /* Keep going until the position sticks, not merely until it is set once.
+           A smooth scroll started just before the tap (the browser's own
+           scroll-into-view on a link near the fold) is still animating across
+           these frames and will happily scroll back over a position we set. */
+        frames++
+        const settled = Math.abs(window.scrollY - target) < 2 && max >= want
+        // scrollY reads back correct within the same frame even when an animation
+        // is about to undo it, so hold the position for a few frames regardless.
+        if ((!settled || frames < 5) && frames < 20) requestAnimationFrame(tick)
+        else restoring.current = false
+      }
+      requestAnimationFrame(tick)
+    }
+
     const onHashChange = () => {
       const next = parseHash(location.hash)
       rememberBrowse(next)
       setView(next)
-      // restore remembered scroll for this route (0 for fresh visits)
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: scrollMemory.get(location.hash) ?? 0 })
-      })
+      restore()
     }
-    const onScroll = () => scrollMemory.set(location.hash, window.scrollY)
+    const onScroll = () => {
+      if (restoring.current) return
+      scrollMemory.set(location.hash, window.scrollY)
+    }
+    /* Someone who starts scrolling mid-restore has said where they want to be,
+       and the restore fighting them for another 300ms feels like the page is
+       stuck. Their touch wins immediately. */
+    const abort = () => { restoring.current = false }
+
     window.addEventListener('hashchange', onHashChange)
     window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('touchstart', abort, { passive: true })
+    window.addEventListener('wheel', abort, { passive: true })
+    window.addEventListener('keydown', abort)
     return () => {
       window.removeEventListener('hashchange', onHashChange)
       window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('touchstart', abort)
+      window.removeEventListener('wheel', abort)
+      window.removeEventListener('keydown', abort)
     }
   }, [])
 

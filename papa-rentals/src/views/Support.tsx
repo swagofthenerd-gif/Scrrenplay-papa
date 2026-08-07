@@ -141,7 +141,11 @@ export default function Support({ orderId }: { orderId?: string }) {
 
       <div className="list-row">
         <span className="row-ico"><Icon name="siren" size={16} /> On-set emergency line</span>
-        <a href="tel:+924211122333" className="row-ico" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}><Icon name="phone" size={15} /> Call now</a>
+        {/* The most urgent control in the app was an 18px-tall text link. On a set,
+            at night, with one hand full of cable, it has to be a button. */}
+        <a href="tel:+924211122333" className="btn btn-primary btn-sm" style={{ textDecoration: 'none', flex: 'none' }}>
+          <Icon name="phone" size={15} /> Call now
+        </a>
       </div>
     </div>
   )

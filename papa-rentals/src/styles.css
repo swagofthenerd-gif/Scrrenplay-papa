@@ -89,6 +89,10 @@
   --dur: 0.25s;
   --dur-slow: 0.45s;
   --tap: 44px;
+  /* The bottom nav's height, and the nav is sized FROM it — a hand-measured
+     constant drifts the moment the nav's padding changes, which is exactly how
+     the action bar ended up overlapping it by 7px. */
+  --nav-h: 69px;
 }
 
 /* The palette is selected by an attribute rather than by the media query alone,
@@ -391,6 +395,7 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 }
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+  min-height: calc(var(--nav-h) + env(safe-area-inset-bottom));
   background: color-mix(in srgb, var(--card) 94%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border-top: 1px solid var(--line);
   display: flex; justify-content: space-around;
@@ -410,6 +415,20 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 .bottom-nav button.active .nav-ico { background: var(--accent-soft); transform: scale(1.08); animation: popIn 0.35s var(--ease-spring); }
 .bottom-nav .dot { top: 0; right: 8px; }
 
+/* Some controls are deliberately small — a heart on a photo, a rail arrow, a
+   segmented switch. Growing them to 44px would wreck the layout they sit in, so
+   grow the touch target instead and leave the drawing alone. The pseudo-element
+   is centred, so a 38px control gains 3px of reach on every side without moving.
+
+   Anything using this must sit at least 44px from its neighbour, or the invisible
+   areas overlap and the wrong control wins the tap. The two card buttons are
+   spaced exactly 44px apart for this reason. */
+.wish-btn::after, .cmp-btn::after, .rail-arrow::after, .seg button::after, .faq-q::after {
+  content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: max(100%, var(--tap)); height: max(100%, var(--tap));
+}
+.seg button, .faq-q { position: relative; }
+
 /* ---------- Buttons ---------- */
 .btn {
   border: none; border-radius: var(--r-sm); padding: 13px 18px; font-size: 14px; font-weight: 700;
@@ -423,7 +442,7 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 .btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); }
 .btn-danger { background: var(--red-soft); color: var(--red); }
 .btn-block { width: 100%; }
-.btn-sm { padding: 10px 14px; font-size: 13px; border-radius: var(--r-sm); min-height: 40px; }
+.btn-sm { padding: 10px 14px; font-size: 13px; border-radius: var(--r-sm); min-height: var(--tap); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 
 /* ---------- Badges & stars ---------- */
@@ -467,7 +486,7 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
    it. Ink reads as navigation; the accent stays for actions and live deals. */
 .link-btn {
   background: none; border: none; color: var(--ink); font-weight: 700; cursor: pointer;
-  font-size: 13px; padding: 8px 6px; min-height: 36px;
+  font-size: 13px; padding: 8px 6px; min-height: var(--tap);
 }
 .link-btn .icon { color: var(--muted); }
 
@@ -503,6 +522,7 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
   .rail-nav { display: inline-flex; }
 }
 .rail-arrow {
+  position: relative;
   width: 30px; height: 30px; border-radius: var(--r-pill); cursor: pointer; flex: none;
   display: inline-flex; align-items: center; justify-content: center;
   background: none; color: var(--ink); border: 1px solid transparent;
@@ -689,7 +709,7 @@ mark { background: var(--accent-soft); color: var(--accent-dark); border-radius:
 .filter-row::-webkit-scrollbar { display: none; }
 .filter-chip {
   border: 1px solid var(--line); background: var(--card); border-radius: var(--r-pill); padding: 10px 15px;
-  font-size: 13px; font-weight: 600; cursor: pointer; color: var(--ink); min-height: 40px; flex: none;
+  font-size: 13px; font-weight: 600; cursor: pointer; color: var(--ink); min-height: var(--tap); flex: none;
   transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) ease, border-color var(--dur-fast) ease;
 }
 .filter-chip:active { transform: scale(0.95); }
@@ -770,15 +790,25 @@ select.filter-chip {
 
 /* sticky mobile CTA bar on item detail */
 .cta-bar {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 42;
+  /* Sits ON TOP OF the bottom nav rather than above it: 65px of action bar over
+     the primary navigation, so on the one page that has to sell the thing you
+     could not see which tab you were on. --nav-h is the nav's real height, so
+     the two stack instead of fighting. */
+  position: fixed; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); left: 0; right: 0; z-index: 42;
   background: color-mix(in srgb, var(--card) 96%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line); padding: 10px 16px;
   display: none; align-items: center; gap: 12px; animation: fadeUp 0.3s var(--ease-out);
 }
 .cta-bar .cta-price { flex: 1; min-width: 0; }
 .cta-bar .cta-price b { font-size: 17px; }
 .cta-bar .btn { flex: none; }
-@media (max-width: 800px) { .cta-bar { display: flex; } }
+@media (max-width: 800px) {
+  .cta-bar { display: flex; }
+  /* Where the action bar is on screen, everything that floats above the nav has
+     to clear the action bar as well — the toast was landing on the price. */
+  body:has(.cta-bar) .toast { bottom: calc(var(--nav-h) + 84px + env(safe-area-inset-bottom)); }
+  body:has(.cta-bar) .app-shell { padding-bottom: calc(160px + env(safe-area-inset-bottom)); }
+}
 
 /* ---------- Availability strip ---------- */
 .avail-strip { display: flex; gap: 5px; margin-top: 10px; overflow-x: auto; padding: 2px; scrollbar-width: none; }
@@ -823,7 +853,7 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 .slot-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .slot-chip {
   border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: var(--r-pill);
-  padding: 8px 13px; font-size: 12px; font-weight: 700; cursor: pointer; min-height: 38px;
+  padding: 8px 13px; font-size: 12px; font-weight: 700; cursor: pointer; min-height: var(--tap);
   transition: transform var(--dur-fast) var(--ease-out);
 }
 .slot-chip:active { transform: scale(0.94); }
@@ -1067,7 +1097,7 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
 
 /* ---------- Toast ---------- */
 .toast {
-  position: fixed; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: calc(var(--nav-h) + 16px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
   background: var(--ink); color: var(--bg); border-radius: var(--r-lg); padding: 13px 20px; font-size: 14px;
   font-weight: 600; z-index: 70; box-shadow: var(--shadow-lg); animation: toastIn 0.35s var(--ease-spring);
   max-width: 92vw; text-align: center;
@@ -1126,7 +1156,7 @@ label.field input:focus, label.field select:focus { border-color: var(--accent);
   background: var(--ink); color: var(--bg); border-radius: var(--r-lg); padding: 10px 14px;
   display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-lg); animation: slideup 0.3s var(--ease-spring);
 }
-.compare-tray .btn { min-height: 38px; padding: 8px 14px; }
+.compare-tray .btn { min-height: var(--tap); padding: 8px 14px; }
 /* Stacked under the heart, not beside it: side by side the pair ran into the
    Instant/Approval badge on a 360px screen — 13px of measured overlap. */
 .cmp-btn {
@@ -2013,3 +2043,23 @@ body:has(.compare-tray) .section:last-of-type { padding-bottom: 72px; }
 /* Arrows are a pointer affordance; on a touch screen the swipe is the gesture
    and two floating buttons just cover the photo. */
 @media (hover: none) { .lightbox-nav { display: none; } }
+
+/* ---------- What happens next ---------- */
+.whats-next { margin: 14px 0 10px; padding: 14px 16px; background: var(--card-2); border-radius: var(--r-md); }
+.whats-next-title { display: flex; align-items: center; gap: 7px; font-size: 14px; }
+/* Numbered because these genuinely are a sequence — the order is the reassurance.
+   The rail joins each step to the next, so the last one must not draw one or the
+   handover reads as leading somewhere else. */
+.whats-next ol { list-style: none; margin: 10px 0 0; padding: 0 0 0 22px; counter-reset: wn; }
+.whats-next li { position: relative; counter-increment: wn; padding: 0 0 14px; display: flex; flex-direction: column; gap: 1px; }
+.whats-next li:last-child { padding-bottom: 0; }
+.whats-next li::before {
+  content: counter(wn); position: absolute; left: -22px; top: 1px;
+  width: 16px; height: 16px; border-radius: 50%; background: var(--accent); color: #fff;
+  font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+}
+.whats-next li:not(:last-child)::after {
+  content: ''; position: absolute; left: -15px; top: 19px; bottom: 4px; width: 2px; background: var(--line-strong);
+}
+.whats-next li b { font-size: 13.5px; }
+.whats-next li span { font-size: 12.5px; color: var(--muted); line-height: 1.4; }

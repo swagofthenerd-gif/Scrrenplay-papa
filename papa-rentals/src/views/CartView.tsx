@@ -879,6 +879,24 @@ export default function CartView() {
               The rest is due the day before pickup. The security deposit is a hold either way — it is never a charge.
             </p>
           )}
+          {/* The gap between pressing pay and gear turning up is the frightening
+              part of renting Rs 150,000 of equipment from someone you have never
+              met, and this sheet said nothing about it. Four steps, named, with
+              the two facts that actually reassure: a person drives it to you, and
+              you hold a PIN they cannot complete the handover without. */}
+          <div className="whats-next">
+            <b className="whats-next-title"><Icon name="van" size={15} /> What happens next</b>
+            <ol>
+              <li><b>{needsApproval ? 'The owner confirms' : 'Confirmed straight away'}</b>
+                <span>{needsApproval ? 'Usually within ten minutes. Nothing is charged until they accept.' : 'Your dates are held and nobody else can book them.'}</span></li>
+              <li><b>They test and pack it</b>
+                <span>Batteries charged, media formatted, case checked off.</span></li>
+              <li><b>A driver brings it to {needsDelivery && address ? address.label : 'you'}</b>
+                <span>You get their name, their vehicle and a live ETA.</span></li>
+              <li><b>You share your handover PIN</b>
+                <span>Only you have it — it is what proves the gear reached you.</span></li>
+            </ol>
+          </div>
           <p className="muted small">
             By continuing you accept the cancellation policy: free until 48h before your start date, 10% fee inside 48h.
           </p>

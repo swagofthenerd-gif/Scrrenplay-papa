@@ -216,7 +216,12 @@ function Shell() {
       {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
       {notifOpen && <NotificationSheet onClose={() => setNotifOpen(false)} />}
       {!state.profile.onboarded && <Onboarding />}
-      {toastMsg && <div className="toast">{toastMsg}</div>}
+      {/* Every confirmation in the app goes through here — added to cart, order
+          placed, balance settled — and none of it reached a screen reader. status
+          rather than alert: these are outcomes worth hearing, not interruptions
+          worth cutting someone off mid-sentence for. */}
+      <div className="sr-only" role="status" aria-live="polite">{toastMsg ?? ''}</div>
+      {toastMsg && <div className="toast" aria-hidden="true">{toastMsg}</div>}
     </NavContext.Provider>
   )
 }
